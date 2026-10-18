@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>God's Eye</title>
+    <meta
+      name="description"
+      content="The window through which you see the world, and the eye through which the world sees itself."
+    />
+    <meta name="theme-color" content="#05070b" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="God's Eye" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin />
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/shell.css" />
+    <link rel="stylesheet" href="./styles/feed.css" />
+    <link rel="stylesheet" href="./styles/sheet.css" />
+    <link rel="stylesheet" href="./styles/globe-ui.css" />
+    <link rel="stylesheet" href="./styles/capture.css" />
+    <link rel="stylesheet" href="./styles/threads.css" />
+    <link rel="stylesheet" href="./styles/layout.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <div id="app" class="app" data-tab="now" data-booting="true">
+      <!-- The one persistent globe. Everything else is glass over it. -->
+      <div id="stage" class="stage" aria-label="Globe">
+        <div id="globe" class="globe-host"></div>
+        <div id="globe-veil" class="globe-veil" aria-hidden="true"></div>
+        <div id="globe-chrome" class="globe-chrome"></div>
+      </div>
+
+      <main id="lead" class="lead">
+        <section
+          id="view-now"
+          class="view view--scroll"
+          data-view="now"
+          aria-label="Now"
+        ></section>
+        <section
+          id="view-globe"
+          class="view view--scroll"
+          data-view="globe"
+          aria-label="Globe layers"
+        ></section>
+        <section
+          id="view-threads"
+          class="view view--scroll"
+          data-view="threads"
+          aria-label="Threads"
+          hidden
+        ></section>
+        <section
+          id="view-you"
+          class="view view--scroll"
+          data-view="you"
+          aria-label="You"
+          hidden
+        ></section>
+      </main>
+
+      <section
+        id="view-capture"
+        class="capture"
+        data-view="capture"
+        aria-label="Capture"
+        hidden
+      ></section>
+
+      <div id="sheets" class="sheets"></div>
+      <nav id="tabbar" class="tabbar" aria-label="Primary"></nav>
+    </div>
+    <noscript>
+      <p class="noscript">God's Eye needs JavaScript to draw the planet.</p>
+    </noscript>
+  </body>
+</html>

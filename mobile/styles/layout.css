@@ -1,0 +1,190 @@
+/* ------------------------------------------------------------------ */
+/* Adaptive layout: phone → two-pane → hinge-aware foldables          */
+/* ------------------------------------------------------------------ */
+
+.app {
+  --two-pane: 0;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 10px;
+}
+
+.search-row .search-field {
+  flex: 1;
+}
+
+.search-cancel {
+  min-height: 40px;
+  padding: 0 10px;
+  background: transparent !important;
+  color: var(--tint);
+  font-weight: 500;
+}
+
+/* Regular width (foldable inner screens, iPhone Fold, tablets).
+   iPadOS 26-style: the leading pane holds the content column and keeps
+   the floating tab bar at its foot (thumb reach on a handheld foldable);
+   the trailing pane is the always-live globe. */
+@media (min-width: 600px) {
+  .app {
+    --two-pane: 1;
+    --lead-w: clamp(360px, 44vw, 420px);
+    --stage-left: var(--lead-w);
+  }
+
+  .lead {
+    right: auto;
+    width: var(--lead-w);
+    border-right: 0.5px solid var(--hairline-strong);
+    visibility: visible !important;
+  }
+
+  .lead .view {
+    pointer-events: auto !important;
+  }
+
+  .stage {
+    left: var(--stage-left);
+  }
+
+  #view-globe {
+    display: block;
+  }
+
+  .app .globe-chrome {
+    visibility: visible !important;
+  }
+
+  .tabbar {
+    left: calc(12px + var(--safe-l));
+    right: auto;
+    width: calc(var(--lead-w) - 24px);
+  }
+
+  .app.is-world:not(.is-narrative) .tabbar {
+    transform: none;
+    opacity: 1;
+  }
+
+  .gc-bottom {
+    bottom: calc(var(--safe-b) + 14px);
+  }
+
+  .app.is-world .gc-bottom {
+    bottom: calc(var(--sheet-h, 120px) + 12px);
+  }
+
+  .pick-card {
+    left: auto;
+    width: min(400px, calc(100% - 24px));
+    bottom: calc(var(--safe-b) + 140px);
+  }
+
+  .narr-hud {
+    left: auto;
+    width: min(420px, calc(100% - 24px));
+  }
+
+  .stage .sheet {
+    left: 10px;
+    right: 10px;
+    max-width: 520px;
+  }
+
+  /* Modal sheets float centred instead of spanning a wide screen. */
+  .sheets .sheet {
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: min(560px, calc(100% - 24px));
+  }
+
+  .tb-accessory {
+    right: calc(var(--tabbar-h) + 10px);
+  }
+
+  .capture .cap-bottom,
+  .capture .cap-top {
+    left: var(--lead-w);
+  }
+
+  .hero {
+    border-radius: 0;
+  }
+}
+
+/* Vertical hinge (book posture): split exactly at the fold. */
+@media (horizontal-viewport-segments: 2) {
+  .app {
+    --lead-w: env(viewport-segment-width 0 0, 50vw);
+    --stage-left: env(viewport-segment-left 1 0, 50vw);
+  }
+
+  .lead {
+    width: var(--lead-w);
+  }
+
+  .stage {
+    left: var(--stage-left);
+  }
+
+  .capture .cap-bottom,
+  .capture .cap-top {
+    left: var(--stage-left);
+  }
+}
+
+/* Tabletop (horizontal fold): globe on top, controls and timeline below. */
+@media (vertical-viewport-segments: 2) {
+  .app {
+    --two-pane: 1;
+    --stage-h: env(viewport-segment-height 0 0, 50vh);
+    --lead-top: env(viewport-segment-top 0 1, 50vh);
+  }
+
+  .stage {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: auto;
+    height: var(--stage-h);
+  }
+
+  .lead {
+    top: var(--lead-top);
+    left: 0;
+    right: 0;
+    width: auto;
+    border-right: 0;
+    border-top: 0.5px solid var(--hairline-strong);
+  }
+
+  .lead .view .navbar {
+    --safe-t: 0px;
+  }
+
+  .tabbar {
+    left: max(calc(12px + var(--safe-l)), calc(50% - 300px));
+    right: max(calc(12px + var(--safe-r)), calc(50% - 300px));
+    width: auto;
+  }
+
+  .gc-bottom {
+    bottom: 12px;
+  }
+
+  .gc-top {
+    top: 12px;
+  }
+}
+
+/* Short landscape phones keep a single pane but tighter chrome. */
+@media (max-height: 520px) and (orientation: landscape) and (max-width: 599px) {
+  .lens-dock {
+    display: none;
+  }
+}

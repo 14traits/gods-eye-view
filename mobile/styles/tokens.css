@@ -1,0 +1,365 @@
+/*
+ * God's Eye — mobile design tokens.
+ * One ground, one light source (the globe), glass over it.
+ * Signal colours are reserved for meaning (DESIGN.md §4).
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Ground */
+  --ground: #05070b;
+  --ground-1: #0a0e15;
+  --ground-2: #10151e;
+  --ground-3: #171d28;
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+
+  /* Ink */
+  --ink: #f4f7fb;
+  --ink-2: rgba(235, 241, 250, 0.72);
+  --ink-3: rgba(235, 241, 250, 0.5);
+  --ink-4: rgba(235, 241, 250, 0.3);
+
+  /* Signals (reserved) */
+  --sky: #7cc4ff;
+  --sea: #38e1c6;
+  --orbit: #c9a7ff;
+  --hazards: #ff6a3d;
+  --eyes: #ffd166;
+  --ground-sig: #9be15d;
+  --weather: #8ab4f8;
+  --infra: #b8c0cc;
+  --seal: #e8b75c;
+  --seal-2: #ffdf9e;
+  --live: #ff453a;
+  --ok: #30d158;
+  --warn: #ffd60a;
+  --bad: #ff453a;
+  --tint: #7cc4ff;
+
+  /* Glass */
+  --glass-bg: rgba(22, 27, 37, 0.52);
+  --glass-bg-strong: rgba(18, 22, 31, 0.74);
+  --glass-blur: blur(24px) saturate(1.6);
+  --glass-edge:
+    inset 0 0.5px 0 0 rgba(255, 255, 255, 0.32),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --glass-specular: radial-gradient(
+    120% 80% at 30% -20%,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0) 60%
+  );
+
+  /* Geometry */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+  --touch: 44px;
+  --gutter: 16px;
+
+  /* Safe areas */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --tabbar-h: 62px;
+  --tabbar-gap: max(10px, calc(var(--safe-b) - 8px));
+  --chrome-bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + 10px);
+
+  /* Type (rem-based so Dynamic Type / browser zoom scales it) */
+  --font:
+    system-ui, -apple-system, 'SF Pro Text', 'Roboto Flex', Roboto, 'Segoe UI',
+    sans-serif;
+  --font-display:
+    system-ui, -apple-system, 'SF Pro Display', 'Roboto Flex', Roboto,
+    'Segoe UI', sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --mono:
+    ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, 'Roboto Mono', monospace;
+  --t-large: 2.125rem; /* 34 pt */
+  --t-title2: 1.375rem;
+  --t-title3: 1.25rem;
+  --t-headline: 1.0625rem;
+  --t-body: 1.0625rem;
+  --t-callout: 1rem;
+  --t-sub: 0.9375rem;
+  --t-foot: 0.8125rem;
+  --t-cap: 0.75rem;
+  --t-cap2: 0.6875rem;
+
+  /* Motion. Springs are sampled with linear() where supported. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --spring: cubic-bezier(0.32, 1.25, 0.4, 1);
+  --spring-soft: cubic-bezier(0.25, 1.1, 0.4, 1);
+  --dur-1: 160ms;
+  --dur-2: 280ms;
+  --dur-3: 460ms;
+
+  /* Layout */
+  --lead-w: 100vw;
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    /* Critically-damped-ish spring (response 0.42, damping 0.82). */
+    --spring: linear(
+      0,
+      0.009,
+      0.035 2.1%,
+      0.141 4.4%,
+      0.723 12.9%,
+      0.938 16.7%,
+      1.017 19.8%,
+      1.067,
+      1.089 25.9%,
+      1.085 29.1%,
+      1.05 35.4%,
+      1.016 42.4%,
+      0.999 51.8%,
+      0.996 58.3%,
+      1
+    );
+    --spring-soft: linear(
+      0,
+      0.06 3%,
+      0.25 7.5%,
+      0.6 15%,
+      0.84 22%,
+      0.96 30%,
+      1.012 38%,
+      1.02 46%,
+      1.006 60%,
+      1
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 1ms;
+    --dur-2: 120ms;
+    --dur-3: 160ms;
+  }
+}
+
+:root[data-reduce-motion='on'] {
+  --dur-1: 1ms;
+  --dur-2: 120ms;
+  --dur-3: 160ms;
+}
+
+/* Base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ground);
+  font-size: var(--t-body);
+  line-height: 1.32;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern', 'ss01';
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+svg.i {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--tint);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.tnum,
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Glass primitive */
+.glass {
+  background: var(--glass-specular), var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
+}
+
+.glass-strong {
+  background: var(--glass-specular), var(--glass-bg-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
+}
+
+/* Family colour binding */
+[data-family='sky'] {
+  --fam: var(--sky);
+}
+[data-family='sea'] {
+  --fam: var(--sea);
+}
+[data-family='orbit'] {
+  --fam: var(--orbit);
+}
+[data-family='hazards'] {
+  --fam: var(--hazards);
+}
+[data-family='eyes'] {
+  --fam: var(--eyes);
+}
+[data-family='ground'] {
+  --fam: var(--ground-sig);
+}
+[data-family='weather'] {
+  --fam: var(--weather);
+}
+[data-family='infra'] {
+  --fam: var(--infra);
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -180% 0;
+  }
+  100% {
+    background-position: 180% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.live-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fam, var(--live));
+  flex: none;
+}
+
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: pulse-ring 1.8s var(--ease-out) infinite;
+}
+
+.live-dot.stale {
+  background: transparent;
+  outline: 1.25px dotted var(--ink-3);
+}
+
+.live-dot.stale::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot::after {
+    animation: none;
+  }
+}
