@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>God's Eye View — First Light</title>
+<style>
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 200; src: url(node_modules/@fontsource/inter/files/inter-latin-200-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 300; src: url(node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 500; src: url(node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2) format('woff2'); }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  canvas { display: block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./node_modules/three/build/three.module.js",
+  "satellite.js": "./node_modules/satellite.js/dist/satellite.es.js"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

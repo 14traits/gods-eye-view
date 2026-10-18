@@ -1,0 +1,14 @@
+{
+  "name": "gev-intro-sequence",
+  "private": true,
+  "type": "module",
+  "description": "God's Eye View: the intro sequence where the system comes online. Deterministic WebGL renderer + procedural score.",
+  "scripts": {},
+  "dependencies": {
+    "@fontsource/inter": "^5.1.1",
+    "@fontsource/jetbrains-mono": "^5.1.1",
+    "playwright-core": "^1.56.1",
+    "satellite.js": "^5.0.0",
+    "three": "^0.169.0"
+  }
+}
