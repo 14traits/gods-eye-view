@@ -148,8 +148,8 @@ export function createPost(renderer, W, H, hudCanvas) {
         bl.g = texture2D(tBloom, uv).g;
         bl.b = texture2D(tBloom, uv - ab * 1.5).b;
         col += bl * uBloom;
-        col *= uExposure;
-        col += vec3(0.75, 0.95, 1.0) * uFlash;
+        // flashes punch exposure instead of adding a veil, so blacks stay black
+        col *= uExposure * (1.0 + uFlash * 6.0);
         col = aces(col);
         // vignette
         float vig = smoothstep(0.95, 0.18, length(d * vec2(uRes.x / uRes.y, 1.0) * 0.82));
