@@ -45,12 +45,12 @@ SH.open = function (id, o = {}) {
   if (o.ride && s.ride) setTimeout(() => GE.ride.start({ kind: 'heli', id: 0 }), 650);
   APP.updateChrome();
 };
-SH.close = function (silent) {
+SH.close = function (silent, keepTime) {
   if (!SH.id) return; const id = SH.id; const W = GE.world;
   const el = sheetEl(); el.classList.remove('drag', 'wopen'); el.style.transform = APP.isWide() ? '' : 'translateY(100%)';
   SH.id = null; W.focus = null; GE.setExtras && GE.setExtras(null);
   if (SH._savedLayers) { W.layers.forEach((l, i) => (l.on = SH._savedLayers[i])); SH._savedLayers = null; bus.emit('layers', W.layers); }
-  W.setWindow(null); W.setTime(null); W.auroraK = 0.85;
+  if (!keepTime) { W.setWindow(null); W.setTime(null); } W.auroraK = 0.85;
   APP.setMode('');
   if (silent) return;
   const fromNow = !APP.isWide() && GE.now && $(`#v-now .card[data-id="${id}"]`);

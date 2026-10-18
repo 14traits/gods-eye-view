@@ -220,7 +220,7 @@ SC.draw = function (sc, view, { sun, t, eye, opts }) {
   const clear = (opts.lens || GE.world.lens) === 'clear';
   gl.uniform3fv(P.u.uSunCol, clear ? [2.2, 2.2, 2.2] : tr.map((x) => x * k * (opts.nightForce ? 0.03 : 1)));
   const amb = smooth(-0.25, 0.5, sunL[2]);
-  gl.uniform3fv(P.u.uSkyCol, clear ? [1.2, 1.25, 1.35] : [0.03 * 20 / Math.PI * 1.6 * amb + 0.014, 0.045 * 20 / Math.PI * 1.6 * amb + 0.02, 0.085 * 20 / Math.PI * 1.6 * amb + 0.04]);
+  gl.uniform3fv(P.u.uSkyCol, clear ? [1.2, 1.25, 1.35] : [0.03 * 20 / Math.PI * 0.9 * amb + 0.014, 0.045 * 20 / Math.PI * 0.9 * amb + 0.02, 0.085 * 20 / Math.PI * 0.9 * amb + 0.04]);
   // fog colour: inscatter along the horizon in the camera's look direction
   const fwd = v3.scale(view.back, -1); const fh = v3.norm(v3.madd(fwd, e.up, -v3.dot(fwd, e.up))); const ro = v3.madd(o, e.up, 0.0003);
   let fog = atmoJS(ro, fh, 0.012, sd, 8); fog = fog.map((x) => x * 0.8 + 0.0015);

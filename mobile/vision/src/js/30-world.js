@@ -30,10 +30,10 @@ W.layers = [
   L('holo', 'eyes', 'Holograms', true, 'cube'), L('streams', 'eyes', 'Live streams', false, 'live'),
   L('transit', 'ground', 'Transit vehicles', false, 'tram'), L('traffic', 'ground', 'Traffic flow', true, 'car'), L('bikes', 'ground', 'Bike share', false, 'bike'),
   L('rail', 'ground', 'Rail', false, 'rail'), L('venues', 'ground', 'Events & venues', true, 'ticket'), L('alpr', 'ground', 'ALPR cameras', false, 'plate'),
-  L('radar', 'wx', 'Radar', true, 'radar'), L('clouds', 'wx', 'Clouds', true, 'cloud'), L('lightning', 'wx', 'Lightning', true, 'bolt'),
+  L('radar', 'wx', 'Radar', false, 'radar'), L('clouds', 'wx', 'Clouds', true, 'cloud'), L('lightning', 'wx', 'Lightning', true, 'bolt'),
   L('wind', 'wx', 'Wind', false, 'wind'), L('models', 'wx', 'Forecast models', false, 'spaghetti'),
   L('dc', 'infra', 'Datacenters', false, 'server'), L('dams', 'infra', 'Dams', false, 'dam'), L('power', 'infra', 'Power plants', false, 'bolt'),
-  L('milbase', 'infra', 'Military installations', false, 'shield'), L('gnss', 'infra', 'GNSS interference', true, 'jam'), L('imagery', 'infra', 'Recent satellite imagery', false, 'frame'),
+  L('milbase', 'infra', 'Military installations', false, 'shield'), L('gnss', 'infra', 'GNSS interference', false, 'jam'), L('imagery', 'infra', 'Recent satellite imagery', false, 'frame'),
 ];
 W.layerById = Object.fromEntries(W.layers.map((l) => [l.id, l]));
 W.on = (id) => !!W.layerById[id]?.on;
@@ -306,7 +306,7 @@ W.updateDynamic = function () {
     GE.SHIPS.forEach((s, i) => {
       const p = W._shipCache[i]; const tank = s.kind === 'tanker' || s.kind === 'LNG';
       if (!showAis && !tank) return;
-      const ak = clamp(lerp(0.32, 0.95, smooth(1.2, 0.08, W.lastRange ?? 1)), 0.3, 1);
+      const ak = clamp(lerp(0.16, 0.95, smooth(1.4, 0.08, W.lastRange ?? 1)), 0.16, 1);
       const col = showTk && tank ? [1, 0.7, 0.35, ak] : s.queue ? [0.5, 1, 0.9, ak] : [0.22, 0.88, 0.78, ak * 0.95];
       pushSpr(a, geo.vec(p.lat, p.lon, 0.03), col, (showTk && tank ? 10 : 8.5), 4, p.hdg, -1e9, 1e9, 0, i, 0.35);
     });
@@ -402,6 +402,7 @@ W.project = function (view, p) { // world unit coords → css px {x,y,z,vis}
 
 /* ---------- render ---------- */
 W.quality = { scale: 1, steps: 12, bloom: true, grain: true };
+const LOD_MIN = { radar: 0.12 };
 const LOD = { cctv: 0.07, street: 0.03, alpr: 0.035, bikes: 0.04, streams: 0.4, signed: 0.6, venues: 0.9, power: 0.7, dc: 1.6, dams: 1.6, milbase: 1.6, airports: 1.3, ports: 1.4, imagery: 1.6, fishing: 2.2, radar: 1.6 };
 W.render = function (view, chain, outFb, opts = {}) {
   const gl = GL.gl, PR = GL.progs;
@@ -500,7 +501,7 @@ W.render = function (view, chain, outFb, opts = {}) {
   // alpha pass (smoke, AQ, radar, GNSS, cone)
   gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
   common(SP); gl.uniform1f(SP.u.uPass, 1);
-  for (const id in W.static) if (W.on(id) && range < (LOD[id] || 99)) for (const s of W.static[id]) if (s.kind === 'sprite' && s.pass === 'alpha') { gl.bindVertexArray(s.vao); gl.drawArrays(gl.POINTS, 0, s.count); }
+  for (const id in W.static) if (W.on(id) && range < (LOD[id] || 99) && range > (LOD_MIN[id] || 0)) for (const s of W.static[id]) if (s.kind === 'sprite' && s.pass === 'alpha') { gl.bindVertexArray(s.vao); gl.drawArrays(gl.POINTS, 0, s.count); }
   if (W.alphaVao && W.alphaCount) { gl.bindVertexArray(W.alphaVao); gl.drawArrays(gl.POINTS, 0, W.alphaCount); }
   gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST); gl.depthMask(true);
   gl.bindVertexArray(null);

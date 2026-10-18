@@ -19,7 +19,7 @@ const CHAT_JET = [
 ];
 RIDE.start = function (p) {
   const W = GE.world;
-  if (APP.mode === 'situation') { GE.sheet.close(true); }
+  if (APP.mode === 'situation') { GE.sheet.close(true, true); }
   RIDE.p = p; RIDE.on = true; RIDE.yaw = 0; RIDE.pitch = 0; RIDE.zoom = 1;
   if (APP.tab !== 'globe') { APP.tab = 'globe'; $('#app').dataset.tab = 'globe'; $$('.pane .view').forEach((v) => v.classList.remove('on')); }
   APP.setMode('ride');
@@ -75,7 +75,7 @@ RIDE.frame = function (view) {
   g += `</g>`;
   g += `<g stroke="rgba(190,255,200,.95)" fill="none" stroke-width="1.6"><circle cx="${cx}" cy="${cy}" r="5"/><line x1="${cx - 18}" y1="${cy}" x2="${cx - 5}" y2="${cy}"/><line x1="${cx + 5}" y1="${cy}" x2="${cx + 18}" y2="${cy}"/><line x1="${cx}" y1="${cy - 5}" x2="${cx}" y2="${cy - 12}"/></g>`;
   // heading tape
-  const ty = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) + 70;
+  const ty = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0) + 100;
   g += `<g font-size="11" font-family="var(--mono)" fill="rgba(190,255,200,.85)" stroke="rgba(190,255,200,.6)" text-anchor="middle">`;
   for (let d = Math.floor(hdg / 5) * 5 - 40; d <= hdg + 40; d += 5) { const x = cx + (d - hdg) * 4; const dd = ((d % 360) + 360) % 360; g += `<line x1="${x}" y1="${ty}" x2="${x}" y2="${ty + (dd % 10 === 0 ? 9 : 5)}"/>`; if (dd % 30 === 0) g += `<text x="${x}" y="${ty + 22}" stroke="none">${{ 0: 'N', 90: 'E', 180: 'S', 270: 'W' }[dd] ?? String(dd / 10).padStart(2, '0')}</text>`; }
   g += `<rect x="${cx - 24}" y="${ty - 22}" width="48" height="18" rx="4" fill="rgba(0,20,8,.35)"/><text x="${cx}" y="${ty - 9}" stroke="none" font-weight="700">${String(Math.round(hdg)).padStart(3, '0')}</text></g>`;
@@ -88,6 +88,6 @@ RIDE.exit = function (silent) {
   $('#ride').classList.remove('on'); $('#ride').innerHTML = '';
   const v = Cam.view(400, 800); const [la, lo] = geo.ll(v.eye);
   Cam.setRig(null); Cam.set({ lat: la, lon: lo, range: Math.max(0.002, v3.len(v.eye) - 1 + 0.002), tilt: 0.9, heading: RIDE.s ? RIDE.s.hdg : 0, shiftY: 0.06 });
-  APP.setMode('');
+  APP.setMode(''); GE.world.setWindow(null); GE.world.setTime(null);
   if (!silent) Cam.flyTo({ range: 0.012, tilt: 0.8 });
 };

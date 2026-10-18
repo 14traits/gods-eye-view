@@ -145,7 +145,7 @@ vec3 aurora(vec3 n, float nightF){
   float curt = 0.45 + 0.55*fbm(vec2(lonm*9. + uT*0.0006, uT*0.00025));
   float g = exp(-pow((ml-band)/(2.2+uAurora*0.6), 2.)) * curt;
   float r = exp(-pow((ml-band-3.5)/3.5, 2.)) * 0.25;
-  return (vec3(0.12, 1.0, 0.5)*g + vec3(0.75, 0.15, 0.45)*r*0.45) * nightF * uAurora * 1.15;
+  return (vec3(0.12, 1.0, 0.5)*g + vec3(0.75, 0.15, 0.45)*r*0.45) * nightF * uAurora * 0.75;
 }
 vec3 cityDetail(vec3 base, vec2 q, float urban, float night, float fw, out vec3 emis){
   emis = vec3(0.);
@@ -175,7 +175,7 @@ vec3 cityDetail(vec3 base, vec2 q, float urban, float night, float fw, out vec3 
   if (uTraffic > 0.5) {
     vec2 rp = p/B; float along = abs(f.x-0.5) < abs(f.y-0.5) ? rp.y : rp.x;
     float cars = smoothstep(0.75, 1., sin(along*38. - uT*2.5 + h*20.)) * road * urban * (1.-aa);
-    emis += mix(vec3(1.,0.15,0.1), vec3(1.,0.95,0.8), step(0.5, fract(along*3.)))*cars*(0.25 + night*1.4);
+    emis += mix(vec3(1.,0.15,0.1), vec3(1.,0.95,0.8), step(0.5, fract(along*3.)))*cars*(0.03 + night*1.2);
   }
   float lit = step(0.72, hash12(id*3.1)) * (1.-road) * urban * night;
   emis += vec3(0.9,0.8,0.6)*lit*0.035;
@@ -303,7 +303,7 @@ void main(){
     float tc = -b; vec3 cp = ro + rd*max(tc,0.); float hr = length(cp);
     if (uAurora > 0. && hr > 1.004 && hr < 1.05) {
       vec3 cn = normalize(cp); float nf = 1.-smoothstep(-0.2,0.0,dot(cn,uSun));
-      col += aurora(cn, nf) * smoothstep(1.05,1.012,hr) * smoothstep(1.004,1.012,hr) * 0.3;
+      col += aurora(cn, nf) * smoothstep(1.05,1.012,hr) * smoothstep(1.004,1.012,hr) * 0.12 * smoothstep(1.5, 0.4, uRange);
     }
     heat = 0.;
   }
@@ -587,8 +587,8 @@ void main(){
   vec3 base; vec3 emis = vec3(0.); float heat = 0.35; float spec = 0.;
   if (type == 0) { // building
     float h = vAttr.y;
-    base = mix(vec3(0.34,0.35,0.37), vec3(0.62,0.57,0.5), h);
-    base = mix(base, vec3(0.2,0.25,0.3), step(0.7, h)); // glass towers
+    base = mix(vec3(0.15,0.155,0.165), vec3(0.32,0.29,0.25), fract(h*7.13));
+    base = mix(base, vec3(0.07,0.09,0.11), step(0.68, h)); // glass towers
     if (abs(n.z) < 0.5) {
       vec2 f = vec2(vUV.x/3.2, vUV.y/3.6);
       vec2 id = floor(f); vec2 fr = fract(f);
@@ -598,7 +598,7 @@ void main(){
       vec3 wc = mix(vec3(1.0,0.72,0.42), vec3(0.75,0.85,1.0), step(0.6, hash12(id*1.3+h)));
       emis += wc * lit * (0.9 + 0.6*r) * uNight * 2.2;
       base = mix(base, base*0.45 + uSkyCol*0.08, win*0.8);
-      spec = win*(1.-uNight)*0.6;
+      spec = win*(1.-uNight)*0.9 + step(0.68, h)*0.5;
     } else base *= 0.82;
     float ao = smoothstep(0., 14., vUV.y + (1.-abs(n.z))*0.) * 0.35 + 0.65;
     if (abs(n.z) < 0.5) base *= ao;

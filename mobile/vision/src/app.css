@@ -302,7 +302,7 @@ input, textarea { font: inherit; color: inherit; }
 .compose .in input { flex: 1; background: none; border: 0; outline: none; color: var(--text); font-size: 15px; min-width: 0; }
 
 /* ---------- capture ---------- */
-#v-capture { background: #000; z-index: 25; }
+#v-capture { background: transparent; z-index: 25; }
 #v-capture.on { display: block; }
 .cap-ui { position: absolute; inset: 0; pointer-events: none; }
 .cap-ui > * { pointer-events: auto; }
@@ -315,7 +315,7 @@ input, textarea { font: inherit; color: inherit; }
 .callout span { color: var(--text2); font-size: 11px; }
 .callout .ci { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in oklab, var(--c) 22%, transparent); color: var(--c); }
 .reticle { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1.5px solid var(--c, #fff); border-radius: 10px; pointer-events: none; box-shadow: 0 0 12px var(--c); }
-.cap-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(var(--sab) + 18px); display: flex; flex-direction: column; align-items: center; gap: 14px; background: linear-gradient(to top, rgba(0,0,0,.55), transparent); }
+.cap-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(var(--sab) + var(--tabH) + 26px); display: flex; flex-direction: column; align-items: center; gap: 14px; background: linear-gradient(to top, rgba(0,0,0,.55), transparent); }
 .zooms { display: flex; gap: 6px; padding: 4px; border-radius: 22px; }
 .zooms button { width: 36px; height: 36px; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--text2); }
 .zooms button.on { background: rgba(255,255,255,.14); color: var(--warn); }
@@ -329,7 +329,7 @@ input, textarea { font: inherit; color: inherit; }
 .shutter:active i { transform: scale(.88); }
 .lastcap { width: 48px; height: 48px; border-radius: 12px; background: #111 center/cover; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); position: relative; }
 .lastcap .seal { position: absolute; right: -6px; top: -6px; width: 20px; height: 20px; }
-.sensors { position: absolute; left: 12px; bottom: calc(var(--sab) + 210px); border-radius: 16px; padding: 8px 10px; font-size: 11px; display: none; gap: 3px; flex-direction: column; min-width: 158px; color: var(--text2); }
+.sensors { position: absolute; left: 12px; bottom: calc(var(--sab) + var(--tabH) + 236px); border-radius: 16px; padding: 8px 10px; font-size: 11px; display: none; gap: 3px; flex-direction: column; min-width: 158px; color: var(--text2); }
 .sensors.on { display: flex; }
 .sensors b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
 .sensors svg { width: 140px; height: 26px; }
@@ -346,7 +346,7 @@ input, textarea { font: inherit; color: inherit; }
 .step .ck { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--text3); color: transparent; transition: all .3s; }
 .step.done .ck { background: var(--gold); box-shadow: none; color: #1A1408; }
 .step b { font-weight: 600; } .step .h { font-family: var(--mono); font-size: 11px; color: var(--text2); word-break: break-all; line-height: 1.35; margin-top: 2px; }
-.step svg { width: 100%; height: 30px; margin-top: 4px; }
+.step svg.trace { width: 100%; height: 30px; margin-top: 4px; display: block; }
 .btnrow { display: flex; gap: 8px; }
 .btn { flex: 1; height: 50px; border-radius: 25px; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
 .btn.gold { background: linear-gradient(180deg, #F3D68A, #D9AE4F); color: #1C1405; box-shadow: inset 0 .5px 0 rgba(255,255,255,.6); }
@@ -372,7 +372,7 @@ input, textarea { font: inherit; color: inherit; }
 .ws .wsh > * { pointer-events: auto; }
 .ws .wsh .tt { flex: 1; min-width: 0; height: 44px; border-radius: 22px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; }
 .ws .wsh .tt b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.ws .wsh .tt span { font-size: 11.5px; color: var(--text2); }
+.ws .wsh .tt span { font-size: 11.5px; color: var(--text2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ws .body { position: absolute; left: 0; right: 0; bottom: 0; top: 40%; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden; }
 .ws .seg { display: flex; margin: 12px 14px 8px; padding: 3px; border-radius: 12px; background: rgba(255,255,255,.07); flex: none; }
 .ws .seg button { flex: 1; height: 34px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--text2); transition: all .25s; }
@@ -386,7 +386,7 @@ input, textarea { font: inherit; color: inherit; }
 .obs .ot { font-size: 14px; font-weight: 600; line-height: 1.3; }
 .obs .om { font-size: 11.5px; color: var(--text3); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .obs .om .mono { color: var(--text2); }
-.obs .tagid { font-family: var(--mono); font-size: 11px; color: var(--gold2); background: rgba(233,196,106,.12); padding: 1px 6px; border-radius: 6px; }
+.tagid { display: inline-block; font-family: var(--font); font-weight: 700; font-size: 11px; letter-spacing: .02em; color: var(--gold2); background: rgba(233,196,106,.13); box-shadow: inset 0 0 0 .5px rgba(233,196,106,.35); padding: 2px 7px; border-radius: 7px; line-height: 1.3; }
 .hyp { border-radius: 20px; padding: 13px 14px; margin: 0 0 10px; background: var(--card2); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.08); }
 .hyp.ai { box-shadow: inset 0 0 0 1px rgba(183,156,255,.45); background: linear-gradient(180deg, rgba(183,156,255,.10), rgba(183,156,255,.02)), var(--card2); }
 .hyp .hh { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
@@ -495,7 +495,9 @@ input, textarea { font: inherit; color: inherit; }
 .cold .eye { width: 60px; height: 60px; margin-bottom: 18px; opacity: 0; transition: opacity 1.2s; color: #fff; }
 .cold.s2 .eye { opacity: .95; }
 .concept-tag { position: absolute; z-index: 90; left: 14px; top: calc(var(--sat) + 58px); pointer-events: none; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(246,223,160,.72); padding: 3px 7px; border-radius: 6px; background: rgba(10,12,18,.35); box-shadow: inset 0 0 0 .5px rgba(233,196,106,.3); }
-.app[data-tab="now"] .concept-tag, .app[data-tab="threads"] .concept-tag, .app[data-tab="you"] .concept-tag { top: calc(var(--sat) + 14px); left: auto; right: 14px; }
+.app[data-tab="now"] .concept-tag { top: calc(var(--sat) + 14px); left: auto; right: 14px; }
+.app[data-tab="threads"]:not([data-mode="workspace"]) .concept-tag, .app[data-tab="you"] .concept-tag { display: none; }
+.app[data-mode="workspace"] .concept-tag { top: calc(var(--sat) + 62px); left: auto; right: 14px; }
 .app[data-tab="capture"] .concept-tag { top: calc(var(--sat) + 100px); left: 14px; }
 .app[data-mode="situation"] .concept-tag { left: auto; right: 14px; top: calc(var(--sat) + 62px); }
 

@@ -151,12 +151,11 @@ THR.init = async function () {
 /* ---------- list ---------- */
 THR.render = function () {
   const v = $('#v-threads');
-  v.innerHTML = `<div class="tlist" id="tlist" style="background:var(--bg);min-height:100%"><div class="navbar">Threads</div><div class="lt"><div class="kicker">${ic('seal', 'xs')} Signed evidence · open ledgers</div><div class="row"><h1>Threads</h1><button class="avatar md" style="--h:205" id="thMe">Y</button></div></div>
+  v.innerHTML = `<div class="tlist" id="tlist" style="background:var(--bg);min-height:100%"><div class="navbar">Threads</div><div class="lt"><div class="kicker">${ic('seal', 'xs')} Signed evidence · open ledgers</div><div class="row"><h1>Threads</h1><span class="concept" style="margin-bottom:8px">${ic('sparkles', 'xs')} Concept · illustrative data</span></div></div>
   <div class="livebar" style="padding-bottom:14px"><span class="presence"><span class="stack">${['kora', 'hydro', 'tamang', 'geo', 'sky'].map((k) => `<span class="avatar sm on" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></span><span><b class="num">37</b> people reconstructing now</span></div>
   ${Object.values(THREADS).map((T) => { const s = GE.SIT.byId[T.sit]; return `<article class="tcard" data-t="${T.id}" data-id="${T.sit}"><div class="thumb"><canvas width="640" height="360"></canvas><div class="bl"><div><h3>${esc(T.title)}</h3><p>${esc(T.place)} · ${esc(T.date)}</p></div><span class="badge d4">4D</span></div></div><div class="stats"><div><b>${T.obs.length}</b>observations</div><div><b>${T.hyps.length}</b>hypotheses</div><div><b>${THR.ledgers[T.id]?.length || '–'}</b>ledger</div><span class="stack">${T.people.slice(0, 4).map((k) => `<span class="avatar sm" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></div></article>`; }).join('')}
   <div style="padding:6px 14px 150px"><button class="btn" style="width:100%" id="newThread">${ic('plus', 'sm')}Start a reconstruction</button><p style="font-size:11.5px;color:var(--text3);text-align:center;margin-top:12px">Concept · illustrative data. Witness posts, handles and claims are fictional.</p></div></div>
   <div class="ws" id="ws"></div>`;
-  $('#thMe').addEventListener('click', () => APP.setTab('you'));
   $('#newThread').addEventListener('click', () => APP.toast(`${ic('threads', 'sm')} New thread · add your first observation`));
   $$('.tcard').forEach((c) => {
     c.addEventListener('click', () => THR.openWs(c.dataset.t));

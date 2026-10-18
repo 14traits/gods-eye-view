@@ -30,7 +30,7 @@ function globeVisible() {
 let lastT = performance.now(), lastDyn = 0, lastSec = 0, running = true;
 function frame(now) {
   if (!running) return;
-  const dt = Math.min(0.1, Math.max(0.001, (now - lastT) / 1000)); lastT = now;
+  const dt = Math.min(0.25, Math.max(0.001, (now - lastT) / 1000)); lastT = now;
   W.simMs = Date.now() + W.offsetH * 3600000; W.t = (W.simMs - NOW) / 1000; W.sun = astro.sun(W.simMs);
   Cam.update(dt);
   if (APP.mode === 'situation' && !Cam.anim && GE.sheet.targetShift != null && !APP.isWide()) Cam.shiftY += (GE.sheet.targetShift - Cam.shiftY) * Math.min(1, dt * 7);
@@ -66,7 +66,7 @@ function coldOpen() {
   APP.intro = true; app.classList.add('intro'); APP.updateChrome();
   if (skipAll) { Cam.set(finalCam); end(); return; }
   Cam.set({ lat: 8, lon: finalCam.lon + 75, range: 5.8, heading: 0, tilt: 0, shiftY: 0.0, shiftX: 0 });
-  const T = red ? 1.2 : 3.4; const t0 = performance.now();
+  const T = (red ? 1.2 : 3.4) * (HASH.slow ? +HASH.slow : 1); const t0 = performance.now();
   GE.introFade = 0;
   if (!red) Cam.flyTo(finalCam, { duration: T });
   else Cam.set(finalCam);

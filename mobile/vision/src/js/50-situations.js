@@ -48,7 +48,7 @@ add({
   id: 'cyclone', short: 'Typhoon Halcyon', fam: 'haz', kind: 'cyclone', section: 'now', live: true, aspect: 1.25, ageS: 120, watchers: 48200,
   title: 'Typhoon Halcyon tracks toward Luzon Strait', place: 'Philippine Sea', lat: 16.2, lon: 128.8,
   camera: { lat: 15.2, lon: 127.6, range: 0.42, heading: -0.25, tilt: 0.42 }, thumbCam: { lat: 16.6, lon: 128.4, range: 0.3, heading: -0.2, tilt: 0.36 },
-  layers: ['cyclones', 'radar', 'lightning', 'clouds', 'models', 'ais', 'flights'], source: 'Advisory feed (illustrative)',
+  layers: ['cyclones', 'lightning', 'clouds', 'models', 'ais', 'flights'], source: 'Advisory feed (illustrative)',
   metric: () => { const c = GE.CYCLONE.at(GE.world.offsetH); return [`${Math.round(c.wind)}<small>km/h</small>`, `${Math.round(c.p)} hPa · moving WNW 19 km/h`]; },
   metrics: () => { const c = GE.CYCLONE.at(GE.world.offsetH); return [{ v: Math.round(c.wind), u: 'km/h', l: 'Max sustained', s: 'Advisory · 2 min' }, { v: Math.round(c.p), u: 'hPa', l: 'Central pressure', s: 'Advisory · 2 min' }, { v: 610, u: 'km', l: 'To Luzon Strait', s: 'Computed · now' }]; },
   accessory: () => { const c = GE.CYCLONE.at(GE.world.offsetH); return `${Math.round(c.wind)} km/h · ${Math.round(c.p)} hPa · updated 2 min ago`; },
@@ -116,7 +116,7 @@ add({
 add({
   id: 'novosel', short: 'Fort Novosel circuits', fam: 'sky', kind: 'heli', section: 'always', live: true, aspect: 1.5, ageS: 15, watchers: 3100, ride: true,
   title: 'Fort Novosel helicopter school — jump into the chopper', place: 'Cairns Army Airfield, Alabama', lat: 31.276, lon: -85.713,
-  camera: { lat: 31.268, lon: -85.705, range: 0.0019, heading: -0.6, tilt: 1.12 }, layers: ['helis', 'flights', 'ga', 'traffic'], source: 'ADS-B / MLAT', time: dayReplay(31.276, -85.713, 15.2),
+  camera: { lat: 31.2705, lon: -85.7075, range: 0.0011, heading: -0.65, tilt: 1.15 }, layers: ['helis', 'flights', 'ga', 'traffic'], source: 'ADS-B / MLAT', time: dayReplay(31.276, -85.713, 15.2),
   metric: () => [`${GE.HELI_CIRCUITS.filter((h) => h.field).length}<small>in circuits</small>`, 'Cairns + 3 stagefields · 500 ft AGL'],
   metrics: () => [{ v: GE.HELI_CIRCUITS.filter((h) => h.field).length, u: '', l: 'Helicopters in circuits', s: 'ADS-B · 15 s' }, { v: 500, u: 'ft', l: 'Pattern altitude', s: 'Observed' }, { v: 5.5, u: 'min', l: 'Circuit time', s: 'Derived' }],
   brief: { lede: 'Student pilots are flying rectangular traffic patterns at Cairns and three stagefields: upwind, crosswind, downwind, base, final — over and over. Tap Ride to sit in the left seat of one of them.', series: [{ label: 'Helicopters aloft', unit: '', data: [2, 4, 9, 14, 17, 19, 19, 18, 19, 17, 19, 19], src: 'ADS-B / MLAT · hourly · 15 s', fmt: (v) => v }, { label: 'Groundspeed, HAWK 21', unit: 'kt', data: Array.from({ length: 40 }, (_, i) => 70 + 12 * Math.sin(i / 3.2) + (i % 10 > 7 ? -30 : 0)), src: 'ADS-B · 1 s · 15 s', fmt: (v) => Math.round(v) }], sources: [['ADS-B / MLAT', '15 s', 'live']] },

@@ -55,8 +55,8 @@ APP.minimize = function (on) {
 };
 APP.showAcc = () => !!APP.following && (APP.tab === 'now' || APP.tab === 'threads' || APP.tab === 'you' || (APP.isWide() && APP.tab === 'globe')) && !APP.mode;
 APP.updateChrome = function () {
-  const ride = APP.mode === 'ride', sit = APP.mode === 'situation';
-  $('#tabwrap').classList.toggle('hidden', ride || (sit && !APP.isWide()) || APP.intro);
+  const ride = APP.mode === 'ride', sit = APP.mode === 'situation', wsm = APP.mode === 'workspace';
+  $('#tabwrap').classList.toggle('hidden', ride || ((sit || wsm) && !APP.isWide()) || APP.intro);
   $('#accHost').classList.toggle('hidden', !APP.showAcc() || APP._mini || APP.intro);
   $('#back').classList.toggle('on', sit);
   $('#sitbtns').classList.toggle('on', sit);

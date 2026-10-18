@@ -110,7 +110,7 @@ CAP.frame = function (view) {
     if (!el) { el = h('div', { 'data-k': it.k }); el.innerHTML = `<div class="reticle" style="--c:${it.c}"></div><div class="callout glass" style="--c:${it.c}"><span class="ci">${ic(it.i, 'sm')}</span><span><b>${esc(it.t)}</b><span data-s></span></span></div>`; host.append(el); }
     el.querySelector('[data-s]').textContent = it.s;
     el.querySelector('.reticle').style.transform = `translate(${s.x}px, ${s.y}px)`;
-    el.querySelector('.callout').style.transform = `translate(${s.x + 24}px, ${s.y}px) translate(0, -50%)`;
+    const flip = s.x > view.w - 210; el.querySelector('.callout').style.transform = flip ? `translate(${s.x - 24}px, ${s.y}px) translate(-100%, -50%)` : `translate(${s.x + 24}px, ${s.y}px) translate(0, -50%)`;
   }
   host.querySelectorAll('[data-k]').forEach((e) => { if (!seen.has(e.dataset.k)) e.remove(); });
   // witness sensors
@@ -152,7 +152,7 @@ CAP.ceremony = function (b, cv) {
   ov.innerHTML = `<div class="bundle glass strong"><div class="ph" id="bph"><svg class="bigseal" id="bigseal" viewBox="0 0 24 24"><use href="#i-seal"/></svg></div>
   <div class="steps">
     <div class="step" data-s="0"><span class="ck">${ic('check', 'xs')}</span><div><b>Frame hashed</b> · SHA-256 of ${fmt.n(b.bytes.length)} JPEG bytes<div class="h" id="sh0">…</div></div></div>
-    <div class="step" data-s="1"><span class="ck">${ic('check', 'xs')}</span><div><b>Session sealed</b> · IMU 150 samples @ 50 Hz · GPS ±4 m · heading ${b.session.heading}°<svg viewBox="0 0 300 30" preserveAspectRatio="none">${GE.sparkPath(b.session.imu.map((x) => x.g + x.b * 0.02), 300, 30, '#5CF2A0', 1.2)}</svg></div></div>
+    <div class="step" data-s="1"><span class="ck">${ic('check', 'xs')}</span><div><b>Session sealed</b> · IMU 150 samples @ 50 Hz · GPS ±4 m · heading ${b.session.heading}°<svg class="trace" viewBox="0 0 300 30" preserveAspectRatio="none">${GE.sparkPath(b.session.imu.map((x) => x.g + x.b * 0.02), 300, 30, '#5CF2A0', 1.2)}</svg></div></div>
     <div class="step" data-s="2"><span class="ck">${ic('check', 'xs')}</span><div><b>Chained</b> to this device’s previous bundle<div class="h">prev ${b.prev.slice(0, 24)}…</div></div></div>
     <div class="step" data-s="3"><span class="ck">${ic('check', 'xs')}</span><div><b>Bundle hash</b><div class="h" id="sh3">…</div></div></div>
     <div class="step" data-s="4"><span class="ck">${ic('check', 'xs')}</span><div><b>Signed</b> · ECDSA P-256, key generated on device, non-extractable<div class="h" id="sh4">…</div></div></div>
