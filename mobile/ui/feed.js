@@ -136,7 +136,11 @@ export function createFeed(
     }
     return all
       .filter((s) => !isReconstruction(s) && !isAlwaysOn(s))
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      .sort(
+        (a, b) =>
+          (b.severity ?? 0) - (a.severity ?? 0) ||
+          new Date(b.updatedAt) - new Date(a.updatedAt),
+      );
   }
 
   function render() {

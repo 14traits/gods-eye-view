@@ -148,9 +148,12 @@ export function createWorld({
   }
 
   function contextEvidence(s) {
-    const span = Math.max(0.02, (s.camera?.height || 300e3) / 111e3 / 1.6);
+    const span = Math.min(
+      12,
+      Math.max(0.02, (s.camera?.height || 300e3) / 111e3 / 1.6),
+    );
     const frames = [
-      { t: 'Region', span: span * 6 },
+      { t: 'Region', span: Math.min(40, span * 6) },
       { t: 'Area', span },
       { t: 'Close', span: span / 5 },
     ];

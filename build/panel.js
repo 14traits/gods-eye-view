@@ -26,6 +26,8 @@ export function panelBuildConfig(config) {
       cssCodeSplit: false,
       rollupOptions: {
         ...config.build?.rollupOptions,
+        // The panel is the app alone: one page, so one inlined script.
+        input: undefined,
         output: { inlineDynamicImports: true },
       },
     },

@@ -1,8 +1,15 @@
+import { fileURLToPath } from 'node:url';
 import { applicationHtmlPlugin } from './application-html.js';
 import cesium from 'vite-plugin-cesium';
 import { DEFAULT_ALLOWED_HOSTS, hostCheckPlugin } from './allowedHosts.js';
 import { embedFramingPlugin } from './embed-framing.js';
 import { panelBuildPlugin } from './panel.js';
+
+/** HTML documents a production build emits: the app and its mobile shell. */
+export const BROWSER_PAGES = Object.freeze({
+  main: fileURLToPath(new URL('../index.html', import.meta.url)),
+  mobile: fileURLToPath(new URL('../mobile/index.html', import.meta.url)),
+});
 
 /**
  * Content-Security-Policy for every document the dev/preview server serves.
@@ -113,6 +120,9 @@ export function createBrowserViteConfig({
         mapillaryToken ?? '',
       ),
     },
-    build: { chunkSizeWarningLimit: 1500 },
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: { input: { ...BROWSER_PAGES } },
+    },
   };
 }

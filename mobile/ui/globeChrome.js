@@ -96,6 +96,68 @@ export function createGlobeChrome({
     onTime: (d) => globe.setTime(d),
   });
 
+  /* ---------- HTML labels (engine draws none; ≤ 40, DESIGN.md §5) ---------- */
+  const labelLayer = h('<div class="gc-labels" aria-hidden="true"></div>');
+  chrome.prepend(labelLayer);
+  let labelRaf = 0;
+  const KIND_FAM_L = {
+    aircraft: 'sky',
+    helicopter: 'sky',
+    military: 'sky',
+    vessel: 'sea',
+    ship: 'sea',
+    satellite: 'orbit',
+    station: 'orbit',
+    launch: 'orbit',
+    earthquake: 'hazards',
+    quake: 'hazards',
+    fire: 'hazards',
+    cyclone: 'hazards',
+    camera: 'eyes',
+    cctv: 'eyes',
+  };
+  function drawLabels() {
+    labelRaf = 0;
+    if (document.hidden || getComputedStyle(chrome).visibility === 'hidden')
+      return;
+    const list = globe.labels(40);
+    const W = chrome.clientWidth;
+    const html = list
+      .map((l) => {
+        const flip = l.x > W - 9 * Math.min(24, l.title.length) - 40;
+        const tf = `translate(${Math.round(l.x)}px,${Math.round(l.y)}px)${flip ? ' translateX(calc(-100% - 16px))' : ''}`;
+        return `<span data-family="${KIND_FAM_L[l.kind] || 'infra'}" style="transform:${tf}"><i></i>${esc(l.title)}</span>`;
+      })
+      .join('');
+    if (labelLayer.innerHTML !== html) labelLayer.innerHTML = html;
+  }
+  const queueLabels = () => {
+    if (!labelRaf) labelRaf = requestAnimationFrame(drawLabels);
+  };
+  globe.on('camera', queueLabels);
+  globe.on('layers', queueLabels);
+  setInterval(queueLabels, 1000);
+
+  /** Provider credits flagged onScreen (e.g. Google 3D Tiles) must stay visible. */
+  let attrKey = '';
+  function refreshAttribution() {
+    const list = globe.credits() || [];
+    const onScreen = list
+      .filter((c) => c.onScreen)
+      .map((c) => c.text || String(c.html || '').replace(/<[^>]+>/g, ''));
+    const text = ['Esri · Maxar · Earthstar · NASA', ...onScreen].join(' · ');
+    if (text === attrKey) return;
+    attrKey = text;
+    attribution.textContent = text;
+    attribution.classList.toggle('has-onscreen', onScreen.length > 0);
+  }
+  let attrTimer = 0;
+  globe.on('camera', () => {
+    clearTimeout(attrTimer);
+    attrTimer = setTimeout(refreshAttribution, 300);
+  });
+  setTimeout(refreshAttribution, 500);
+
   /* ---------- camera readout ---------- */
   globe.on('camera', (c) => {
     if (!c) return;
@@ -141,7 +203,7 @@ export function createGlobeChrome({
     for (const l of layers) {
       const s = st[l.family];
       if (!s) continue;
-      s.total += 1;
+      if (l.available !== false) s.total += 1;
       s.layers.push(l);
       if (l.on) {
         s.on += 1;
@@ -216,6 +278,12 @@ export function createGlobeChrome({
   grid.on('close', () => (gridFamily = null));
 
   function tileHtml(l) {
+    if (l.available === false)
+      return `<button class="tile soon" type="button" aria-disabled="true" data-soon="${esc(l.id)}" data-msg="${esc(l.message || 'Not in the prototype yet')}">
+      <span class="tile-ic">${icon(FAMILY_ICON[l.family] || 'layers')}</span>
+      <span class="tile-name">${esc(l.name)}</span>
+      <span class="tile-meta"><span class="tile-status">Coming soon</span></span>
+    </button>`;
     return `<button class="tile ${l.on ? 'on' : ''}" type="button" role="switch" aria-checked="${!!l.on}" data-layer="${esc(l.id)}" data-status="${esc(l.status)}">
       <span class="tile-ic">${icon(FAMILY_ICON[l.family] || 'layers')}</span>
       <span class="tile-name">${esc(l.name)}</span>
@@ -241,6 +309,14 @@ export function createGlobeChrome({
   }
 
   grid.root.addEventListener('click', (e) => {
+    const soon = e.target.closest('[data-soon]');
+    if (soon) {
+      toast(
+        `${soon.querySelector('.tile-name').textContent} · ${soon.dataset.msg}`,
+        { icon: icon('clock') },
+      );
+      return;
+    }
     const t = e.target.closest('[data-layer]');
     if (t) {
       const on = t.getAttribute('aria-checked') !== 'true';
@@ -518,6 +594,14 @@ export function createGlobeChrome({
       <p class="footnote"><button class="link-btn" type="button" data-act2="credits">Data &amp; attribution</button></p>`;
   }
   leadView.addEventListener('click', (e) => {
+    const soon = e.target.closest('[data-soon]');
+    if (soon) {
+      toast(
+        `${soon.querySelector('.tile-name').textContent} · ${soon.dataset.msg}`,
+        { icon: icon('clock') },
+      );
+      return;
+    }
     const t = e.target.closest('[data-layer]');
     if (t) {
       const on = t.getAttribute('aria-checked') !== 'true';

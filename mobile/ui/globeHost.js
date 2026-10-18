@@ -119,6 +119,13 @@ function guard(engine, kind) {
       const v = call('credits', null);
       return Array.isArray(v) ? v : null;
     },
+    /** Screen-space label candidates (engine draws none; the shell renders them). */
+    labels: (max = 40) => {
+      const v = call('labels', [], max);
+      return Array.isArray(v) ? v : [];
+    },
+    project: (lon, lat, alt) => call('project', null, lon, lat, alt),
+    time: () => call('time', null),
   };
 }
 
@@ -130,6 +137,11 @@ export async function mountGlobe(container, opts = {}) {
   const params = new URLSearchParams(location.search);
   const forceStub = opts.preferStub || params.get('engine') === 'stub';
   if (!forceStub) {
+    // vite-plugin-cesium serves Workers/Assets at /cesium/ and passes the base
+    // as a build-time define, which the pre-bundled dev dependency never sees;
+    // Cesium then resolves them next to node_modules/.vite/deps and gets HTML.
+    if (typeof window !== 'undefined' && !window.CESIUM_BASE_URL)
+      window.CESIUM_BASE_URL = '/cesium/';
     try {
       // A glob (not a bare dynamic import) so a checkout without the engine
       // still builds; Vite re-evaluates it when mobile/globe/index.js appears.

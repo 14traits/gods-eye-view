@@ -82,9 +82,63 @@
   animation: view-in var(--dur-3) var(--spring) both;
 }
 
-.app.is-world .gc-readout,
-.app.is-world .gc-attr {
+.app.is-world .gc-readout {
   visibility: hidden;
+}
+
+/* Attribution stays on screen whenever the globe is (provider terms). */
+.app.is-world .gc-attr {
+  top: calc(var(--safe-t) + 60px);
+}
+
+.gc-attr.has-onscreen {
+  color: var(--ink-2);
+}
+
+.gc-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.gc-labels span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -9px 0 0 8px;
+  height: 18px;
+  padding: 0 6px 0 5px;
+  border-radius: 9px;
+  background: rgba(5, 7, 11, 0.58);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.gc-labels i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fam, var(--ink-3));
+}
+
+.tile.soon {
+  opacity: 0.5;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.tile.soon .tile-status {
+  font-style: normal;
+  color: var(--ink-4);
 }
 
 /* Lens popover */
@@ -733,6 +787,12 @@
   font-weight: 750;
   letter-spacing: -0.03em;
   color: var(--fam);
+}
+
+/* The headline number belongs to the peek detent; taller detents show it in
+   the labelled metrics row instead of twice. */
+.brief-sheet:not([data-detent='peek']) .peek-metric {
+  display: none;
 }
 
 .peek-metric small {
