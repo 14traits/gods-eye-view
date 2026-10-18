@@ -142,9 +142,9 @@ vec3 aurora(vec3 n, float nightF){
   float ml = asin(abs(s)) * 57.2958;
   float band = 66.5 - uAurora*5.5;
   float lonm = atan(dot(n, normalize(cross(mp, vec3(0,0,1)))), dot(n, normalize(cross(mp, cross(mp, vec3(0,0,1))))));
-  float curt = 0.45 + 0.55*fbm(vec2(lonm*9. + uT*0.0006, uT*0.00025));
-  float g = exp(-pow((ml-band)/(2.2+uAurora*0.6), 2.)) * curt;
-  float r = exp(-pow((ml-band-3.5)/3.5, 2.)) * 0.25;
+  float curt = 0.25 + 0.75*fbm(vec2(lonm*14. + uT*0.0006, uT*0.00025 + ml*0.15));
+  float g = exp(-pow((ml-band)/(0.7+uAurora*0.25), 2.)) * curt * curt * 0.6;
+  float r = exp(-pow((ml-band-2.5)/2.0, 2.)) * 0.08 * curt;
   return (vec3(0.12, 1.0, 0.5)*g + vec3(0.75, 0.15, 0.45)*r*0.45) * nightF * uAurora * 0.75;
 }
 vec3 cityDetail(vec3 base, vec2 q, float urban, float night, float fw, out vec3 emis){
@@ -164,14 +164,18 @@ vec3 cityDetail(vec3 base, vec2 q, float urban, float night, float fw, out vec3 
   float lot = vnoise(p*0.11)*0.12;
   vec3 urb = mix(roof*(0.9+lot), vec3(0.075,0.078,0.085), road);
   // rural: patchwork fields & forest
-  vec2 fid = floor(p/(B*2.6)); float fh = hash12(fid+7.);
-  vec3 field = base * mix(vec3(0.9,1.05,0.8), vec3(1.25,1.1,0.75), fh) * (0.85+0.3*vnoise(p*0.02));
-  float forest = smoothstep(0.45,0.62, fbm(p*0.0016+3.));
-  field = mix(field, base*vec3(0.55,0.75,0.5), forest);
+  vec2 fid = floor(p/(B*2.6)); float fh = mix(hash12(fid+7.), 0.5, clamp(fw/(B*2.6)*1.6, 0., 1.));
+  vec3 field = base * mix(vec3(0.94,1.02,0.9), vec3(1.12,1.06,0.86), fh) * (0.92+0.16*vnoise(p*0.02));
+  float forest = smoothstep(0.5,0.66, fbm(p*0.0011+3.));
+  field = mix(field, base*vec3(0.78,0.88,0.74), forest*0.6);
   vec3 col = mix(field, urb, urban);
   // street lights at night along roads
-  float lamps = road * urban * (0.5+0.5*hash12(floor(p/9.)));
-  emis = vec3(1.0,0.58,0.24)*lamps*night*1.1*(1.-aa*0.55);
+  float emin = min(e.x, e.y);
+  float curb = smoothstep(rw*0.55, rw*0.8, emin) * (1. - smoothstep(rw*0.8, rw*0.98, emin));
+  float along2 = (e.x < e.y) ? g.y : g.x;
+  float dotsL = smoothstep(0.75, 0.95, fract(along2*B/28.));
+  float lamps = mix(curb*(0.25 + dotsL*1.6), 0.07, aa) * urban;
+  emis = vec3(1.0,0.56,0.22)*lamps*night*1.0;
   if (uTraffic > 0.5) {
     vec2 rp = p/B; float along = abs(f.x-0.5) < abs(f.y-0.5) ? rp.y : rp.x;
     float cars = smoothstep(0.75, 1., sin(along*38. - uT*2.5 + h*20.)) * road * urban * (1.-aa);
@@ -266,7 +270,7 @@ void main(){
     }
     // night lights + moonlit black-marble land
     vec3 lightCol = mix(vec3(1.0,0.66,0.32), vec3(1.0,0.86,0.64), smoothstep(0.4,1.4,lights));
-    vec3 emis = lightCol * lights * 3.2 * nightF * (1. - uCity.x*0.94);
+    vec3 emis = lightCol * lights * 3.2 * nightF * (1. - uCity.x*0.995);
     emis += pow(nightTex, vec3(2.2)) * vec3(0.5,0.6,1.0) * 0.12 * nightF;
     emis += emisD;
     emis *= (1.-cl*0.82);
@@ -594,9 +598,12 @@ void main(){
       vec2 id = floor(f); vec2 fr = fract(f);
       float win = step(0.18, fr.x)*step(fr.x,0.82)*step(0.22,fr.y)*step(fr.y,0.78);
       float r = hash12(id + h*91.);
-      float lit = step(1. - (0.12 + 0.5*uNight), r) * win * step(vUV.y, vAttr.z - 1.);
+      float frac = 0.12 + 0.5*uNight;
+      float lit = step(1. - frac, r) * win * step(vUV.y, vAttr.z - 1.);
       vec3 wc = mix(vec3(1.0,0.72,0.42), vec3(0.75,0.85,1.0), step(0.6, hash12(id*1.3+h)));
-      emis += wc * lit * (0.9 + 0.6*r) * uNight * 2.2;
+      float fwv = length(fwidth(vUV));
+      float pat = mix(lit * (0.9 + 0.6*r), frac * 0.36 * 0.75 * (0.15 + 1.6*fract(h*13.7)*fract(h*13.7)), smoothstep(0.9, 2.6, fwv));
+      emis += wc * pat * uNight * 2.2;
       base = mix(base, base*0.45 + uSkyCol*0.08, win*0.8);
       spec = win*(1.-uNight)*0.9 + step(0.68, h)*0.5;
     } else base *= 0.82;
@@ -644,6 +651,10 @@ void main(){
     base = vec3(0.05);
     emis = mix(vec3(0.9,0.3,1.0), vec3(0.3,0.8,1.0), 0.5+0.5*sin(uT*1.7+vPos.x*0.05)) * 3.0;
     heat = 0.9;
+  } else if (type == 7) { // floodlit launch structure
+    base = vec3(0.75, 0.76, 0.78) * (0.6 + 0.4*vAttr.y);
+    emis = vec3(1.0, 0.93, 0.82) * uNight * (0.35 + 0.25*smoothstep(0., 60., vUV.y));
+    heat = 0.6;
   } else { // houses
     base = mix(vec3(0.55,0.45,0.38), vec3(0.75,0.72,0.66), vAttr.y);
     if (n.z > 0.5) base = mix(vec3(0.45,0.2,0.15), vec3(0.3,0.35,0.42), step(0.5, vAttr.y));

@@ -28,7 +28,7 @@ SH.open = function (id, o = {}) {
   bus.emit('layers', W.layers);
   if (s.time) { W.setWindow({ start: s.time.start ?? s.time.at - 6 * 3600000, end: s.time.end ?? s.time.at + 6 * 3600000 }); W.setTime(s.time.at); }
   W.auroraK = s.auroraK ?? 0.85;
-  GE.setExtras && GE.setExtras(s.id);
+  GE.setExtras && GE.setExtras(s.id); GE.setLabels3d(s.thread ? GE.threads.data[s.thread].labels : s.labels3d);
   // camera
   const cam = GE.SIT.cameraFor(s);
   const hs = SH.heights();
@@ -48,7 +48,7 @@ SH.open = function (id, o = {}) {
 SH.close = function (silent, keepTime) {
   if (!SH.id) return; const id = SH.id; const W = GE.world;
   const el = sheetEl(); el.classList.remove('drag', 'wopen'); el.style.transform = APP.isWide() ? '' : 'translateY(100%)';
-  SH.id = null; W.focus = null; GE.setExtras && GE.setExtras(null);
+  SH.id = null; W.focus = null; GE.setExtras && GE.setExtras(null); GE.setLabels3d(null);
   if (SH._savedLayers) { W.layers.forEach((l, i) => (l.on = SH._savedLayers[i])); SH._savedLayers = null; bus.emit('layers', W.layers); }
   if (!keepTime) { W.setWindow(null); W.setTime(null); } W.auroraK = 0.85;
   APP.setMode('');

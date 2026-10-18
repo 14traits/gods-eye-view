@@ -2,6 +2,9 @@
    callsigns and reconstruction claims are illustrative (Concept · illustrative data). */
 const NOW = Date.now();
 GE.NOW = NOW;
+const lastUTC = (h, m) => { const d = new Date(NOW); let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, m); if (t > NOW - 3600000) t -= 86400000; return t; };
+GE.T_CONCERT = lastUTC(21, 44); GE.T_CLIMB = lastUTC(10, 52);
+GE.dayWord = (t, part) => (new Date(t).getUTCDate() === new Date(NOW).getUTCDate() ? 'this ' + part : (part === 'night' ? 'last night' : 'yesterday ' + part)).replace('this night', 'tonight');
 const R = rng(20261018);
 
 /* ---------- airports [iata, city, lat, lon, weight] ---------- */

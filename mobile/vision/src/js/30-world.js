@@ -129,7 +129,7 @@ W.buildStatic = function () {
   { const a = []; for (const q of GE.QUAKES) pushSpr(a, geo.vec(q.lat, q.lon, 0.5), [1.0, 0.5, 0.3, 1], 10 + (q.mag - 2.5) * 9, 2, -10, q.t, 1e9, 0, RS(), 0.8); addSet('quakes', makeSpriteSet('quakes', a)); }
   // fires (+ smoke in alpha pass)
   { const a = [], sm = []; for (const f of GE.FIRES) { pushSpr(a, geo.vec(f.lat, f.lon, 0.2), [1, 0.5, 0.15, 1], 4 + Math.sqrt(f.frp) * 0.9, 3, -10, f.t, 1e9, 0.4, RS(), 1.0); if (RS() < 0.35) pushSpr(sm, geo.vec(f.lat + 0.15, f.lon + 0.35, 2), [0.3, 0.28, 0.27, 0.32], 26 + RS() * 30, 11, -10, f.t + 3600, 1e9, 0.8, RS(), 0.5); }
-    addSet('fires', makeSpriteSet('fires', a)); addSet('fires', makeSpriteSet('smoke', sm, 'alpha')); }
+    addSet('fires', makeSpriteSet('fires', a)); addSet('smoke', makeSpriteSet('smoke', sm, 'alpha')); }
   // perimeters
   { const a = []; for (const [la, lo, , , s] of GE.FIRE_CLUSTERS) pushPolyline(a, circlePts(la, lo, s * 111 * 0.9, 40, 0.3), [1, 0.42, 0.24, 0.6], 1); addSet('perims', makeLineSet(a)); }
   // floods
@@ -319,7 +319,7 @@ W.updateDynamic = function () {
   if (W.on('transit')) for (let i = 0; i < 400; i++) { const c = BIG_CITIES[i % 16]; const ang = hash01(i) * TAU + t / (600 + hash01(i + 3) * 900); const rr = 2 + hash01(i + 9) * 10; const [la, lo] = geo.dest(c.lat, c.lon, ang, rr); pushSpr(a, geo.vec(la, lo, 0.01), [0.62, 0.9, 0.37, 0.95], 5, 0); }
   if (W.on('wind')) for (const w of WIND) { const age = ((t / w.life + w.ph) % 1 + 1) % 1; let la = w.lat, lo = w.lon; const steps = 4, dtH = (age * w.life) / 3600 / steps; for (let k = 0; k < steps; k++) { const [u, v] = windVel(la, lo, t); la += v * dtH; lo += u * dtH; } const [u, v] = windVel(la, lo, t); const fade = Math.sin(age * Math.PI); pushSpr(a, geo.vec(la, lo, 3), [0.75, 0.85, 1, 0.55 * fade], 14, 15, Math.atan2(u * Math.cos(la * D2R), v), -1e9, 1e9, 0, 0, 0.1); }
   for (const hh of W.userHolos) pushSpr(a, geo.vec(hh.lat, hh.lon, 0.06), [1, 0.85, 0.45, 1], 24, 6, -10, -1e9, 1e9, 0, 0.2, 0.4);
-  if (W.activeExtrasId === 'climb') { const f = clamp((W.simMs - (Date.now() - 10.5 * 3600000)) / (1.9 * 3600000), 0, 1); const [la, lo] = geo.offset(40.7553, -73.9838, 16, 23.5); pushSpr(a, geo.vec(la, lo, (12 + f * 372) / 1000), [1, 0.3, 0.3, 1], 16, 9, -10, -1e9, 1e9, 0, 0.7, 0.9); }
+  if (W.activeExtrasId === 'climb') { const f = clamp((W.simMs - GE.T_CLIMB) / (2.23 * 3600000), 0, 1); const [la, lo] = geo.offset(40.7553, -73.9838, 16, 23.5); pushSpr(a, geo.vec(la, lo, (12 + f * 372) / 1000), [1, 0.3, 0.3, 1], 16, 9, -10, -1e9, 1e9, 0, 0.7, 0.9); }
   // situation pins
   for (const p of W.situationPins) pushSpr(a, geo.vec(p.lat, p.lon, 0.2), p.col, p.size || 16, 9, -10, -1e9, 1e9, 0, p.seed || 0, 0.6);
   // selection highlight
@@ -403,7 +403,8 @@ W.project = function (view, p) { // world unit coords → css px {x,y,z,vis}
 /* ---------- render ---------- */
 W.quality = { scale: 1, steps: 12, bloom: true, grain: true };
 const LOD_MIN = { radar: 0.12 };
-const LOD = { cctv: 0.07, street: 0.03, alpr: 0.035, bikes: 0.04, streams: 0.4, signed: 0.6, venues: 0.9, power: 0.7, dc: 1.6, dams: 1.6, milbase: 1.6, airports: 1.3, ports: 1.4, imagery: 1.6, fishing: 2.2, radar: 1.6 };
+W.on = (id) => id === 'smoke' ? !!W.layerById.fires?.on : !!W.layerById[id]?.on;
+const LOD = { smoke: 0.7, cctv: 0.07, street: 0.03, alpr: 0.035, bikes: 0.04, streams: 0.4, signed: 0.6, venues: 0.9, power: 0.7, dc: 1.6, dams: 1.6, milbase: 1.6, airports: 1.3, ports: 1.4, imagery: 1.6, fishing: 2.2, radar: 1.6 };
 W.render = function (view, chain, outFb, opts = {}) {
   const gl = GL.gl, PR = GL.progs;
   W.matrices(view);
@@ -488,7 +489,7 @@ W.render = function (view, chain, outFb, opts = {}) {
   if (opts.extraSprites) for (const s of opts.extraSprites) { gl.bindVertexArray(s.vao); gl.drawArrays(gl.POINTS, 0, s.count); }
   // flights
   if (kindMask[0] || kindMask[1] || kindMask[3]) {
-    const FP = PR.flight; common(FP); gl.uniform4fv(FP.u.uKindMask, kindMask); gl.uniform1f(FP.u.uTrail, 0); gl.uniform1f(FP.u.uTrailLen, 0); gl.uniform1f(FP.u.uSelId, W.selFlight ?? -1);
+    const FP = PR.flight; common(FP, lerp(1, 0.42, smooth(0.35, 1.8, range))); gl.uniform4fv(FP.u.uKindMask, kindMask); gl.uniform1f(FP.u.uTrail, 0); gl.uniform1f(FP.u.uTrailLen, 0); gl.uniform1f(FP.u.uSelId, W.selFlight ?? -1);
     gl.uniform4f(FP.u.uKindSize, 13, 15, 14, 10);
     gl.bindVertexArray(W.flightVao); gl.drawArraysInstanced(gl.POINTS, 0, 1, W.nFlights);
   }

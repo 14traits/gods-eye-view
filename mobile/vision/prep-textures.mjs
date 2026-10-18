@@ -13,8 +13,8 @@ const src = process.argv[2];
 if (!src) { console.error('usage: node prep-textures.mjs <download-dir>'); process.exit(1); }
 const out = (f) => path.join(here, 'assets', f);
 const jobs = [
-  ['earth-blue-marble.jpg', 'day.webp', (s) => s.resize(4096, 2048).webp({ quality: 74, smartSubsample: true, effort: 6 })],
-  ['BlackMarble_2016_3km.jpg', 'night.webp', (s) => s.resize(4096, 2048, { kernel: 'lanczos3' }).webp({ quality: 74, smartSubsample: true, effort: 6 })],
+  ['earth-blue-marble.jpg', 'day.webp', (s) => s.resize(4096, 2048).webp({ quality: 84, smartSubsample: true, effort: 6 })],
+  ['BlackMarble_2016_3km.jpg', 'night.webp', (s) => s.resize(4096, 2048, { kernel: 'lanczos3' }).webp({ quality: 80, smartSubsample: true, effort: 6 })],
   ['clouds.png', 'clouds.webp', (s) => s.resize(2048, 1024).extractChannel('alpha').webp({ quality: 66, effort: 6 })],
   ['earth-water.png', 'water.webp', (s) => s.resize(2048, 1024).greyscale().webp({ quality: 60, effort: 6 })],
   ['earth-topology.png', 'topo.webp', (s) => s.resize(2048, 1024).greyscale().webp({ quality: 74, effort: 6 })],

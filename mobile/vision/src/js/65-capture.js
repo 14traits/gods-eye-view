@@ -101,7 +101,7 @@ CAP.frame = function (view) {
     CAP._sats.sort((a, b) => a.km - b.km); CAP._sats = CAP._sats.slice(0, 3);
   }
   for (const o of CAP._sats) { const p = GE.satAt(o.s, CAP.t, sun.gmst); want.push({ k: 's' + o.s.name, v: p, c: 'var(--orbit)', i: 'satellite', t: o.s.name, s: `${Math.round(o.s.alt)} km up · ${Math.round(o.el)}° elev`, d: o.km }); }
-  const seen = new Set(); let n = 0;
+  const seen = new Set(); let n = 0; const used = [];
   for (const it of want.sort((a, b) => a.d - b.d)) {
     const s = W.project(view, it.v); let el = host.querySelector(`[data-k="${it.k}"]`);
     const onScreen = s && s.x > 8 && s.x < view.w - 8 && s.y > 60 && s.y < view.h - 230;
@@ -110,7 +110,8 @@ CAP.frame = function (view) {
     if (!el) { el = h('div', { 'data-k': it.k }); el.innerHTML = `<div class="reticle" style="--c:${it.c}"></div><div class="callout glass" style="--c:${it.c}"><span class="ci">${ic(it.i, 'sm')}</span><span><b>${esc(it.t)}</b><span data-s></span></span></div>`; host.append(el); }
     el.querySelector('[data-s]').textContent = it.s;
     el.querySelector('.reticle').style.transform = `translate(${s.x}px, ${s.y}px)`;
-    const flip = s.x > view.w - 210; el.querySelector('.callout').style.transform = flip ? `translate(${s.x - 24}px, ${s.y}px) translate(-100%, -50%)` : `translate(${s.x + 24}px, ${s.y}px) translate(0, -50%)`;
+    let cy = s.y; for (const u of used) if (Math.abs(u - cy) < 44) cy = u + 44; used.push(cy);
+    const flip = s.x > view.w - 210; el.querySelector('.callout').style.transform = flip ? `translate(${s.x - 24}px, ${cy}px) translate(-100%, -50%)` : `translate(${s.x + 24}px, ${cy}px) translate(0, -50%)`;
   }
   host.querySelectorAll('[data-k]').forEach((e) => { if (!seen.has(e.dataset.k)) e.remove(); });
   // witness sensors

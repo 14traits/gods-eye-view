@@ -59,6 +59,24 @@ provider registration rejects compositions that cannot fit rather than truncatin
 identities. A malformed or duplicate entry invalidates the complete custom-switch
 field. Existing whole-link size limits still apply.
 
+## Mobile app prototype — October 18, 2026
+
+`/mobile/` is a phone and foldable shell over the same engine, specified in
+[`mobile/DESIGN.md`](../mobile/DESIGN.md). It has five tabs: a situation feed,
+the globe, capture, reconstruction threads and the user's own captures.
+`mobile/globe/` is a phone-tuned Cesium engine. It blends Esri day imagery
+with NASA Black Marble night lights across the terminator, uses Google 3D
+tiles below 25 km when keyed, and builds its layers on the existing `/api`
+routes and source parsers. Capture signs each bundle on the device with a
+non-extractable ECDSA P-256 WebCrypto key held in IndexedDB. A bundle carries
+a SHA-256 media hash, a per-device hash chain, and the IMU and GPS trace.
+These signatures are browser equivalents of hardware attestation; they are
+not hardware attestation. Hypotheses and authors in the reconstruction
+threads are labelled example content. `npm run build` now emits
+`dist/mobile/index.html` beside the app, while `npm run build:panel` still
+builds the app page alone. `mobile/vision/index.html` is a self-contained
+concept mockup with illustrative data and no production code.
+
 ## God's Eye View in conversations — October 2, 2026
 
 Tool answers that can be shown in God's Eye View include a view: camera, layers,

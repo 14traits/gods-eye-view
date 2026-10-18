@@ -43,7 +43,7 @@ function frame(now) {
     APP.updateLabels(view); GE.ride.frame(view); GE.capture.frame(view);
   }
   if (APP.tab === 'globe' || APP.isWide() || APP.mode) GE.gui.ribbonFrame();
-  GE.thumbs.step(APP.intro ? 14 : 8);
+  if (APP.intro || !(Cam.anim || Cam.interacting || GE.thumbs._busyUntil > now)) GE.thumbs.step(APP.intro ? 14 : 8);
   if (now - lastSec > 1000) { lastSec = now; W.updateCounts(); GE.now.tick(); GE.sheet.tick(); GE.you.tick(); }
   governor(dt);
   requestAnimationFrame(frame);

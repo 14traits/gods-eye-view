@@ -71,7 +71,7 @@ function genCity(sc, M, R0) {
       const hh = hash01(lpx * 0.37 + lpy * 0.71);
       const core = Math.exp(-ddt / (sc.R * 0.28));
       let h = sc.kind === 'suburb' ? 5 + hh * 4 : 9 + Math.pow(dens, 1.6) * (sc.maxH * (0.15 + 0.85 * core)) * Math.exp(rr.gauss() * 0.45);
-      h = clamp(h, 6, sc.maxH * 1.4);
+      h = clamp(h, 6, sc.maxH * (sc.tower ? 1.0 : 1.4));
       const inset = 2 + hh * 3;
       const type = sc.kind === 'suburb' ? 6 : 0;
       M.box(x, y, lw - inset * 2, ld - inset * 2, h, sc.rot, [type, hh, h, 0]);
@@ -79,7 +79,7 @@ function genCity(sc, M, R0) {
     }
   }
   if (twr) { // the fictional tower (skyscraper climb reconstruction)
-    const T = sc.tower; M.box(twr[0], twr[1], T.w, T.w, T.h * 0.62, sc.rot, [0, 0.8, T.h, 0]); M.box(twr[0], twr[1], T.w * 0.72, T.w * 0.72, T.h * 0.3, sc.rot, [0, 0.8, T.h, 0], T.h * 0.62); M.box(twr[0], twr[1], 3, 3, T.h * 0.08, sc.rot, [5, 0.5, T.h, 0], T.h * 0.92);
+    const T = sc.tower; M.box(twr[0], twr[1], T.w, T.w, T.h * 0.62, sc.rot, [0, 0.8, T.h, 0]); M.box(twr[0], twr[1], T.w * 0.72, T.w * 0.72, T.h * 0.3, sc.rot, [0, 0.8, T.h, 0], T.h * 0.62); M.box(twr[0], twr[1], 3, 3, T.h * 0.08, sc.rot, [5, 0.5, T.h, 0], T.h * 0.92); M.box(twr[0], twr[1], T.w * 0.76, T.w * 0.76, 5, sc.rot, [5, 0.5, T.h, 0], T.h * 0.9);
   }
 }
 function genStadium(sc, M) {
@@ -116,8 +116,8 @@ function genAirfield(sc, M) {
 }
 function genPad(sc, M) {
   M.box(0, 0, 220, 160, 0.5, 0, [4, 0, 0.5, 0]);
-  M.box(-14, 0, 12, 12, 88, 0, [0, 0.55, 88, 0]);
-  M.box(4, 0, 4.2, 4.2, 70, 0, [0, 0.98, 70, 0]);
+  M.box(-14, 0, 12, 12, 88, 0, [7, 0.35, 88, 0]);
+  M.box(4, 0, 4.2, 4.2, 70, 0, [7, 1.0, 70, 0]);
   M.box(4, 0, 4.4, 4.4, 2, 0, [5, 0.5, 2, 0], 70);
   for (const [x, y, w, d, h] of [[300, 180, 60, 40, 22], [-260, 220, 90, 30, 12], [400, -260, 30, 30, 14]]) M.box(x, y, w, d, h, 0, [0, 0.4, h, 0]);
 }

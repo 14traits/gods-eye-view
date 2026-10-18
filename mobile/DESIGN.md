@@ -7,7 +7,7 @@ This folder holds two things:
 | Path | What it is | Tethered to production? |
 | --- | --- | --- |
 | [`mobile/index.html`](index.html) → `/mobile/` | **Prototype.** A working phone/foldable app that sets the design language on top of the real engine: CesiumJS, Esri cloudless imagery, NASA Black Marble night lights, Google Photorealistic 3D Tiles (when keyed), and the app's own live `/api` feeds (ADS-B, military, AIS, TLEs, quakes, FIRMS fires, cyclones, launches, CCTV) plus the bundled Bhote Koshi event pack. Capture is real: camera, IMU, GPS and a WebCrypto signature. | Yes. Runs on the existing dev server (`npm run dev`, open `http://localhost:4173/mobile/`). |
-| [`mobile/vision/index.html`](vision/index.html) | **Vision.** A single self-contained file with no server, no keys and no production code. It shows where the product goes: the full feed, 4D reconstructions with collaborative hypotheses, the provenance ledger, holograms left in places, a hand-written WebGL globe with a cinematic post chain. | No. Open the file in any browser. |
+| [`mobile/vision/index.html`](vision/index.html) | **Vision.** A single self-contained file with no server, no keys and no production code. It shows where the product goes: the full feed, 4D reconstructions with collaborative hypotheses, the provenance ledger, holograms left in places, a hand-written WebGL globe with a cinematic post chain. | No. Open the file straight from disk in any browser (the dev server's CSP blocks its inline script). Rebuild it with `node mobile/vision/build.mjs`. |
 
 ---
 

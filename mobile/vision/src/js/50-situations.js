@@ -116,7 +116,7 @@ add({
 add({
   id: 'novosel', short: 'Fort Novosel circuits', fam: 'sky', kind: 'heli', section: 'always', live: true, aspect: 1.5, ageS: 15, watchers: 3100, ride: true,
   title: 'Fort Novosel helicopter school — jump into the chopper', place: 'Cairns Army Airfield, Alabama', lat: 31.276, lon: -85.713,
-  camera: { lat: 31.2705, lon: -85.7075, range: 0.0011, heading: -0.65, tilt: 1.15 }, layers: ['helis', 'flights', 'ga', 'traffic'], source: 'ADS-B / MLAT', time: dayReplay(31.276, -85.713, 15.2),
+  camera: { lat: 31.2745, lon: -85.7105, range: 0.00062, heading: -0.65, tilt: 0.9 }, layers: ['helis', 'flights', 'ga', 'traffic'], source: 'ADS-B / MLAT', time: dayReplay(31.276, -85.713, 15.2), labels3d: [[31.276, -85.713, 'Cairns AAF', 0.05], [31.36, -85.63, 'Stagefield A', 0.05]],
   metric: () => [`${GE.HELI_CIRCUITS.filter((h) => h.field).length}<small>in circuits</small>`, 'Cairns + 3 stagefields · 500 ft AGL'],
   metrics: () => [{ v: GE.HELI_CIRCUITS.filter((h) => h.field).length, u: '', l: 'Helicopters in circuits', s: 'ADS-B · 15 s' }, { v: 500, u: 'ft', l: 'Pattern altitude', s: 'Observed' }, { v: 5.5, u: 'min', l: 'Circuit time', s: 'Derived' }],
   brief: { lede: 'Student pilots are flying rectangular traffic patterns at Cairns and three stagefields: upwind, crosswind, downwind, base, final — over and over. Tap Ride to sit in the left seat of one of them.', series: [{ label: 'Helicopters aloft', unit: '', data: [2, 4, 9, 14, 17, 19, 19, 18, 19, 17, 19, 19], src: 'ADS-B / MLAT · hourly · 15 s', fmt: (v) => v }, { label: 'Groundspeed, HAWK 21', unit: 'kt', data: Array.from({ length: 40 }, (_, i) => 70 + 12 * Math.sin(i / 3.2) + (i % 10 > 7 ? -30 : 0)), src: 'ADS-B · 1 s · 15 s', fmt: (v) => Math.round(v) }], sources: [['ADS-B / MLAT', '15 s', 'live']] },
@@ -124,7 +124,7 @@ add({
 add({
   id: 'launch', short: 'Launch · SLC-40', fam: 'orbit', kind: 'launch', section: 'now', live: true, aspect: 1.5, ageS: 300, watchers: 33800,
   title: 'Rideshare launch from SLC-40 — countdown', place: 'Cape Canaveral, Florida', lat: 28.5618, lon: -80.5772,
-  camera: { lat: 28.552, lon: -80.590, range: 0.0011, heading: 0.75, tilt: 1.2 }, layers: ['launches', 'flights', 'ais', 'tracks'], source: 'Range schedule (illustrative)',
+  camera: { lat: 28.5585, lon: -80.5825, range: 0.00045, heading: 0.85, tilt: 1.28 }, labels3d: [[28.5618, -80.5772, 'SLC-40 · vehicle on pad', 0.11]], thumbCam: { lat: 28.25, lon: -80.95, range: 0.028, heading: 0.75, tilt: 1.0 }, layers: ['launches', 'flights', 'ais', 'tracks'], source: 'Range schedule (illustrative)',
   metric: () => [`<span class="num">T−${fmt.dur((LAUNCH_T0 - Date.now()) / 1000)}</span>`, 'Rideshare to SSO · trajectory NE'],
   metrics: () => [{ v: fmt.dur((LAUNCH_T0 - Date.now()) / 1000), u: '', l: 'Countdown', s: 'Range · 5 min' }, { v: 92, u: '%', l: 'Weather go', s: 'Forecast · 1 h' }, { v: 14, u: '', l: 'Vessels in hazard area', s: 'AIS · 40 s' }],
   brief: { lede: 'Vehicle is vertical on the pad. The hazard area offshore is still being cleared — 14 vessels remain inside. Trajectory heads northeast along the coast.', series: [{ label: 'Vessels in hazard area', unit: '', data: [41, 39, 36, 33, 31, 28, 24, 21, 19, 17, 15, 14], src: 'AIS · 15 min · 40 s', fmt: (v) => v }], sources: [['Range schedule (illustrative)', '5 min', 'live'], ['AIS', '40 s', 'live']] },
@@ -139,16 +139,16 @@ add({
 });
 add({
   id: 'concert', short: 'Stadium encore · 4D', fam: 'eyes', kind: 'recon', section: 'recon', live: false, aspect: 1.25, ageS: 20 * 3600, watchers: 88200, thread: 'concert', d4: true,
-  title: 'Stadium encore in 4D — from 2,311 crowd captures', place: 'Wembley, London · last night', lat: 51.556, lon: -0.2796,
-  camera: { lat: 51.5552, lon: -0.2810, range: 0.00034, heading: 0.55, tilt: 1.12 }, time: { at: NOW - 20 * 3600000 + 0.0, start: NOW - 22 * 3600000, end: NOW - 19 * 3600000 },
+  title: 'Stadium encore in 4D — from 2,311 crowd captures', place: 'Wembley, London · ' + GE.dayWord(GE.T_CONCERT, 'night'), lat: 51.556, lon: -0.2796,
+  camera: { lat: 51.5553, lon: -0.2806, range: 0.00026, heading: 0.55, tilt: 1.0 }, time: { at: GE.T_CONCERT, start: GE.T_CONCERT - 3600000, end: GE.T_CONCERT + 1800000 },
   layers: ['signed', 'holo', 'venues', 'cctv'], source: 'Thread · 2,311 signed captures', nightThumb: true,
   metric: () => ['2,311<small>captures</small>', '4D · 41 min · 86 seat blocks'], metrics: () => [{ v: '2,311', u: '', l: 'Signed captures', s: 'Ledger · 20 h' }, { v: 86, u: '', l: 'Seat blocks covered', s: 'Derived' }, { v: '±9', u: 'ms', l: 'Time alignment', s: 'Audio sync' }],
   brief: { lede: 'A crowd-sourced reconstruction of last night’s encore: 2,311 signed phone captures aligned by audio fingerprint and IMU traces into a single 4D scene you can scrub. Performer and attendee identities are not part of the record.', series: [{ label: 'Captures per minute', unit: '', data: [3, 5, 9, 21, 64, 140, 188, 162, 120, 96, 72, 40], src: 'Signed bundles · 1 min', fmt: (v) => v }], sources: [['Signed crowd captures (illustrative)', '20 h', 'stale']] },
 });
 add({
   id: 'climb', short: 'Tower climb · 4D', fam: 'eyes', kind: 'recon', section: 'recon', live: false, aspect: 1.5, ageS: 9 * 3600, watchers: 41500, thread: 'climb', d4: true,
-  title: 'Free-climber on a Midtown tower — reconstructed', place: 'Midtown Manhattan · this morning', lat: 40.7553, lon: -73.9838,
-  camera: { lat: 40.7528, lon: -73.9870, range: 0.00027, heading: 0.62, tilt: 1.2 }, time: { at: NOW - 9 * 3600000, start: NOW - 11 * 3600000, end: NOW - 7 * 3600000 },
+  title: 'Free-climber on a Midtown tower — reconstructed', place: 'Midtown Manhattan · ' + GE.dayWord(GE.T_CLIMB, 'morning'), lat: 40.7553, lon: -73.9838,
+  camera: { lat: 40.7532, lon: -73.9865, range: 0.00055, heading: 0.62, tilt: 1.12 }, time: { at: GE.T_CLIMB + 1.2 * 3600000, start: GE.T_CLIMB - 1800000, end: GE.T_CLIMB + 3 * 3600000 },
   layers: ['helis', 'signed', 'holo', 'cctv'], source: 'Thread · 3 news helicopters (ADS-B)',
   metric: () => ['41<small>clips</small> · 3<small>helis</small>', 'Fictional tower · ascent 2 h 14 m'], metrics: () => [{ v: 41, u: '', l: 'Witness clips', s: 'Ledger · 9 h' }, { v: 3, u: '', l: 'News helicopters', s: 'ADS-B · 9 h' }, { v: 412, u: 'm', l: 'Tower height', s: 'Model (fictional tower)' }],
   brief: { lede: 'Three news helicopters orbited the tower for two hours; their ADS-B tracks give precise camera positions for every broadcast frame. Combined with 41 signed street-level clips, the climber’s height over time is reconstructed to ±3 m. The tower and people are fictional.', series: [{ label: 'Climber height (reconstructed)', unit: 'm', data: Array.from({ length: 30 }, (_, i) => Math.min(380, i * 14 + Math.sin(i) * 6)), band: 3, src: 'Hypothesis H2 · ±3 m', fmt: (v) => Math.round(v) }], sources: [['ADS-B: 3 helicopters', '9 h', 'stale'], ['Signed street clips (illustrative)', '9 h', 'stale']] },
@@ -220,7 +220,7 @@ SIT.sections = [
 // dynamic cameras
 SIT.cameraFor = function (s) {
   if (s.id === 'starlink') { const g = GE.world.sun.gmst; const p = GE.satAt(GE.SATS.find((x) => x.kind === 5), GE.world.t, g); const [la, lo] = geo.ll(p); return { lat: la - 6, lon: lo - 8, range: 0.32, heading: 0.6, tilt: 0.85 }; }
-  if (s.id === 'squawk') { const f = GE.FLIGHTS[GE.world.squawks[0]]; const p = GE.flightAt(f, GE.world.t) || { lat: 50, lon: -30 }; return { lat: p.lat - 1.2, lon: p.lon - 1, range: 0.06, heading: 0.3, tilt: 0.85 }; }
+  if (s.id === 'squawk') { const f = GE.FLIGHTS[GE.world.squawks[0]]; const p = GE.flightAt(f, GE.world.t) || { lat: 50, lon: -30 }; return { lat: p.lat - 4, lon: p.lon - 3, range: 0.3, heading: 0.3, tilt: 0.75 }; }
   if (s.id === 'iss') { const p = GE.satAt(GE.ISS, GE.world.t, GE.world.sun.gmst); const [la, lo] = geo.ll(p); return { lat: la - 9, lon: lo - 4, range: 0.48, heading: 0.35, tilt: 0.78 }; }
   return s.camera;
 };

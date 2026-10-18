@@ -10,7 +10,8 @@ const THREADS = {
   koshi: {
     id: 'koshi', sit: 'koshi', title: 'Bhote Koshi outburst flood', place: 'Rasuwagadhi → Syaphrubesi, Nepal', date: '26 Aug 2026',
     window: { start: KT - 1.5 * HR_, end: KT + 6 * HR_ }, people: ['hydro', 'kora', 'tamang', 'geo', 'sky', 'ais'],
-    cam: { lat: 28.205, lon: 85.352, range: 0.0042, heading: 0.32, tilt: 1.02 },
+    cam: { lat: 28.2, lon: 85.35, range: 0.0046, heading: 0.32, tilt: 0.98 },
+    labels: [[28.1600, 85.3395, 'Syaphrubesi'], [28.2560, 85.3690, 'Timure'], [28.2802, 85.3797, 'Rasuwagadhi bridge']],
     obs: [
       { id: 'O1', i: 'frame', f: 'infra', t: 'Optical satellite tile — before', src: 'Public 10 m optical archive', at: Date.UTC(2026, 7, 24, 4, 52), meta: ['10 m', 'cloud 6%'] },
       { id: 'O2', i: 'frame', f: 'infra', t: 'Optical satellite tile — after: new scour along 9.4 km of channel', src: 'Public 10 m optical archive', at: Date.UTC(2026, 7, 27, 4, 58), meta: ['10 m', 'cloud 12%'] },
@@ -30,24 +31,25 @@ const THREADS = {
       { id: 'H4', by: 'ai', ai: true, text: 'Peak stage at Syaphrubesi lagged the visible crest by ~20 min — consistent with debris damming at the bridge.', conf: 0.41, ci: [0.22, 0.6], cites: ['O3', 'O6'], agree: 3, dispute: 5, status: 'disputed', prompt: 'Why does the gauge peak late?' },
     ],
     beats: [
-      { at: KT, t: '07:45', text: 'Outburst upstream (inferred). The valley is quiet; the river is at its normal 3 m stage.', cites: ['H1', 'O4', 'O9'], cam: { lat: 28.262, lon: 85.372, range: 0.0032, heading: 3.4, tilt: 1.05 } },
-      { at: KT + 20 * MIN, t: '08:05', text: 'The crest reaches Rasuwagadhi and the border bridge.', cites: ['H2', 'O7'], cam: { lat: 28.272, lon: 85.37, range: 0.0018, heading: 0.6, tilt: 1.12 } },
-      { at: KT + 27 * MIN, t: '08:12', text: 'A witness on the north bank at Timure films water reaching the road.', cites: ['H3', 'O5'], cam: { lat: 28.247, lon: 85.364, range: 0.0016, heading: 0.35, tilt: 1.15 } },
-      { at: KT + 61 * MIN, t: '08:46', text: 'Debris piles against the Syaphrubesi bridge deck.', cites: ['O6', 'H4'], cam: { lat: 28.152, lon: 85.336, range: 0.0016, heading: 0.2, tilt: 1.12 } },
-      { at: KT + 105 * MIN, t: '09:30', text: 'Gauge peaks at 7.8 m — about 20 minutes after the visible crest.', cites: ['O3', 'H4'], cam: { lat: 28.15, lon: 85.33, range: 0.0026, heading: 0.9, tilt: 1.05 } },
-      { at: KT + 140 * MIN, t: '10:05', text: 'First rescue sortie climbs the valley.', cites: ['O8'], cam: { lat: 28.19, lon: 85.345, range: 0.0045, heading: 0.3, tilt: 1.0 } },
+      { at: KT, t: '07:45', text: 'Outburst upstream (inferred). The valley is quiet; the river is at its normal 3 m stage.', cites: ['H1', 'O4', 'O9'], cam: { lat: 28.268, lon: 85.37, range: 0.0032, heading: 3.55, tilt: 0.98 } },
+      { at: KT + 20 * MIN, t: '08:05', text: 'The crest reaches Rasuwagadhi and the border bridge.', cites: ['H2', 'O7'], cam: { lat: 28.276, lon: 85.376, range: 0.0026, heading: 2.6, tilt: 0.95 } },
+      { at: KT + 27 * MIN, t: '08:12', text: 'A witness on the north bank at Timure films water reaching the road.', cites: ['H3', 'O5'], cam: { lat: 28.252, lon: 85.368, range: 0.0027, heading: 3.4, tilt: 0.96 } },
+      { at: KT + 61 * MIN, t: '08:46', text: 'Debris piles against the Syaphrubesi bridge deck.', cites: ['O6', 'H4'], cam: { lat: 28.16, lon: 85.338, range: 0.0027, heading: 0.25, tilt: 0.96 } },
+      { at: KT + 105 * MIN, t: '09:30', text: 'Gauge peaks at 7.8 m — about 20 minutes after the visible crest.', cites: ['O3', 'H4'], cam: { lat: 28.155, lon: 85.332, range: 0.0032, heading: 0.9, tilt: 0.98 } },
+      { at: KT + 140 * MIN, t: '10:05', text: 'First rescue sortie climbs the valley.', cites: ['O8'], cam: { lat: 28.2, lon: 85.35, range: 0.0045, heading: 0.3, tilt: 0.98 } },
     ],
     suggestions: ['Align the witness clip to the corridor using the bridge as a landmark', 'Estimate crest speed between Timure and Syaphrubesi', 'What would falsify H1?'],
     fallback: 'Using the Syaphrubesi bridge as a fixed landmark, clip [O6] was taken from the east abutment looking upstream; matching its horizon to the IMU pitch places the crest front 85 ± 20 m upstream of the bridge at 08:46 UTC. That timing agrees with the gauge [O3] if the crest travelled 4.6 ± 0.6 m/s from Timure [O5].\nConfidence: 0.63',
   },
   concert: {
-    id: 'concert', sit: 'concert', title: 'Stadium encore in 4D', place: 'Wembley, London', date: 'last night',
-    window: { start: Date.now() - 21 * HR_, end: Date.now() - 19.5 * HR_ }, people: ['crowd', 'sky', 'kora', 'geo'],
+    id: 'concert', sit: 'concert', title: 'Stadium encore in 4D', place: 'Wembley, London', date: GE.dayWord(GE.T_CONCERT, 'night'),
+    window: { start: GE.T_CONCERT - 1 * HR_, end: GE.T_CONCERT + 0.5 * HR_ }, people: ['crowd', 'sky', 'kora', 'geo'],
     cam: { lat: 51.5546, lon: -0.2822, range: 0.00042, heading: 0.6, tilt: 1.1 },
+    labels: [[51.556, -0.2803, 'Stage · encore', 0.05]],
     obs: [
-      { id: 'O1', i: 'seal', f: 'eyes', t: '2,311 signed phone captures from 86 seat blocks', src: 'Signed bundles (illustrative)', at: Date.now() - 20 * HR_, meta: ['IMU ✓ on 2,204', 'GPS indoor ±12 m'] },
-      { id: 'O2', i: 'wave', f: 'eyes', t: 'Audio fingerprints align 1,980 clips to ±9 ms', src: 'Derived', at: Date.now() - 19.8 * HR_, meta: ['common track'] },
-      { id: 'O3', i: 'video', f: 'eyes', t: 'Venue public camera, concourse north', src: 'Public feed (illustrative)', at: Date.now() - 20 * HR_, meta: ['720p'] },
+      { id: 'O1', i: 'seal', f: 'eyes', t: '2,311 signed phone captures from 86 seat blocks', src: 'Signed bundles (illustrative)', at: GE.T_CONCERT, meta: ['IMU ✓ on 2,204', 'GPS indoor ±12 m'] },
+      { id: 'O2', i: 'wave', f: 'eyes', t: 'Audio fingerprints align 1,980 clips to ±9 ms', src: 'Derived', at: GE.T_CONCERT + 0.2 * HR_, meta: ['common track'] },
+      { id: 'O3', i: 'video', f: 'eyes', t: 'Venue public camera, concourse north', src: 'Public feed (illustrative)', at: GE.T_CONCERT, meta: ['720p'] },
       { id: 'O4', i: 'ticket', f: 'ground', t: 'Seat map & stage geometry', src: 'Published venue plan', at: Date.now() - 30 * 24 * HR_, meta: ['static'] },
     ],
     hyps: [
@@ -55,21 +57,22 @@ const THREADS = {
       { id: 'H2', by: 'geo', text: 'The pyro cue at 22:44 is visible from 86 of 92 seat blocks; 6 blocks are occluded by the roof cantilever.', conf: 0.71, ci: [0.6, 0.8], cites: ['O1', 'O4'], agree: 44, dispute: 6, status: 'supported' },
     ],
     beats: [
-      { at: Date.now() - 20 * HR_ - 10 * MIN, t: '22:41', text: 'Lights down. 2,311 phones come up together.', cites: ['H1'], cam: { lat: 51.5552, lon: -0.2815, range: 0.00035, heading: 0.9, tilt: 1.15 } },
-      { at: Date.now() - 20 * HR_, t: '22:44', text: 'Pyro cue — seen from 86 blocks at once.', cites: ['H2'], cam: { lat: 51.5568, lon: -0.2778, range: 0.0003, heading: 3.6, tilt: 1.12 } },
-      { at: Date.now() - 20 * HR_ + 12 * MIN, t: '22:56', text: 'Final chorus; the crowd reconstruction is densest here.', cites: ['O1', 'O2'], cam: { lat: 51.556, lon: -0.2796, range: 0.0006, heading: 2.2, tilt: 0.9 } },
+      { at: GE.T_CONCERT - 3 * MIN, t: '22:41', text: 'Lights down. 2,311 phones come up together.', cites: ['H1'], cam: { lat: 51.5552, lon: -0.2815, range: 0.00035, heading: 0.9, tilt: 1.15 } },
+      { at: GE.T_CONCERT, t: '22:44', text: 'Pyro cue — seen from 86 blocks at once.', cites: ['H2'], cam: { lat: 51.5568, lon: -0.2778, range: 0.0003, heading: 3.6, tilt: 1.12 } },
+      { at: GE.T_CONCERT + 12 * MIN, t: '22:56', text: 'Final chorus; the crowd reconstruction is densest here.', cites: ['O1', 'O2'], cam: { lat: 51.556, lon: -0.2796, range: 0.0006, heading: 2.2, tilt: 0.9 } },
     ],
     suggestions: ['Which seat blocks saw the pyro cue?', 'Align the concourse camera to the crowd timeline'],
     fallback: 'The concourse camera [O3] shows the crowd surge 2.1 s after the audio onset in [O2]; offsetting its clock by −2.1 s aligns it with 1,980 crowd clips [O1].\nConfidence: 0.58',
   },
   climb: {
-    id: 'climb', sit: 'climb', title: 'Free-climber on a Midtown tower', place: 'Midtown Manhattan (fictional tower)', date: 'this morning',
-    window: { start: Date.now() - 11 * HR_, end: Date.now() - 7 * HR_ }, people: ['news', 'sky', 'kora', 'geo', 'ais'],
-    cam: { lat: 40.7533, lon: -73.9866, range: 0.00034, heading: 0.62, tilt: 1.2 },
+    id: 'climb', sit: 'climb', title: 'Free-climber on a Midtown tower', place: 'Midtown Manhattan (fictional tower)', date: GE.dayWord(GE.T_CLIMB, 'morning'),
+    window: { start: GE.T_CLIMB - 0.5 * HR_, end: GE.T_CLIMB + 3 * HR_ }, people: ['news', 'sky', 'kora', 'geo', 'ais'],
+    cam: { lat: 40.7532, lon: -73.9865, range: 0.00055, heading: 0.62, tilt: 1.12 },
+    labels: [[40.7553, -73.9838, 'Meridian Tower (fictional)', 0.43]],
     obs: [
-      { id: 'O1', i: 'helicopter', f: 'sky', t: 'ADS-B tracks: 3 news helicopters orbiting the tower', src: 'ADS-B (illustrative callsigns)', at: Date.now() - 9 * HR_, meta: ['1 Hz', '2 h 14 m'] },
-      { id: 'O2', i: 'video', f: 'eyes', t: 'Broadcast frames, time-coded', src: 'Public broadcast (illustrative)', at: Date.now() - 9 * HR_, meta: ['29.97 fps'] },
-      { id: 'O3', i: 'seal', f: 'eyes', t: '41 signed street-level clips', src: 'Signed bundles (illustrative)', at: Date.now() - 9 * HR_, meta: ['IMU ✓', 'GPS ±5 m'] },
+      { id: 'O1', i: 'helicopter', f: 'sky', t: 'ADS-B tracks: 3 news helicopters orbiting the tower', src: 'ADS-B (illustrative callsigns)', at: GE.T_CLIMB + 1.2 * HR_, meta: ['1 Hz', '2 h 14 m'] },
+      { id: 'O2', i: 'video', f: 'eyes', t: 'Broadcast frames, time-coded', src: 'Public broadcast (illustrative)', at: GE.T_CLIMB + 1.2 * HR_, meta: ['29.97 fps'] },
+      { id: 'O3', i: 'seal', f: 'eyes', t: '41 signed street-level clips', src: 'Signed bundles (illustrative)', at: GE.T_CLIMB + 1.2 * HR_, meta: ['IMU ✓', 'GPS ±5 m'] },
       { id: 'O4', i: 'cube', f: 'infra', t: 'Tower model, 412 m (fictional building)', src: 'Model', at: Date.now() - 400 * 24 * HR_, meta: ['static'] },
     ],
     hyps: [
@@ -77,9 +80,9 @@ const THREADS = {
       { id: 'H2', by: 'geo', text: 'Climber height over time is recoverable to ±3 m by triangulating helicopter camera positions (from ADS-B) with frame bearings.', conf: 0.69, ci: [0.55, 0.8], cites: ['O1', 'O2', 'O4'], agree: 33, dispute: 7, status: 'supported' },
     ],
     beats: [
-      { at: Date.now() - 10.5 * HR_, t: '06:52', text: 'First witness clip from the street: the climber is at the 3rd setback.', cites: ['H1', 'O3'], cam: { lat: 40.7538, lon: -73.9852, range: 0.00022, heading: 0.5, tilt: 1.3 } },
-      { at: Date.now() - 9.5 * HR_, t: '07:55', text: 'Three news helicopters in orbit; their ADS-B tracks pin each broadcast camera.', cites: ['O1', 'H2'], cam: { lat: 40.751, lon: -73.99, range: 0.0012, heading: 0.7, tilt: 1.0 } },
-      { at: Date.now() - 8.6 * HR_, t: '09:06', text: 'The climber reaches the crown at 384 m.', cites: ['H2'], cam: { lat: 40.7549, lon: -73.9848, range: 0.0003, heading: 0.4, tilt: 1.42 } },
+      { at: GE.T_CLIMB, t: '06:52', text: 'First witness clip from the street: the climber is at the 3rd setback.', cites: ['H1', 'O3'], cam: { lat: 40.7538, lon: -73.9852, range: 0.00022, heading: 0.5, tilt: 1.3 } },
+      { at: GE.T_CLIMB + 63 * MIN, t: '07:55', text: 'Three news helicopters in orbit; their ADS-B tracks pin each broadcast camera.', cites: ['O1', 'H2'], cam: { lat: 40.751, lon: -73.99, range: 0.0012, heading: 0.7, tilt: 1.0 } },
+      { at: GE.T_CLIMB + 134 * MIN, t: '09:06', text: 'The climber reaches the crown at 384 m.', cites: ['H2'], cam: { lat: 40.7549, lon: -73.9848, range: 0.0003, heading: 0.4, tilt: 1.42 } },
     ],
     suggestions: ['Triangulate the climber at 08:30 from two helicopters', 'Which face was the route on?'],
     fallback: 'At 08:30 the bearings from N9 NEWS and SKY 4 [O1] to the climber in broadcast frames [O2] intersect 232 ± 4 m up the northeast face of the tower model [O4].\nConfidence: 0.66',
@@ -91,6 +94,7 @@ THR.data = THREADS;
 const EXTRAS = {};
 GE.extrasFor = function (id) {
   if (EXTRAS[id] !== undefined) return EXTRAS[id];
+  if (id === 'launch') { const sp = [], ln = []; const pad = [28.5618, -80.5772]; pushSpr(sp, geo.vec(pad[0], pad[1], 0.04), [1, 0.86, 0.6, 0.9], 70, 0, -10, -1e9, 1e9, 0, 0, 0.9); for (const [dx, dy] of [[90, 70], [-80, 60], [70, -80], [-90, -70]]) { const [la, lo] = geo.offset(pad[0], pad[1], dx, dy); pushSpr(sp, geo.vec(la, lo, 0.02), [1, 0.9, 0.7, 0.8], 26, 0, -10, -1e9, 1e9, 0, 0, 0.6); } return (EXTRAS[id] = { sprites: [makeSpriteSet('xl', sp)], lines: null }); }
   const T = THREADS[id] || (GE.SIT.byId[id]?.thread && THREADS[GE.SIT.byId[id].thread]);
   if (!T) return (EXTRAS[id] = null);
   const sp = [], ln = [];
@@ -121,6 +125,7 @@ GE.extrasFor = function (id) {
   const set = { sprites: sp.length ? [makeSpriteSet('x' + id, sp)] : null, lines: ln.length ? [makeLineSet(ln)] : null };
   return (EXTRAS[id] = set);
 };
+GE.setLabels3d = function (L) { GE.extraLabels.clear(); for (const [la, lo, t, alt] of L || []) { const z = GE.scenes.byId.koshi.height && Math.abs(la - 28.2) < 0.2 && Math.abs(lo - 85.35) < 0.2 ? GE.scenes.groundAt(la, lo) / 1000 + 0.12 : alt || 0.05; GE.extraLabels.set('x:' + t, { lat: la, lon: lo, alt: z, html: `<i style="--c:var(--gold)"></i>${esc(t)}`, w: t.length * 6.6 + 32, cls: 'glass' }); } };
 GE.setExtras = function (id) { GE.world.activeExtras = id ? GE.extrasFor(id) : null; GE.world.activeExtrasId = id; };
 
 /* ---------- ledger (real SHA-256 hash chain) ---------- */
@@ -172,7 +177,7 @@ THR.openWs = function (id) {
   $('#tlist').style.display = 'none';
   const ws = $('#ws'); ws.classList.add('on');
   W.setWindow(T.window); W.setTime(T.beats[Math.min(2, T.beats.length - 1)].at);
-  GE.setExtras(T.id);
+  GE.setExtras(T.id); GE.setLabels3d(T.labels);
   for (const lid of ['signed', 'holo', 'helis']) W.layerById[lid].on = true;
   const wide = APP.isWide();
   Cam.autoSpin = 0; Cam.flyTo({ ...T.cam, shiftY: wide ? 0 : 0.6, shiftX: 0 });
@@ -182,12 +187,12 @@ THR.openWs = function (id) {
 THR.closeWs = function (silent) {
   if (!THR.ws) return; THR.stop(); THR.ws = null; const W = GE.world;
   $('#ws').classList.remove('on'); $('#ws').innerHTML = ''; const tl = $('#tlist'); if (tl) tl.style.display = '';
-  W.setWindow(null); W.setTime(null); GE.setExtras(null); APP.setMode('');
+  W.setWindow(null); W.setTime(null); GE.setExtras(null); GE.setLabels3d(null); APP.setMode('');
   if (!silent) Cam.flyTo(APP.heroCam());
 };
 THR.renderWs = function () {
   const { T, seg } = THR.ws; const ws = $('#ws');
-  ws.innerHTML = `<div class="wsh"><button class="circ glass" id="wsBack" aria-label="Back">${ic('chevl')}</button><div class="tt glass"><span style="min-width:0;flex:1"><b>${esc(T.title)}</b><span>${esc(T.place)} · ${esc(T.date)}</span></span><span class="presence"><span class="stack">${T.people.slice(0, 4).map((k, i) => `<span class="avatar sm ${i < 3 ? 'on' : ''}" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></span></div></div>
+  ws.innerHTML = `<div class="wsh"><button class="circ glass" id="wsBack" aria-label="Back">${ic('chevl')}</button><div class="tt glass"><span style="min-width:0;flex:1"><b>${esc(T.title)}</b><span class="sub">${esc(T.place)} · ${esc(T.date)}</span></span><span class="presence"><span class="stack">${T.people.slice(0, 4).map((k, i) => `<span class="avatar sm ${i < 3 ? 'on' : ''}" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></span></div></div>
   <div class="body glass strong"><div class="seg" id="wsSeg">${[['obs', 'Observations'], ['hyp', 'Hypotheses'], ['nar', 'Narrative'], ['led', 'Ledger']].map(([k, l]) => `<button data-s="${k}" class="${seg === k ? 'on' : ''}">${l}</button>`).join('')}</div><div class="wsc" id="wsc"></div>
   ${seg === 'hyp' ? `<div class="composer glass strong" id="composer"><div class="sug">${T.suggestions.map((s) => `<button>${esc(s)}</button>`).join('')}</div><div class="row"><textarea id="aiIn" rows="1" placeholder="Ask AI to refine this reconstruction…"></textarea><button class="send" id="aiSend" aria-label="Send">${ic('arrowup')}</button></div></div>` : ''}</div>`;
   $('#wsBack').addEventListener('click', () => THR.closeWs());
