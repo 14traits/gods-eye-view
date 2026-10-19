@@ -1,5 +1,11 @@
 # God's Eye View Current State
 
+Photon search unwraps antimeridian-crossing viewport bounds before computing its
+longitude bias, then wraps the midpoint back onto the globe. Invalid coordinates
+produce no bias. Nominatim omits a crossing viewbox because one ordinary box
+cannot describe that interval; the search still runs without a geographic bias.
+The annotation resolver uses the same Photon adapter and camera-subpoint proximity.
+
 Shared distance checks use `src/geoDistance.js` with `{ lat, lon }` points and
 the IUGG mean spherical Earth radius, 6371.0088 km. `greatCircleKm` is
 canonical; `greatCircleMeters` is its exact metre conversion. Missing,
