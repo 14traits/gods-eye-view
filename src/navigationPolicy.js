@@ -35,6 +35,8 @@ const COCKPIT_REFUSALS = Object.freeze({
   aircraft: msg('Exit cockpit to fly to an aircraft'),
   satellite: msg('Exit cockpit to fly to a satellite'),
   frame: msg('Exit cockpit to frame contacts'),
+  // SCENES ▸ VCAM: a paired phone driving the camera.
+  vcam: msg('Exit cockpit to use the phone camera'),
 });
 
 /** The destination nouns with their own Cockpit refusal (for tests). */

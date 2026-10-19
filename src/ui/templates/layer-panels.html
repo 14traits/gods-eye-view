@@ -163,7 +163,49 @@
       <div class="scene-controls">
         <button id="scene-capture-btn" class="scene-btn" data-i18n>CAPTURE SHOT</button>
         <button id="scene-update-shot-btn" class="scene-btn" data-i18n>UPDATE SHOT</button>
+        <button id="vcam-toggle-btn" class="scene-btn" aria-expanded="false" aria-controls="vcam-card" title="Use a phone on this network as a virtual camera" data-i18n-title><span data-i18n>VCAM</span></button>
       </div>
+      <section id="vcam-card" class="vcam-card" hidden aria-label="Phone virtual camera" data-i18n-aria-label>
+        <div class="vcam-pair">
+          <canvas id="vcam-qr" class="vcam-qr" role="img" aria-label="Pairing QR code" data-i18n-aria-label></canvas>
+          <div class="vcam-pair-text">
+            <div class="vcam-label" data-i18n>SCAN WITH YOUR PHONE</div>
+            <div id="vcam-code" class="vcam-code">······</div>
+            <select id="vcam-address" class="vcam-address" aria-label="Network address" data-i18n-aria-label></select>
+            <a id="vcam-url" class="vcam-url" target="_blank" rel="noopener"></a>
+          </div>
+        </div>
+        <div id="vcam-status" class="vcam-status" role="status" data-i18n>Starting…</div>
+        <div class="vcam-row">
+          <label class="vcam-field"><span data-i18n>SCALE</span>
+            <select id="vcam-scale">
+              <option value="1" data-i18n>1:1 WALK</option>
+              <option value="10" data-i18n>1:10 CRANE</option>
+              <option value="100" data-i18n>1:100 DRONE</option>
+              <option value="1000" data-i18n>1:1000 FLYOVER</option>
+              <option value="10000" data-i18n>1:10000 ORBIT</option>
+            </select>
+          </label>
+          <label class="vcam-field vcam-grow"><span data-i18n>LENS</span>
+            <input id="vcam-focal" type="range" min="0" max="1" step="0.001" />
+            <output id="vcam-focal-value"></output>
+          </label>
+        </div>
+        <div class="vcam-row">
+          <label class="vcam-check"><input id="vcam-dof" type="checkbox" /> <span data-i18n>DEPTH OF FIELD</span></label>
+          <label class="vcam-field vcam-grow"><span data-i18n>APERTURE</span>
+            <input id="vcam-fstop" type="range" min="0" max="1" step="0.001" />
+            <output id="vcam-fstop-value"></output>
+          </label>
+        </div>
+        <div class="scene-controls vcam-actions">
+          <button id="vcam-hold-btn" class="scene-btn" aria-pressed="false" data-i18n>HOLD</button>
+          <button id="vcam-recenter-btn" class="scene-btn" data-i18n>RECENTER</button>
+          <button id="vcam-record-btn" class="scene-btn vcam-record" aria-pressed="false" data-i18n>● REC</button>
+          <button id="vcam-end-btn" class="scene-btn scene-btn-danger" data-i18n>END</button>
+        </div>
+        <p class="vcam-hint"><span data-i18n>Takes become shots in the selected scene.</span> <a id="vcam-ca-link" href="/api/vcam/ca.crt" download data-i18n>Phone certificate</a></p>
+      </section>
       <div id="scene-shot-list" class="scene-shot-list"></div>
       <div class="scene-controls">
         <button id="scene-start-btn" class="scene-btn" data-i18n>START</button>

@@ -66,6 +66,7 @@ Start with the included data sources, then add your own. Each layer is a separat
 - **🎖️ Military HUD:** Tactical heads-up display with intelligence-style telemetry.
 - **🌐 Global Context:** Stage the full situational picture with one switch — and get your exact view back when you leave.
 - **🎥 Scene director:** Capture cinematic camera tours for clips and demos.
+- **📱 Phone virtual camera:** Scan a QR code and your phone becomes the camera — walk the room at 1:1, or set 1:1000 and one step crosses the city. Focal length, depth of field and recorded takes that land in the scene editor ([docs/VCAM.md](docs/VCAM.md)).
 - **🔗 Share Links:** Camera, style, layers, and even one tracked target serialize into a URL — a live target is a handoff, not a bookmark.
 - **🏠 Reset Globe:** One control — or one sentence — back to the full Earth.
 - **🌦️ Weather:** Animate GFS or ECMWF forecast wind, replay observed radar, satellite clouds and lightning on one timeline, and follow NHC/CPHC cyclone tracks. No key needed.
@@ -304,6 +305,18 @@ The cockpit even carries its own briefing strip: nearby live signals, regional h
 ![A live military contact ridden through Normal, NVG, and Ironbow FLIR with dense detection](docs/media/start-here/military-cockpit-dense-google-3d.gif)
 
 _Why cockpit mode exists: you're riding a real aircraft over real terrain — and you get to pick which sensor you see the world through._
+
+---
+
+## 📱 Phone Virtual Camera
+
+> Frame the shot with your hands, like a virtual-production VCAM.
+
+Open **SCENES › VCAM** and scan the code with a phone on the same Wi-Fi. The phone shows the globe as a monitor and becomes the camera: on Android Chrome it tracks position and rotation through WebXR AR, and on iPhone Safari it tracks rotation while two thumb sticks dolly, truck, crane and pan. The motion scale sets the world under you, from 1:1 street level through 1:100 drone to 1:10000 orbit, and changing it never makes the camera jump.
+
+Dial in a focal length from 12 to 400 mm, turn on depth of field and tap the picture to focus. Distances are scaled with the rig, so at 1:1000 the city falls out of focus like a tabletop miniature. Press **REC** and the move becomes a take: a shot in the selected scene, with every sample's position, orientation and focal length, which replays, seeks and retimes like any other.
+
+Nothing extra is exposed by default: pairing starts a separate HTTPS listener that serves only the phone page and its relay, never the app or its keys. See [docs/VCAM.md](docs/VCAM.md) for trusting the local certificate on iPhone and for the protocol.
 
 ---
 

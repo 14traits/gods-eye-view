@@ -429,6 +429,20 @@ or unknown freshness and transport failures retain their warnings. Partial
 snapshots still retain missing contacts within the existing age and row limits.
 A complete successful snapshot clears the partial indicator.
 
+SCENES › VCAM pairs a phone on the same network as a virtual camera. Opening
+the card creates a loopback-only session and starts a separate HTTPS phone
+listener (`VCAM_PORT`, default 4174) that serves only the phone page and relay;
+END, or two minutes after the last session, stops it. Android Chrome tracks
+6DoF through WebXR `immersive-ar`; iPhone Safari tracks rotation through
+DeviceOrientation with on-screen sticks, falling back from WebSocket to HTTPS
+requests under an untrusted certificate. The rig claims the camera through the
+navigation seam (Cockpit refuses it) and holds on any other navigation, scene
+run or globe pointer input. Motion scale, smoothing, height and horizon locks,
+focal length and scale-aware depth of field are shared by phone and card. REC
+writes version-7 track shots (`move.track`, up to 10,000 samples with focal
+length) into the selected scene; shots may also carry a `lens`. See
+[VCAM](VCAM.md); gate: `node scripts/qa-vcam.mjs`.
+
 Director imports now open a non-mutating preview before Apply. EDIT DETAILS
 authors validated anchor, camera, pack and interaction drafts; SHARE SCENE exports
 a selected scene or a bounded bundle of explicitly chosen pack files. Bundled

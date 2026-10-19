@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <title>GEV Virtual Camera</title>
+    <link rel="icon" href="icon.svg" />
+    <link rel="stylesheet" href="phone.css" />
+  </head>
+  <body>
+    <main id="app">
+      <section id="pair" class="screen">
+        <img class="logo" src="icon.svg" alt="" />
+        <h1>VIRTUAL CAMERA</h1>
+        <p class="lede">
+          Enter the code shown in God's Eye View under SCENES › VCAM.
+        </p>
+        <form id="pair-form" autocomplete="off">
+          <input
+            id="code"
+            inputmode="text"
+            autocapitalize="characters"
+            autocorrect="off"
+            spellcheck="false"
+            maxlength="6"
+            placeholder="CODE"
+            aria-label="Pairing code"
+          />
+          <button id="join" type="submit" class="primary">PAIR</button>
+        </form>
+        <p id="pair-status" class="status" role="status"></p>
+        <details class="help">
+          <summary>Connection drops on iPhone?</summary>
+          <p>
+            Safari can load this page past a certificate warning but may still
+            refuse its live connection, so the camera falls back to slower
+            requests. To fix that once:
+          </p>
+          <ol>
+            <li>
+              <a id="ca-link" href="/ca.crt">Download the local certificate</a>
+              and allow the profile.
+            </li>
+            <li>Settings › General › VPN &amp; Device Management: install it.</li>
+            <li>
+              Settings › General › About › Certificate Trust Settings: turn on
+              full trust for "God's Eye View Local VCam CA".
+            </li>
+          </ol>
+          <p>The certificate only lets your phone trust this computer.</p>
+        </details>
+      </section>
+
+      <section id="start" class="screen" hidden>
+        <img class="logo" src="icon.svg" alt="" />
+        <h1>PAIRED</h1>
+        <p id="support" class="lede"></p>
+        <button id="start-xr" class="primary" hidden>START AR CAMERA</button>
+        <button id="start-gyro" class="primary">START GYRO CAMERA</button>
+        <p class="hint">
+          AR tracks position and rotation (6DoF). Gyro tracks rotation only;
+          move with the on-screen sticks.
+        </p>
+        <p id="start-status" class="status" role="status"></p>
+      </section>
+
+      <section id="camera" class="screen camera" hidden>
+        <img id="monitor" alt="" draggable="false" />
+        <div id="focus-ring" hidden></div>
+        <div class="topbar">
+          <span id="link-dot" class="dot" title="Connection"></span>
+          <span id="mode-readout" class="chip">—</span>
+          <span id="rec-readout" class="chip rec" hidden>● 00:00</span>
+          <span class="spacer"></span>
+          <span id="scale-readout" class="chip">1:1</span>
+          <span id="focal-readout" class="chip">31mm</span>
+        </div>
+        <p id="camera-status" class="toast" role="status" hidden></p>
+
+        <div class="stick left" id="stick-left" aria-label="Move">
+          <div class="knob"></div>
+          <span>MOVE</span>
+        </div>
+        <div class="stick right" id="stick-right" aria-label="Crane and pan">
+          <div class="knob"></div>
+          <span>CRANE · PAN</span>
+        </div>
+
+        <div class="bottombar">
+          <button id="hold-btn" class="tool" aria-pressed="false">HOLD</button>
+          <button id="recenter-btn" class="tool">RECENTER</button>
+          <button id="record-btn" class="record" aria-pressed="false">
+            <span class="record-dot"></span><span class="sr">RECORD</span>
+          </button>
+          <button id="scale-btn" class="tool" aria-expanded="false">
+            SCALE
+          </button>
+          <button id="lens-btn" class="tool" aria-expanded="false">LENS</button>
+        </div>
+
+        <div id="scale-drawer" class="drawer" hidden>
+          <div class="presets" id="scale-presets">
+            <button data-scale="1">1:1<small>WALK</small></button>
+            <button data-scale="10">1:10<small>CRANE</small></button>
+            <button data-scale="100">1:100<small>DRONE</small></button>
+            <button data-scale="1000">1:1K<small>FLYOVER</small></button>
+            <button data-scale="10000">1:10K<small>ORBIT</small></button>
+          </div>
+          <label
+            >MOTION SCALE <output id="scale-value">1:1</output>
+            <input id="scale-range" type="range" min="0" max="5" step="0.01" value="0"
+          /></label>
+          <label
+            >SMOOTHING <output id="smooth-value">30%</output>
+            <input id="smooth-range" type="range" min="0" max="100" step="1" value="30"
+          /></label>
+          <div class="toggles">
+            <label><input id="height-lock" type="checkbox" /> HEIGHT LOCK</label>
+            <label><input id="horizon-lock" type="checkbox" /> HORIZON LOCK</label>
+          </div>
+        </div>
+
+        <div id="lens-drawer" class="drawer" hidden>
+          <label
+            >FOCAL LENGTH <output id="focal-value">31mm</output>
+            <input id="focal-range" type="range" min="0" max="1" step="0.001" value="0.3"
+          /></label>
+          <div class="presets" id="focal-presets">
+            <button data-focal="14">14</button>
+            <button data-focal="24">24</button>
+            <button data-focal="35">35</button>
+            <button data-focal="50">50</button>
+            <button data-focal="85">85</button>
+            <button data-focal="200">200</button>
+          </div>
+          <div class="toggles">
+            <label><input id="dof-toggle" type="checkbox" /> DEPTH OF FIELD</label>
+          </div>
+          <label
+            >APERTURE <output id="fstop-value">f/2.8</output>
+            <input id="fstop-range" type="range" min="0" max="1" step="0.001" value="0.35"
+          /></label>
+          <p class="hint">Tap the picture to focus there.</p>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="phone.js"></script>
+  </body>
+</html>

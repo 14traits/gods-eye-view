@@ -2490,7 +2490,13 @@
       "src/layers/airQuality/index.js",
       "src/layers/airQuality/model.js",
       "src/layers/airQuality/source.js",
-      "src/ui/statusText.js"
+      "src/ui/statusText.js",
+      "src/scenes/cameraLens.js",
+      "src/director/lens.js",
+      "src/vcam/controller.js",
+      "src/vcam/rig.js",
+      "src/vcam/qr.js",
+      "src/ui/vcamPanel.js"
     ],
     "external": [
       "hls.js",

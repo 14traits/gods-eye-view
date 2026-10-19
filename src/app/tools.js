@@ -1,4 +1,7 @@
 import { SceneDirector } from '../scenes/director.js';
+import { createCameraLens } from '../scenes/cameraLens.js';
+import { createVcamController } from '../vcam/controller.js';
+import { bindVcamPanel } from '../ui/vcamPanel.js';
 import { initAnnotations } from '../annotations/index.js';
 import { initDrawTool } from '../annotations/drawTool.js';
 import { initGeoFileImport } from '../ui/geoFileImport.js';
@@ -32,16 +35,36 @@ export function createApplicationTools({
   const { viewer, tileset, mapStackController, operations } = scene;
   const { styleManager, weatherEffects, cockpitCloudEffects } = controls;
   const { dataManager } = data;
+  // Focal length and depth of field, shared by scene playback and the VCAM.
+  const lens = createCameraLens(viewer, {
+    requestRender: (reason) => governorRequestRender(reason),
+  });
   const sceneDirector = new SceneDirector(viewer, styleManager, dataManager, {
     dataPacks: sceneDataPacks,
     isMapStackAvailable: (id) =>
       mapStackController?.isStackAvailable(id) === true,
+    lens,
   });
   dataManager.layers
     .get('bhote-koshi-2026')
     ?.module.attachSceneController(sceneDirector);
   defer(() => sceneDirector.destroy());
   onSceneDirector?.(sceneDirector);
+  // SCENES ▸ VCAM: a phone on the same network becomes the camera; its
+  // takes are recorded into the selected scene. Torn down before the lens
+  // and director it drives.
+  const vcam = createVcamController({
+    viewer,
+    navigation: styleManager,
+    director: sceneDirector,
+    lens,
+  });
+  const unbindVcamPanel = bindVcamPanel(vcam);
+  defer(() => lens.destroy());
+  defer(() => {
+    unbindVcamPanel();
+    vcam.destroy();
+  });
   const annotations = initAnnotations({
     viewer,
     tileset,
@@ -166,6 +189,8 @@ export function createApplicationTools({
     getRenderGovernorDiagnostics,
     surfaceServices: operations.surface,
     requestRender: governorRequestRender,
+    vcam,
+    lens,
   };
   const debug = window.__godsEyeView;
   defer(() => {

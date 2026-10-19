@@ -474,3 +474,157 @@ html:not([lang='en']) #scene-panel .scene-controls .scene-btn {
 .director-sharing-dialog::backdrop {
   background: rgba(0, 8, 14, 0.65);
 }
+
+/* ── VCAM: phone virtual camera ─────────────── */
+#vcam-toggle-btn.active,
+#vcam-toggle-btn.vcam-live {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+#vcam-toggle-btn.vcam-live::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #3ddc84;
+  vertical-align: 1px;
+}
+
+.vcam-card {
+  margin: 0 0 10px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+
+.vcam-pair {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.vcam-qr {
+  flex: 0 0 auto;
+  width: 112px;
+  height: 112px;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+.vcam-pair-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.vcam-code {
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 4px;
+}
+
+.vcam-url {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.vcam-address,
+#vcam-scale {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 3px 4px;
+}
+
+.vcam-status {
+  color: var(--text-primary);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.vcam-status.error {
+  color: #ff8a8a;
+}
+
+.vcam-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.vcam-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vcam-grow {
+  flex: 1;
+  min-width: 140px;
+}
+
+.vcam-grow input[type='range'] {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--accent);
+}
+
+.vcam-field output {
+  min-width: 38px;
+  color: var(--accent);
+  text-align: right;
+}
+
+.vcam-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vcam-actions {
+  margin-bottom: 0;
+}
+
+.vcam-record[aria-pressed='true'],
+.vcam-record:hover:not(:disabled) {
+  color: #ff5a6a;
+  border-color: #ff5a6a;
+  background: rgba(255, 70, 90, 0.14);
+}
+
+.vcam-hint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.vcam-hint a {
+  color: var(--accent);
+}
+
+#scene-panel.collapsed .vcam-card {
+  display: none !important;
+}
+
+body.recording-mode .vcam-card,
+body.scene-playback-mode .vcam-card {
+  display: none;
+}
