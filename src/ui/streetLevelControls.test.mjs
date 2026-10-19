@@ -426,6 +426,7 @@ function uiState({
   renderMode = 'letterbox',
   keyRequired = false,
   streetError = null,
+  sequenceError = null,
 } = {}) {
   return {
     enabled,
@@ -434,7 +435,12 @@ function uiState({
     keyRejected: false,
     filter: { pano, sinceDays },
     coverage: { count: 3, loading: false, hint: '', error: null },
-    sequence: { selectedId: null, images: 0, loading: false },
+    sequence: {
+      selectedId: null,
+      images: 0,
+      loading: false,
+      error: sequenceError,
+    },
     street: {
       open,
       loading: false,
@@ -800,6 +806,18 @@ test('a photo that fails to open opens the panel too, so its error shows', () =>
     layer.publish(uiState());
     layer.publish(uiState({ streetError: 'No street-level imagery here' }));
     assert.equal(calls.collapsed.length, 2);
+    controls.destroy();
+  }));
+
+test('a sequence that fails to load opens the panel, so its error shows', () =>
+  withDom(async (dom) => {
+    const { layer, calls, controls } = stubPanel(dom, uiState());
+    // A Mapillary line click whose sequence lookup the Graph API refused.
+    layer.publish(uiState({ sequenceError: 'Mapillary did not answer' }));
+    assert.deepEqual(calls.collapsed, [[false, { persist: false }]]);
+    assert.equal(dom.root.querySelector('#sl-error').hidden, false);
+    layer.publish(uiState({ sequenceError: 'Mapillary did not answer' }));
+    assert.equal(calls.collapsed.length, 1, 'the same error opens it once');
     controls.destroy();
   }));
 

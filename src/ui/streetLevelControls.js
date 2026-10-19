@@ -29,7 +29,7 @@ export class StreetLevelControls {
     this._state = null;
     this._view = null;
     this._wasOpen = false;
-    /** The open error last shown, so the same one never reopens the panel. */
+    /** The error last shown: the same one never reopens the panel. */
     this._streetError = null;
     /** The SINCE option for a day count between the stops, while one is set. */
     this._customSince = null;
@@ -432,17 +432,20 @@ export class StreetLevelControls {
   }
 
   /**
-   * Open the panel when an image opens, or fails to (a click on the map or a
-   * line would otherwise load it, or its error, out of sight). Never
-   * persisted: the stored collapse state stays the user's own choice.
+   * Open the panel when an image opens, or when a click fails to open one or
+   * to load its sequence (the result, or its error, would otherwise be out of
+   * sight). Never persisted: the stored collapse state stays the user's own
+   * choice.
    */
   _reactToTransitions(view) {
     // Other size changes reach the viewer through the ResizeObserver; opening
     // asks for one resize because the element may not have a size yet.
     const open = view.viewer.open;
-    // A photo that failed to open (a line or ground click, OPEN) says why in
-    // the panel: it opens for that too, or the click would seem to do nothing.
-    const error = this._state?.street?.error || null;
+    // A photo that failed to open (a line or ground click, OPEN), or a
+    // Mapillary line whose sequence failed to load, says why in the panel:
+    // it opens for that too, or the click would seem to do nothing.
+    const error =
+      this._state?.street?.error || this._state?.sequence?.error || null;
     if ((open && !this._wasOpen) || (error && error !== this._streetError))
       this.setCollapsed(false, { persist: false });
     this._wasOpen = open;
