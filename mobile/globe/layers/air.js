@@ -176,6 +176,7 @@ export class AircraftLayer extends Layer {
         .join(' · '),
       lon,
       lat,
+      ...(r.emergency ? { labelDetail: `SQ ${r.squawk}` } : {}),
       meta: {
         layer: this.id,
         icao24: r.id,

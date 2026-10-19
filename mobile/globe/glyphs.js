@@ -237,6 +237,117 @@ const painters = {
     ctx.strokeStyle = '#fff';
     ctx.stroke();
   },
+  bolt(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(28, 3);
+    ctx.lineTo(12, 27);
+    ctx.lineTo(23, 27);
+    ctx.lineTo(19, 45);
+    ctx.lineTo(37, 18);
+    ctx.lineTo(26, 18);
+    ctx.closePath();
+    stroke(ctx, 3);
+  },
+  aq(ctx, s) {
+    const g = ctx.createRadialGradient(s / 2, s / 2, 4, s / 2, s / 2, s / 2);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0.45)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+    ctx.beginPath();
+    ctx.arc(s / 2, s / 2, 9, 0, Math.PI * 2);
+    stroke(ctx, 3);
+  },
+  bus(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(24, 4);
+    ctx.lineTo(33, 14);
+    ctx.lineTo(33, 42);
+    ctx.lineTo(15, 42);
+    ctx.lineTo(15, 14);
+    ctx.closePath();
+    stroke(ctx, 3);
+  },
+  post(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(8, 10);
+    ctx.lineTo(40, 10);
+    ctx.lineTo(40, 32);
+    ctx.lineTo(22, 32);
+    ctx.lineTo(13, 41);
+    ctx.lineTo(14, 32);
+    ctx.lineTo(8, 32);
+    ctx.closePath();
+    stroke(ctx, 3);
+  },
+  witness(ctx) {
+    // a seal: a rosette with a check
+    ctx.beginPath();
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const r = i % 2 ? 17 : 21;
+      ctx.lineTo(24 + r * Math.cos(a), 24 + r * Math.sin(a));
+    }
+    ctx.closePath();
+    stroke(ctx, 3);
+    ctx.beginPath();
+    ctx.moveTo(16, 24);
+    ctx.lineTo(22, 30);
+    ctx.lineTo(33, 18);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.stroke();
+  },
+  eye(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(4, 24);
+    ctx.quadraticCurveTo(24, 4, 44, 24);
+    ctx.quadraticCurveTo(24, 44, 4, 24);
+    ctx.closePath();
+    stroke(ctx, 3);
+    ctx.beginPath();
+    ctx.arc(24, 24, 7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fill();
+  },
+  live(ctx) {
+    ctx.beginPath();
+    ctx.arc(24, 24, 9, 0, Math.PI * 2);
+    stroke(ctx, 3);
+    for (const r of [15, 21]) {
+      ctx.beginPath();
+      ctx.arc(24, 24, r, -0.7, 0.7);
+      ctx.moveTo(24 - r * Math.cos(0.7), 24 - r * Math.sin(0.7));
+      ctx.arc(24, 24, r, Math.PI - 0.7, Math.PI + 0.7);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+    }
+  },
+  hologram(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(24, 3);
+    ctx.lineTo(42, 14);
+    ctx.lineTo(42, 34);
+    ctx.lineTo(24, 45);
+    ctx.lineTo(6, 34);
+    ctx.lineTo(6, 14);
+    ctx.closePath();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(6, 14);
+    ctx.lineTo(24, 25);
+    ctx.lineTo(42, 14);
+    ctx.moveTo(24, 25);
+    ctx.lineTo(24, 45);
+    ctx.stroke();
+  },
 };
 
 /** `{ image, imageId }` for a named glyph. */

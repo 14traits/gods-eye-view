@@ -89,7 +89,7 @@ const REGISTRATION_CALLSIGN =
   /^(N\d{1,5}[A-Z]{0,2}|[CDFGI]-?[A-Z]{4}|VH-?[A-Z]{3}|D[A-Z]{4}|ZK-?[A-Z]{3}|JA\d{3,4}[A-Z]?)$/;
 
 /** OpenSky state vector → flight record. */
-function flightFromState(s) {
+export function flightFromState(s) {
   const lon = finite(s[5]);
   const lat = finite(s[6]);
   if (lon === null || lat === null) return null;

@@ -320,6 +320,9 @@ W.updateDynamic = function () {
   if (W.on('wind')) for (const w of WIND) { const age = ((t / w.life + w.ph) % 1 + 1) % 1; let la = w.lat, lo = w.lon; const steps = 4, dtH = (age * w.life) / 3600 / steps; for (let k = 0; k < steps; k++) { const [u, v] = windVel(la, lo, t); la += v * dtH; lo += u * dtH; } const [u, v] = windVel(la, lo, t); const fade = Math.sin(age * Math.PI); pushSpr(a, geo.vec(la, lo, 3), [0.75, 0.85, 1, 0.55 * fade], 14, 15, Math.atan2(u * Math.cos(la * D2R), v), -1e9, 1e9, 0, 0, 0.1); }
   for (const hh of W.userHolos) pushSpr(a, geo.vec(hh.lat, hh.lon, 0.06), [1, 0.85, 0.45, 1], 24, 6, -10, -1e9, 1e9, 0, 0.2, 0.4);
   if (W.activeExtrasId === 'climb') { const f = clamp((W.simMs - GE.T_CLIMB) / (2.23 * 3600000), 0, 1); const [la, lo] = geo.offset(40.7553, -73.9838, 16, 23.5); pushSpr(a, geo.vec(la, lo, (12 + f * 372) / 1000), [1, 0.3, 0.3, 1], 16, 9, -10, -1e9, 1e9, 0, 0.7, 0.9); }
+  for (const sp of W.extraSprites || []) pushSpr(a, sp.v, sp.col, sp.size || 24, sp.glyph ?? 9, -10, -1e9, 1e9, 0, sp.seed || 0.3, 0.8);
+  // eyes: people and cameras looking right now
+  if (W.on('cctv') || W.on('signed') || W.on('streams')) for (const e of GE.EYES || []) pushSpr(a, geo.vec(e.lat, e.lon, 0.05), e.kind === 'you' ? [1, 0.9, 0.55, 1] : e.kind === 'cctv' ? [1, 0.66, 0.26, 1] : [0.96, 0.82, 0.48, 1], e.kind === 'you' ? 26 : 15, 9, -10, -1e9, 1e9, 0, e.lat * 0.1, 0.6);
   // situation pins
   for (const p of W.situationPins) pushSpr(a, geo.vec(p.lat, p.lon, 0.2), p.col, p.size || 16, 9, -10, -1e9, 1e9, 0, p.seed || 0, 0.6);
   // selection highlight
@@ -336,6 +339,7 @@ W.updateDynamic = function () {
   }
   if (W.selRoute) pushPolyline(ln, W.selRoute, [1, 0.85, 0.45, 0.8], 1);
   for (const extra of W.extraLines) pushPolyline(ln, extra.pts, extra.col, extra.dashed || 0);
+  if (GE.eyeLines && (W.on('cctv') || W.on('signed') || W.on('streams'))) for (const ex of GE.eyeLines(W.lastRange)) pushPolyline(ln, ex.pts, ex.col, ex.dashed || 0);
   for (const hh of W.userHolos) pushPolyline(ln, [geo.vec(hh.lat, hh.lon, 0), geo.vec(hh.lat, hh.lon, 0.06)], [1, 0.85, 0.5, 0.9]);
   uploadDyn('dynLineBuf', 'dynLineVao', 'dynLineCap', 'dynLineCount', ln, 'line');
 };
@@ -526,14 +530,14 @@ W.post = function (chain, outFb, outW, outH, mode, opts) {
   gl.viewport(0, 0, opts.vpW ?? (outFb ? outW : gl.drawingBufferWidth), opts.vpH ?? (outFb ? outH : gl.drawingBufferHeight));
   GL.bindTex(Cp, 'uScene', chain.scene.tex, 0); GL.bindTex(Cp, 'uBloom', bloomOn ? lv[0].b.tex : lv[0].a.tex, 1);
   gl.uniform2f(Cp.u.uTexel, 1 / chain.w, 1 / chain.h);
-  gl.uniform1f(Cp.u.uExposure, (opts.exposure ?? 1) * (mode === 2 ? 1.25 : 0.62));
+  gl.uniform1f(Cp.u.uExposure, (opts.exposure ?? 1) * (mode === 2 ? 1.25 : mode === 0 ? 0.58 : 0.62));
   gl.uniform1f(Cp.u.uBloomK, bloomOn ? (mode === 4 ? 0.3 : 0.16) : 0);
   gl.uniform1f(Cp.u.uVig, opts.vig ?? (mode === 1 ? 0.25 : 0.9));
   gl.uniform1f(Cp.u.uGrain, (opts.grain ?? W.quality.grain) && mode !== 1 ? 0.022 : 0);
   gl.uniform1f(Cp.u.uT, performance.now() / 1000 % 100);
   gl.uniform1f(Cp.u.uFade, opts.fade ?? 1);
   gl.uniform1f(Cp.u.uFxaa, 1);
-  gl.uniform1f(Cp.u.uSat, mode === 1 ? 1.0 : 1.08);
+  gl.uniform1f(Cp.u.uSat, mode === 1 ? 1.0 : 1.12);
   gl.uniform1i(Cp.u.uMode, mode);
   gl.uniform3fv(Cp.u.uLift, [0.00017, 0.00038, 0.001]);
   gl.uniform3fv(Cp.u.uGain, mode === 0 ? [1.02, 1.0, 0.97] : [1, 1, 1]);

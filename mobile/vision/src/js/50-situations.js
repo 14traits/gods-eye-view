@@ -37,7 +37,8 @@ function dayReplay(lat, lon, localHour = 15.5) {
   while (t > NOW) t -= 86400000; return { at: t, start: t - 3 * 3600000, end: t + 3 * 3600000, replay: true };
 }
 SIT.dayReplay = dayReplay;
-const LAUNCH_T0 = NOW + (2 * 3600 + 14 * 60 + 33) * 1000;
+const LAUNCH_T0 = NOW - (34 * 60 + 12) * 1000;
+GE.LAUNCH_T0 = LAUNCH_T0;
 const KOSHI_T = GE.scenes.FLOOD.startMs;
 const AURORA_T = (() => { const d = new Date(NOW); d.setUTCHours(21, 30, 0, 0); if (d.getTime() < NOW) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); })();
 
@@ -123,11 +124,11 @@ add({
 });
 add({
   id: 'launch', short: 'Launch · SLC-40', fam: 'orbit', kind: 'launch', section: 'now', live: true, aspect: 1.5, ageS: 300, watchers: 33800,
-  title: 'Rideshare launch from SLC-40 — countdown', place: 'Cape Canaveral, Florida', lat: 28.5618, lon: -80.5772,
+  title: 'Twilight launch from SLC-40 — plume seen along 600 km of coast', place: 'Cape Canaveral, Florida', lat: 28.5618, lon: -80.5772,
   camera: { lat: 28.5585, lon: -80.5825, range: 0.00045, heading: 0.85, tilt: 1.28 }, labels3d: [[28.5618, -80.5772, 'SLC-40 · vehicle on pad', 0.11]], thumbCam: { lat: 28.25, lon: -80.95, range: 0.028, heading: 0.75, tilt: 1.0 }, layers: ['launches', 'flights', 'ais', 'tracks'], source: 'Range schedule (illustrative)',
-  metric: () => [`<span class="num">T−${fmt.dur((LAUNCH_T0 - Date.now()) / 1000)}</span>`, 'Rideshare to SSO · trajectory NE'],
-  metrics: () => [{ v: fmt.dur((LAUNCH_T0 - Date.now()) / 1000), u: '', l: 'Countdown', s: 'Range · 5 min' }, { v: 92, u: '%', l: 'Weather go', s: 'Forecast · 1 h' }, { v: 14, u: '', l: 'Vessels in hazard area', s: 'AIS · 40 s' }],
-  brief: { lede: 'Vehicle is vertical on the pad. The hazard area offshore is still being cleared — 14 vessels remain inside. Trajectory heads northeast along the coast.', series: [{ label: 'Vessels in hazard area', unit: '', data: [41, 39, 36, 33, 31, 28, 24, 21, 19, 17, 15, 14], src: 'AIS · 15 min · 40 s', fmt: (v) => v }], sources: [['Range schedule (illustrative)', '5 min', 'live'], ['AIS', '40 s', 'live']] },
+  metric: () => [`<span class="num">T+${fmt.dur((Date.now() - LAUNCH_T0) / 1000)}</span>`, 'Rideshare to SSO · 2nd stage coasting'],
+  metrics: () => [{ v: fmt.dur((Date.now() - LAUNCH_T0) / 1000), u: '', l: 'Since liftoff', s: 'Range · live' }, { v: 212, u: 'km', l: '2nd stage altitude', s: 'Tracking · 10 s' }, { v: 418, u: '', l: 'Sky captures', s: 'Signed · 4 min' }],
+  brief: { lede: 'The vehicle lifted off just after sunset. Its exhaust climbed into sunlight above the dark ground and spread into a glowing "jellyfish" seen from Georgia to the Keys. The second stage is coasting to its burn; the pad is being safed.', series: [{ label: 'Sky captures per minute', unit: '', data: [0, 2, 14, 61, 120, 96, 70, 44, 30, 22, 15, 11], src: 'Signed bundles · 1 min', fmt: (v) => v }], sources: [['Range schedule (illustrative)', '5 min', 'live'], ['Tracking camera (illustrative)', '10 s', 'live'], ['Signed sky captures', '4 min', 'live']] },
 });
 add({
   id: 'koshi', short: 'Bhote Koshi · 4D', fam: 'haz', kind: 'recon', section: 'recon', live: false, aspect: 1.33, ageS: 53 * 86400, watchers: 12800, thread: 'koshi', d4: true,
@@ -211,6 +212,21 @@ add({
   brief: { lede: 'Two traffic separation lanes, one of the densest anchorages anywhere.', series: [{ label: 'Transits per hour', unit: '', data: walk(24, 80, 4, 0, 61).map(Math.round), src: 'AIS · hourly', fmt: (v) => v }], sources: [['AIS', '40 s', 'live']] },
 });
 
+/* round two: situations behind the new feed cards (lite: camera, layers, brief) */
+const lite = (o) => add({ live: true, aspect: 1.25, section: 'now', watchers: 3000, metric: () => [o.m0 || '', o.m1 || ''], metrics: () => o.ms.map(([v, u, l, sx]) => ({ v, u, l, s: sx })), brief: { lede: o.lede, series: o.series || [], sources: o.sources || [] }, ...o });
+lite({ id: 'dfw', short: 'Squall line · DFW', fam: 'wx', kind: 'storm', title: 'Bowing squall line crossing Dallas–Fort Worth', place: 'Dallas–Fort Worth, Texas', lat: 32.82, lon: -97.0, camera: { lat: 32.62, lon: -97.12, range: 0.05, heading: 0.3, tilt: 0.9 }, layers: ['radar', 'lightning', 'flights', 'traffic'], source: 'Radar mosaic', watchers: 26100, ageS: 90,
+  ms: [[62, 'dBZ', 'Peak reflectivity', 'Radar · 2 min'], [72, 'km/h', 'Line motion', 'Derived'], [1, '', 'Tornado warning', 'Warning feed · 4 min']], lede: 'A bowing line is racing east at 72 km/h. The apex is producing 100 km/h gusts and a brief tornado warning covers Arlington. Departures at DFW are on a ground stop.', series: [{ label: 'Peak dBZ', unit: '', data: [38, 41, 47, 52, 55, 58, 61, 62], src: 'Radar mosaic · 5 min', fmt: (v) => v }], sources: [['Radar mosaic (illustrative)', '2 min', 'live'], ['Lightning network', '30 s', 'live']] });
+lite({ id: 'gulf', short: 'Lightning · Gulf', fam: 'wx', kind: 'lightning', title: '4,812 lightning strikes in the last hour over the Gulf', place: 'Gulf of Mexico', lat: 26.5, lon: -89, camera: { lat: 24.5, lon: -89.5, range: 0.3, heading: 0, tilt: 0.5 }, layers: ['lightning', 'clouds', 'flights', 'ais'], source: 'Lightning network', watchers: 4100, ageS: 60,
+  ms: [['4,812', '', 'Strikes / h', 'Network · 1 min'], [5, '', 'Active cells', 'Derived'], [31, '', 'Flights deviating', 'ADS-B · 2 min']], lede: 'Five clusters of deep convection are firing over warm Gulf water. Airliners are deviating around the two strongest cells.', sources: [['Lightning network (illustrative)', '1 min', 'live']] });
+lite({ id: 'shibuya', short: 'Shibuya crossing', fam: 'eyes', kind: 'eye', title: 'Shibuya crossing in the rain — public camera', place: 'Shibuya, Tokyo', lat: 35.6595, lon: 139.7005, camera: { lat: 35.6575, lon: 139.6985, range: 0.0009, heading: 0.6, tilt: 1.1 }, layers: ['cctv', 'transit', 'traffic', 'venues'], source: 'Public camera', watchers: 9400, ageS: 3,
+  ms: [['~2,400', '', 'People per cycle', 'Camera count · 1 min'], [12, 'mm/h', 'Rain', 'Gauge · 10 min'], [46, 's', 'Signal cycle', 'Observed']], lede: 'A public street camera over the scramble. Counts are estimated on-device; no faces are kept.', sources: [['Public street camera (illustrative)', 'live', 'live']] });
+lite({ id: 'derby', short: 'Derby egress', fam: 'ground', kind: 'crowd', title: 'Derby egress: crowd density building at Gate C', place: 'Avellaneda, Buenos Aires', lat: -34.6705, lon: -58.3685, camera: { lat: -34.6735, lon: -58.3715, range: 0.0012, heading: 0.4, tilt: 1.0 }, layers: ['venues', 'transit', 'traffic', 'cctv'], source: 'Crowd sensing (illustrative)', watchers: 11800, ageS: 40,
+  ms: [[4.6, 'p/m²', 'Peak density', 'Derived · 30 s'], ['41k', '', 'Leaving', 'Estimate'], [3, '', 'Gates open', 'Venue feed']], lede: 'Fans are leaving after the final whistle. Density outside Gate C has passed 4 people per square metre while Gates A and D are flowing freely. Stewards are being redirected.', series: [{ label: 'Density at Gate C', unit: 'p/m²', data: [1.1, 1.4, 2.0, 2.8, 3.5, 4.1, 4.6], src: 'Derived · 1 min', fmt: (v) => v.toFixed(1) }], sources: [['Crowd sensing (illustrative)', '30 s', 'live'], ['Signed captures', '3 min', 'live']] });
+lite({ id: 'sakurajima', short: 'Sakurajima cam', fam: 'haz', kind: 'volcano', title: 'Sakurajima ash column to 3.2 km — webcam', place: 'Kagoshima Bay, Japan', lat: 31.58, lon: 130.66, camera: { lat: 31.52, lon: 130.6, range: 0.012, heading: 0.5, tilt: 1.15 }, layers: ['volcanoes', 'flights', 'wind', 'cctv'], source: 'Volcano webcam', watchers: 5300, ageS: 120,
+  ms: [[3.2, 'km', 'Ash column', 'Webcam · 2 min'], ['ESE', '', 'Drift', 'Wind model'], [0, '', 'Flights affected', 'ADS-B']], lede: 'A routine but tall explosion. Ash is drifting away from the city; the airport is open.', sources: [['Volcano webcam (illustrative)', '2 min', 'live'], ['Wind model', '1 h', 'live']] });
+lite({ id: 'lakefront', short: 'Lake Michigan gale', fam: 'wx', kind: 'gale', title: 'Gale on Lake Michigan — waves over the lakefront trail', place: 'Chicago lakefront', lat: 41.866, lon: -87.607, camera: { lat: 41.62, lon: -87.42, range: 0.035, heading: -0.35, tilt: 1.0 }, layers: ['cctv', 'signed', 'traffic'], source: 'Buoy + signed captures', watchers: 1900, ageS: 300, section: 'near',
+  ms: [[3.4, 'm', 'Wave height', 'Buoy · 10 min'], [74, 'km/h', 'Gusts', 'Station · 5 min'], [2, '', 'Trail closures', 'City feed']], lede: 'North-northeast gales are piling waves onto the lakefront. The trail is closed between two harbours.', sources: [['Lake buoy (illustrative)', '10 min', 'live'], ['Signed captures', 'live', 'live']] });
+
 for (const s of S) if (s.time && s.time.replay) { s.live = false; s.replayLabel = 'Today ' + new Date(s.time.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'; }
 SIT.list = S;
 SIT.byId = Object.fromEntries(S.map((s) => [s.id, s]));
@@ -220,6 +236,7 @@ SIT.sections = [
 // dynamic cameras
 SIT.cameraFor = function (s) {
   if (s.id === 'starlink') { const g = GE.world.sun.gmst; const p = GE.satAt(GE.SATS.find((x) => x.kind === 5), GE.world.t, g); const [la, lo] = geo.ll(p); return { lat: la - 6, lon: lo - 8, range: 0.32, heading: 0.6, tilt: 0.85 }; }
+  if (s.id === 'squawk' && GE.feed && GE.feed._sq) return s.camera;
   if (s.id === 'squawk') { const f = GE.FLIGHTS[GE.world.squawks[0]]; const p = GE.flightAt(f, GE.world.t) || { lat: 50, lon: -30 }; return { lat: p.lat - 4, lon: p.lon - 3, range: 0.3, heading: 0.3, tilt: 0.75 }; }
   if (s.id === 'iss') { const p = GE.satAt(GE.ISS, GE.world.t, GE.world.sun.gmst); const [la, lo] = geo.ll(p); return { lat: la - 9, lon: lo - 4, range: 0.48, heading: 0.35, tilt: 0.78 }; }
   return s.camera;

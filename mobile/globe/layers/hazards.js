@@ -224,7 +224,7 @@ export function createHazardLayers(ctx, feeds) {
   return [
     quakes,
     fires,
-    new CycloneLayer(ctx, { feed: feeds.cyclones }),
+    new CycloneLayer(ctx, { feed: feeds.cyclones, tcm: feeds.tcm }),
     new FloodLayer(ctx, { feed: feeds.flood }),
     volcanoes,
   ];
@@ -255,8 +255,55 @@ export function stormPositionAt(storm, ms) {
   return null; // beyond the forecast
 }
 
+const SAFFIR = [
+  [137, 'CAT 5'],
+  [113, 'CAT 4'],
+  [96, 'CAT 3'],
+  [83, 'CAT 2'],
+  [64, 'CAT 1'],
+  [34, 'TS'],
+  [0, 'TD'],
+];
+
+/** Saffir-Simpson category (or TS/TD) for a 1-min sustained wind in kt. */
+export function stormCategory(windKt) {
+  if (!Number.isFinite(windKt)) return '';
+  return SAFFIR.find(([kt]) => windKt >= kt)[1];
+}
+
+/** Ring of a quadrant wind-radii shape ([NE, SE, SW, NW] km) around a point. */
+export function radiiRing(lon, lat, quadrantsKm, stepDeg = 6) {
+  const ring = [];
+  const cosLat = Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  for (let a = 0; a <= 360; a += stepDeg) {
+    const q = Math.min(3, Math.floor((a % 360) / 90));
+    const r = quadrantsKm[q];
+    const rad = (a * Math.PI) / 180;
+    ring.push([
+      lon + (r * Math.sin(rad)) / (111.32 * cosLat),
+      lat + (r * Math.cos(rad)) / 111.32,
+    ]);
+  }
+  return ring;
+}
+
+export const RADII_COLORS = { 34: '#FFD84D', 50: '#FF9A3D', 64: '#FF3B30' };
+
+/** Match an NHC TCM (wind radii) to a storm by position (≤ 250 km). */
+export function radiiFor(storm, tcm) {
+  let best = null;
+  for (const t of tcm?.storms || []) {
+    const d = Math.hypot(
+      (t.lon - storm.lon) * Math.cos((storm.lat * Math.PI) / 180),
+      t.lat - storm.lat,
+    );
+    if (d < 2.3 && (!best || d < best.d)) best = { d, t };
+  }
+  return best?.t || null;
+}
+
 class CycloneLayer extends Layer {
-  constructor(ctx, { feed }) {
+  constructor(ctx, { feed, tcm }) {
     super(ctx, {
       id: 'cyclones',
       family: 'Hazards',
@@ -264,6 +311,8 @@ class CycloneLayer extends Layer {
       pollMs: 15 * 60_000,
     });
     this.feed = feed;
+    this.tcm = tcm;
+    this.fills = null;
     this.renderer = new ContactRenderer(this.root, {
       layerId: this.id,
       tint: color('#FFFFFF'),
@@ -284,6 +333,64 @@ class CycloneLayer extends Layer {
       this.fromFeed(this.feed);
     }
     this._draw(true);
+    // Wind radii arrive from a second source; the cone and track never wait.
+    this.tcm
+      ?.get()
+      .then(() => this.on && this._fills(this.feed.data?.records || []))
+      .catch(() => {});
+  }
+
+  /** Filled cone of uncertainty and 34/50/64-kt wind-radii quadrants. */
+  _fills(storms) {
+    if (this.fills) this.root.remove(this.fills);
+    this.fills = null;
+    const instances = [];
+    const poly = (ring, css, alpha, height) => {
+      if (!ring || ring.length < 4) return;
+      instances.push(
+        new Cesium.GeometryInstance({
+          geometry: new Cesium.PolygonGeometry({
+            polygonHierarchy: new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray(ring.flat()),
+            ),
+            height,
+            vertexFormat: Cesium.PerInstanceColorAppearance.FLAT_VERTEX_FORMAT,
+          }),
+          attributes: {
+            color: Cesium.ColorGeometryInstanceAttribute.fromColor(
+              color(css, alpha),
+            ),
+          },
+        }),
+      );
+    };
+    for (const s of storms) {
+      poly(outerRing(s.cone), '#FFFFFF', 0.1, 1500);
+      const tcm = radiiFor(s, this.tcm?.data);
+      if (tcm) s.radii = tcm.radii;
+      for (const r of [...(s.radii || [])].sort((a, b) => a.kt - b.kt)) {
+        if (!r.quadrantsKm.some((k) => k > 0)) continue;
+        poly(
+          radiiRing(s.lon, s.lat, r.quadrantsKm),
+          RADII_COLORS[r.kt] || '#FFD84D',
+          r.kt === 64 ? 0.26 : r.kt === 50 ? 0.18 : 0.12,
+          2500 + r.kt * 20,
+        );
+      }
+    }
+    if (!instances.length) return;
+    this.fills = this.root.add(
+      new Cesium.Primitive({
+        geometryInstances: instances,
+        appearance: new Cesium.PerInstanceColorAppearance({
+          flat: true,
+          translucent: true,
+        }),
+        asynchronous: true,
+        allowPicking: false,
+      }),
+    );
+    this.ctx.requestRender();
   }
 
   _draw(full) {
@@ -308,7 +415,10 @@ class CycloneLayer extends Layer {
     }
     this.count = items.length;
     this.renderer.setItems(items);
-    if (full) this._lines(data.records);
+    if (full) {
+      this._lines(data.records);
+      this._fills(data.records);
+    }
   }
 
   _lines(storms) {
@@ -402,9 +512,17 @@ class CycloneLayer extends Layer {
         .join(' · '),
       lon: s.now.lon,
       lat: s.now.lat,
+      labelDetail: [
+        stormCategory(s.now.windKt),
+        s.now.windKt ? `${Math.round(s.now.windKt)} KT` : null,
+        s.pressureHpa ? `${s.pressureHpa} HPA` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
       meta: {
         layer: this.id,
         windKt: s.now.windKt ?? null,
+        radii: s.radii ?? null,
         pressureHpa: s.pressureHpa ?? null,
         movement: s.movement ?? null,
         basin: s.basin,

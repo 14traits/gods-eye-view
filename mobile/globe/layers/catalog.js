@@ -8,6 +8,7 @@ import { createSkyLayers } from './air.js';
 import { createOrbitLayers } from './orbit.js';
 import { createHazardLayers } from './hazards.js';
 import { createSeaLayers, createEyesLayers } from './sea.js';
+import { createWeatherLayers } from './weather.js';
 
 export const FAMILIES = Object.freeze([
   'Sky',
@@ -62,7 +63,8 @@ export const CATALOG = Object.freeze([
   ['Weather', 'radar', 'Radar'],
   ['Weather', 'clouds', 'Clouds'],
   ['Weather', 'lightning', 'Lightning'],
-  ['Weather', 'wind', 'Wind'],
+  ['Weather', 'wind', 'Wind (10 m)'],
+  ['Weather', 'jet', 'Jet stream (250 hPa)'],
   ['Weather', 'forecast', 'Forecast models'],
   ['Infra', 'datacenters', 'Datacenters'],
   ['Infra', 'dams', 'Dams'],
@@ -81,6 +83,7 @@ export function buildLayers(ctx, feeds) {
     ...createOrbitLayers(ctx, feeds),
     ...createHazardLayers(ctx, feeds),
     ...createEyesLayers(ctx, feeds),
+    ...createWeatherLayers(ctx, feeds),
   ])
     live.set(layer.id, layer);
   const out = new Map();

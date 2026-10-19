@@ -136,7 +136,10 @@ GUI.drawRibbon = function () {
   el.classList.toggle('future', cur > 0.02 && !W.window);
   el.classList.toggle('breath', W.live && !prefersReduced());
   const nb = $('#rbNow'); nb.classList.toggle('live', W.live); nb.innerHTML = W.window ? `${ic('clock', 'xs')}EVENT` : W.live ? '<span class="dot pulse"></span>LIVE' : 'NOW';
-  const stt = $('#statusTxt'); if (stt) { stt.textContent = W.window ? 'Replay' : W.live ? 'Live' : cur > 0 ? 'Forecast' : 'Replay'; $('#statusTime').textContent = fmt.utc(simMs, false) + ' UTC'; $('#status .dot').style.background = W.live ? '' : cur > 0 ? 'var(--wx)' : 'var(--gold)'; }
+  const stt = $('#statusTxt'); if (stt) {
+    const alt = (GE.mainView ? geo.ll(GE.mainView.eye)[2] : Cam.range * EARTH_KM); const band = alt > 120 ? 'ORBIT' : alt > 0.8 ? 'SKY' : 'GROUND'; const bc = { ORBIT: 'var(--b-orbit)', SKY: 'var(--b-sky)', GROUND: 'var(--b-ground)' }[band];
+    if (GE.live && GE.live.on) { stt.innerHTML = `You’re live · <b class="num">${fmt.dur((Date.now() - GE.live.t0) / 1000).slice(3)}</b>`; $('#statusTime').textContent = 'return'; $('#status .dot').style.background = ''; }
+    else { stt.innerHTML = `${W.window ? 'Replay' : W.live ? 'Live' : cur > 0 ? 'Forecast' : 'Replay'} <span class="alt mono" style="color:${bc}">${band} · ${alt >= 10 ? fmt.n(Math.round(alt)) + ' KM' : alt >= 1 ? alt.toFixed(1) + ' KM' : fmt.n(Math.round(alt * 1000)) + ' M'}</span>`; $('#statusTime').textContent = fmt.utc(simMs, false) + ' UTC'; $('#status .dot').style.background = W.live ? '' : cur > 0 ? 'var(--wx)' : 'var(--gold)'; } }
 };
 GUI.pips = function () {
   const nowMs = Date.now(); const W = GE.world;
@@ -217,5 +220,5 @@ GUI.init = function () {
   $('#btnLens').addEventListener('click', () => { const ids = LENSES.map((l) => l[0]); const i = (ids.indexOf(GE.world.lens) + 1) % ids.length; GE.world.setLens(ids[i]); APP.toast(`${ic('sparkles', 'sm')} ${LENSES[i][1]} lens`); $('#btnLens').classList.toggle('on', ids[i] !== 'cinematic'); });
   $('#btnHome').addEventListener('click', () => { GUI.showPick(null); Cam.flyTo({ range: 2.6, tilt: 0, heading: 0, shiftY: APP.isWide() ? 0 : 0.06 }); });
   $('#btnCompass').addEventListener('click', () => Cam.flyTo({ heading: 0, tilt: 0 }, { duration: 0.8 }));
-  $('#status').addEventListener('click', () => GUI.snapNow());
+  $('#status').addEventListener('click', () => { if (GE.live && GE.live.on) { APP.setTab('capture'); return; } GUI.snapNow(); });
 };

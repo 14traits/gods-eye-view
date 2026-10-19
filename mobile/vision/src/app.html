@@ -129,6 +129,8 @@
   <button class="backbtn circ glass" id="back" aria-label="Back"><svg class="ic"><use href="#i-chevl"/></svg></button>
   <div class="sitbtns" id="sitbtns"><button class="circ glass" id="sitFollow" aria-label="Follow"><svg class="ic"><use href="#i-bellplus"/></svg></button><button class="circ glass" id="sitShare" aria-label="Share"><svg class="ic"><use href="#i-share"/></svg></button></div>
   <div class="sheet glass strong" id="sheet"><div class="grab" id="grab"></div><div class="sc" id="sheetC"></div></div>
+  <div class="rx" id="rx" aria-hidden="true"></div>
+  <div class="roomcomp" id="roomComp"></div>
 
   <div class="ride" id="ride"></div>
   <section id="v-capture" class="view" aria-label="Capture"></section>
@@ -142,7 +144,7 @@
       <button class="tab on" data-tab="now" role="tab"><svg class="ic"><use href="#i-radiowaves"/></svg><span>Now</span></button>
       <button class="tab" data-tab="globe" role="tab"><svg class="ic"><use href="#i-globe"/></svg><span>Globe</span></button>
       <button class="tab" data-tab="capture" role="tab"><svg class="ic"><use href="#i-viewfinder"/></svg><span>Capture</span></button>
-      <button class="tab" data-tab="threads" role="tab"><svg class="ic"><use href="#i-threads"/></svg><span>Threads</span></button>
+      <button class="tab" data-tab="threads" role="tab"><svg class="ic"><use href="#i-threads"/></svg><span>Rooms</span></button>
       <button class="tab" data-tab="you" role="tab"><svg class="ic"><use href="#i-person"/></svg><span>You</span></button>
     </div>
     <button class="accessory glass" id="accMini"></button>
@@ -151,14 +153,17 @@
 
   <div class="morph" id="morph"></div>
   <div class="seal-ov" id="sealOv"></div>
+  <div class="attach-ov" id="attachOv"></div>
   <div class="inspector" id="inspector"></div>
   <div class="toastp glass" id="toast"></div>
   <div class="concept-tag">Concept · illustrative data</div>
   <div class="cold" id="cold">
     <button class="skip glass" id="skip">Skip</button>
-    <svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M2.6 12S6 5.6 12 5.6 21.4 12 21.4 12 18 18.4 12 18.4 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>
-    <div class="word">God’s Eye</div>
-    <div class="tag">The window to the world.</div>
+    <div class="ladder" id="ladder"><div class="lr" data-b="orbit" style="--c:var(--b-orbit)"><i></i><b>ORBIT</b><span>36,000–400 KM</span></div><div class="lr" data-b="sky" style="--c:var(--b-sky)"><i></i><b>SKY</b><span>15 KM</span></div><div class="lr" data-b="ground" style="--c:var(--b-ground)"><i></i><b>GROUND</b><span>0 M</span></div><div class="lr" data-b="inside" style="--c:var(--b-inside)"><i></i><b>INSIDE</b><span>A WITNESS</span></div><div class="lmark" id="lmark"></div></div>
+    <div class="calt mono" id="coldAlt">ALT 35,786 KM</div>
+    <div class="ccap mono" id="coldCap"></div>
+    <div class="cwit" id="coldWit"><canvas id="coldCv" width="440" height="560"></canvas><i class="bk a"></i><i class="bk b"></i><i class="bk c"></i><i class="bk d"></i><svg class="fseal"><use href="#i-seal"/></svg><div class="tele mono" id="coldTele">WITNESS · SEALED · ±4 M</div></div>
+    <div class="cttl"><div class="word">GOD’S EYE</div><div class="tag">From orbit to the witness.</div></div>
   </div>
 </div>
 <!--@TEX-->

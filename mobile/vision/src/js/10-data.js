@@ -279,6 +279,24 @@ const PEOPLE = {
   crowd: { h: 'row_m_seat14', name: 'Lena', hue: 300 },
   news: { h: 'chopper_cam9', name: 'Desk 9', hue: 10 },
   ai: { h: 'claude', name: 'AI (proposal)', hue: 260, ai: true },
+  // round two: people across the bands (all fictional)
+  nadia: { h: 'nadia_basco', name: 'Nadia R.', hue: 18, home: [20.45, 121.97], where: 'Basco, Batanes' },
+  rafa: { h: 'rafa_aparri', name: 'Rafael D.', hue: 140, home: [18.36, 121.64], where: 'Aparri' },
+  mei: { h: 'mei_taitung', name: 'Mei-Ling C.', hue: 345, home: [22.76, 121.14], where: 'Taitung' },
+  joon: { h: 'joon_pilotboat', name: 'Joon-ho P.', hue: 190, domain: 'Mariner', home: [22.61, 120.28], where: 'Kaohsiung' },
+  lin: { h: 'lin_forecasts', name: 'Lin W.', hue: 225, domain: 'Met', where: 'Taipei' },
+  repost: { h: 'breaking_now_24', name: 'breaking_now_24', hue: 0 },
+  aiko: { h: 'aiko_sendai', name: 'Aiko S.', hue: 300, home: [38.27, 140.87], where: 'Sendai' },
+  tetsu: { h: 'tetsu_rail', name: 'Tetsuya O.', hue: 60, domain: 'Rail ops', where: 'Fukushima' },
+  tomas: { h: 'tomas_atc', name: 'Tomás V.', hue: 205, domain: 'Pilot', where: 'Reykjavík' },
+  seat: { h: 'seat_23F', name: 'Passenger, 23F', hue: 40 },
+  ines: { h: 'ines_coimbra', name: 'Inês M.', hue: 330, home: [40.2, -8.42], where: 'Coimbra' },
+  bomb: { h: 'bombeiro_ruiz', name: 'Cpt. Ruiz', hue: 8, domain: 'First responder', home: [40.1, -8.0], where: 'Pampilhosa' },
+  carla: { h: 'carla_avellaneda', name: 'Carla G.', hue: 280, home: [-34.66, -58.37], where: 'Avellaneda' },
+  dev: { h: 'dev_storms', name: 'Devansh K.', hue: 110, domain: 'Storm spotter', where: 'Arlington, TX' },
+  yuki: { h: 'yuki_kagoshima', name: 'Yuki T.', hue: 170, home: [31.6, 130.56], where: 'Kagoshima' },
+  ola: { h: 'ola_tromso', name: 'Ola B.', hue: 150, home: [69.65, 18.96], where: 'Tromsø' },
+  amara: { h: 'amara_lakefront', name: 'Amara J.', hue: 25, home: [41.88, -87.62], where: 'Chicago' },
 };
 
 Object.assign(GE, { AP, apByIata, FLIGHTS, flightAt, OPNAME, LANES, LANE_V, SHIPS, shipAt, SATS, ISS, CSS, satAt, QUAKES, BIGQ, FIRES, FIRE_CLUSTERS, CYCLONE, CITY_V, PEOPLE });

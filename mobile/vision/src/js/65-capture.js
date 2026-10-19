@@ -51,32 +51,42 @@ CAP.enter = function () {
   CAP.render();
   KEY.get();
 };
-CAP.exit = function () { if (!CAP.on) return; CAP.on = false; GE.renderOverride = null; Cam.setRig(null); Cam.rigBlend = 1; $('#sealOv').classList.remove('on'); };
+CAP.exit = function () { if (!CAP.on) return; CAP.on = false; CAP.cover = false; GE.renderOverride = null; Cam.setRig(null); Cam.rigBlend = 1; $('#sealOv').classList.remove('on'); };
+CAP.MODES = [['look', 'Look'], ['witness', 'Witness'], ['live', 'Live'], ['upload', 'Upload']];
+CAP.setMode = function (m) { if (CAP.mode === 'live' && m !== 'live' && CAP.live?.on) { APP.toast(`${ic('live', 'sm')} End the broadcast first`); return; } CAP.mode = m; if (CAP.on) CAP.render(); };
 CAP.render = function () {
-  const el = $('#v-capture'); const last = GE.captures[GE.captures.length - 1];
-  el.innerHTML = `<div class="cap-ui">
+  const el = $('#v-capture'); const last = GE.captures[GE.captures.length - 1]; const m = CAP.mode;
+  const rt = CAP.replyTo && GE.SIT.byId[CAP.replyTo.sit];
+  CAP.cover = m === 'live';
+  el.innerHTML = `<canvas class="livecv ${m === 'live' ? 'on' : ''}" id="liveCv"></canvas><div class="cap-ui m-${m}">
     <svg class="compass-tape" id="ctape"></svg>
     <div class="callouts" id="callouts"></div>
-    <div class="cap-top"><span class="st glass">${ic('location', 'xs')}<span>Simulated camera · ${SPOT.name}</span></span><span class="st glass" id="capMode">${CAP.mode === 'look' ? `${ic('eye', 'xs')}Look · AR` : `${ic('key', 'xs')}Witness · signing`}</span></div>
-    <div class="sensors glass ${CAP.mode === 'witness' ? 'on' : ''}" id="sensors"></div>
+    <div class="cap-top"><span class="st glass">${ic('location', 'xs')}<span>Simulated camera · ${SPOT.name}</span></span><span class="st glass" id="capMode">${{ look: `${ic('eye', 'xs')}Look · AR`, witness: `${ic('key', 'xs')}Witness · signing`, live: `${ic('live', 'xs')}Live · sealed every 10 s`, upload: `${ic('gallery', 'xs')}Upload · unverified` }[m]}</span></div>
+    ${rt ? `<div class="replyto glass">${ic('threads', 'xs')}<span>Replying in <b>${esc(rt.short || rt.title.split(' — ')[0])}</b></span><button id="rtX" aria-label="Cancel reply">${ic('x', 'xs')}</button></div>` : ''}
+    <div class="sensors glass ${m === 'witness' ? 'on' : ''}" id="sensors"></div>
+    <div id="modeHost"></div>
     <div class="cap-bottom">
-      <div class="zooms glass">${[0.5, 1, 3].map((z) => `<button data-z="${z}" class="${CAP.zoom === z ? 'on' : ''}">${z === 0.5 ? '.5' : z}×</button>`).join('')}</div>
-      <div class="dial" id="dial"><button data-m="look" class="${CAP.mode === 'look' ? 'on' : ''}">Look</button><button data-m="witness" class="${CAP.mode === 'witness' ? 'on' : ''}">Witness</button></div>
+      ${m === 'look' || m === 'witness' ? `<div class="zooms glass">${[0.5, 1, 3].map((z) => `<button data-z="${z}" class="${CAP.zoom === z ? 'on' : ''}">${z === 0.5 ? '.5' : z}×</button>`).join('')}</div>` : ''}
+      <div class="dial" id="dial">${CAP.MODES.map(([k, l]) => `<button data-m="${k}" class="${m === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="shutrow"><button class="lastcap" id="lastcap" aria-label="Last capture" style="${last ? `background-image:url(${last.thumb})` : ''}">${last ? '<svg class="seal"><use href="#i-seal"/></svg>' : ''}</button>
-        <button class="shutter ${CAP.mode === 'look' ? 'look' : ''}" id="shutter" aria-label="${CAP.mode === 'look' ? 'Switch to Witness' : 'Capture and sign'}"><i></i></button>
-        <button class="circ glass" id="capFlip" aria-label="Layers in view">${ic('layers')}</button></div>
+        <button class="shutter s-${m} ${CAP.live?.on ? 'rec' : ''}" id="shutter" aria-label="${{ look: 'Switch to Witness', witness: 'Capture and sign', live: CAP.live?.on ? 'End broadcast' : 'Go live', upload: 'Choose a file' }[m]}"><i></i></button>
+        <button class="circ glass" id="capFlip" aria-label="${m === 'live' ? 'See yourself on the globe' : 'Layers in view'}">${ic(m === 'live' ? 'globe' : 'layers')}</button></div>
     </div></div>`;
   el.querySelectorAll('[data-z]').forEach((b) => b.addEventListener('click', () => { CAP.zoom = +b.dataset.z; CAP.syncZoom(); haptic(4); }));
-  el.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { CAP.mode = b.dataset.m; CAP.render(); haptic(6); }));
-  $('#shutter').addEventListener('click', () => { if (CAP.mode === 'look') { CAP.mode = 'witness'; CAP.render(); return; } CAP.shoot(); });
+  el.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { CAP.setMode(b.dataset.m); haptic(6); }));
+  $('#rtX')?.addEventListener('click', () => { CAP.replyTo = null; CAP.render(); });
+  $('#shutter').addEventListener('click', () => { if (m === 'look') { CAP.setMode('witness'); return; } if (m === 'witness') CAP.shoot(); if (m === 'live') (CAP.live?.on ? GE.live.stop() : GE.live.start()); if (m === 'upload') $('#upFile')?.click(); });
   $('#lastcap').addEventListener('click', () => { if (GE.captures.length) GE.you.inspect(GE.captures.length - 1); });
-  $('#capFlip').addEventListener('click', () => APP.toast(`${ic('layers', 'sm')} Showing Sky + Orbit in view`));
+  $('#capFlip').addEventListener('click', () => { if (m === 'live') GE.live.showOnGlobe(); else APP.toast(`${ic('layers', 'sm')} Showing Sky + Orbit in view`); });
+  if (m === 'live') GE.live.renderUI($('#modeHost'));
+  if (m === 'upload') GE.upload.renderUI($('#modeHost'));
 };
 CAP.syncZoom = () => $$('#v-capture [data-z]').forEach((x) => x.classList.toggle('on', +x.dataset.z === CAP.zoom));
 
 /* ---------- per-frame AR overlay ---------- */
 CAP.frame = function (view) {
   if (!CAP.on) return;
+  if (CAP.mode === 'live' || CAP.mode === 'upload') { GE.live.frame(); return; }
   const W = GE.world; const t = CAP.t + (performance.now() / 1000 - (CAP._t0 || (CAP._t0 = performance.now() / 1000)));
   const host = $('#callouts'); if (!host) return;
   // compass tape
@@ -158,8 +168,8 @@ CAP.ceremony = function (b, cv) {
     <div class="step" data-s="3"><span class="ck">${ic('check', 'xs')}</span><div><b>Bundle hash</b><div class="h" id="sh3">…</div></div></div>
     <div class="step" data-s="4"><span class="ck">${ic('check', 'xs')}</span><div><b>Signed</b> · ECDSA P-256, key generated on device, non-extractable<div class="h" id="sh4">…</div></div></div>
   </div>
-  <div class="btnrow" id="bbtns" style="opacity:.35;pointer-events:none"><button class="btn gold" id="bdrop">${ic('cube', 'sm')}Drop as hologram here</button></div>
-  <div class="btnrow" id="bbtns2" style="opacity:.35;pointer-events:none"><button class="btn" id="bver">${ic('check', 'sm')}Verify</button><button class="btn" id="bdone">Done</button></div>
+  <div class="btnrow" id="bbtns" style="opacity:.35;pointer-events:none"><button class="btn gold" id="bdrop">${ic('threads', 'sm')}Attach &amp; post</button></div>
+  <div class="btnrow" id="bbtns2" style="opacity:.35;pointer-events:none"><button class="btn" id="bver">${ic('check', 'sm')}Verify</button><button class="btn" id="bdone">Keep private</button></div>
   <p style="margin:0;font-size:11px;color:var(--text3);text-align:center">None of this proves truth. It raises the cost of lying.</p></div>`;
   const ph = $('#bph'); const c2 = document.createElement('canvas'); c2.width = 600; c2.height = 450; c2.getContext('2d').drawImage(cv, 0, 0, 600, 450); ph.prepend(c2);
   ov.classList.add('on');
@@ -173,7 +183,7 @@ CAP.ceremonyFill = async function (b) {
   $(`.step[data-s="4"]`).classList.add('on'); await stream('sh4', b.sig ? b.sig : 'WebCrypto unavailable here — bundle hashed but unsigned'); await step(4);
   $('#bigseal').classList.add('on'); haptic([10, 40, 20]);
   for (const id of ['bbtns', 'bbtns2']) { const e = $('#' + id); e.style.opacity = 1; e.style.pointerEvents = 'auto'; }
-  $('#bdrop').addEventListener('click', () => { GE.world.userHolos.push({ lat: b.lat, lon: b.lon, title: 'Your capture · ' + b.place, by: 'you', at: b.at }); b.dropped = true; $('#sealOv').classList.remove('on'); APP.toast(`${ic('cube', 'sm')} Hologram dropped · visible to people here`); CAP.render(); GE.you.render(); });
+  $('#bdrop').addEventListener('click', () => { $('#sealOv').classList.remove('on'); GE.attach.open({ kind: 'witness', tier: 'sealed', img: b.thumb, lat: b.lat, lon: b.lon, at: b.at, place: b.place, hash: b.hash, cap: b }); });
   $('#bver').addEventListener('click', () => { $('#sealOv').classList.remove('on'); GE.you.inspect(GE.captures.indexOf(b)); });
   $('#bdone').addEventListener('click', () => { $('#sealOv').classList.remove('on'); CAP.render(); GE.you.render(); });
 };

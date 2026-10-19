@@ -156,12 +156,20 @@ THR.init = async function () {
 /* ---------- list ---------- */
 THR.render = function () {
   const v = $('#v-threads');
-  v.innerHTML = `<div class="tlist" id="tlist" style="background:var(--bg);min-height:100%"><div class="navbar">Threads</div><div class="lt"><div class="kicker">${ic('seal', 'xs')} Signed evidence · open ledgers</div><div class="row"><h1>Threads</h1><span class="concept" style="margin-bottom:8px">${ic('sparkles', 'xs')} Concept · illustrative data</span></div></div>
-  <div class="livebar" style="padding-bottom:14px"><span class="presence"><span class="stack">${['kora', 'hydro', 'tamang', 'geo', 'sky'].map((k) => `<span class="avatar sm on" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></span><span><b class="num">37</b> people reconstructing now</span></div>
+  v.innerHTML = `<div class="tlist" id="tlist" style="background:var(--bg);min-height:100%"><div class="navbar">Rooms</div><div class="lt"><div class="kicker mono">${ic('threads', 'xs')} CONVERSATIONS ON THE EVIDENCE</div><div class="row"><h1>Rooms</h1><span class="concept" style="margin-bottom:8px">${ic('sparkles', 'xs')} Concept · illustrative data</span></div></div>
+  <div class="livebar" style="padding-bottom:6px"><span class="presence"><span class="stack">${['nadia', 'lin', 'aiko', 'tomas', 'ines'].map((k) => GE.avatarHTML(k)).join('')}</span></span><span><b class="num">${fmt.n(Object.values(GE.rooms.byId).reduce((a, r) => a + r.watching, 0) || 9400)}</b> people in rooms now</span></div>
+  <div class="rooms-why">Every situation has a room. Posts are <b>Witness</b>, <b>Context</b>, <b>Question</b>, <b>Correction</b> or <b>Prediction</b>, ordered by evidence — never by followers.</div>
+  <div class="sec-h"><h2>Live rooms</h2><span>heating up</span></div><div id="roomsLive" class="rooms-live"></div>
+  <div class="sec-h"><h2>Reconstructions</h2><span>4D · signed · open ledgers</span></div>
   ${Object.values(THREADS).map((T) => { const s = GE.SIT.byId[T.sit]; return `<article class="tcard" data-t="${T.id}" data-id="${T.sit}"><div class="thumb"><canvas width="640" height="360"></canvas><div class="bl"><div><h3>${esc(T.title)}</h3><p>${esc(T.place)} · ${esc(T.date)}</p></div><span class="badge d4">4D</span></div></div><div class="stats"><div><b>${T.obs.length}</b>observations</div><div><b>${T.hyps.length}</b>hypotheses</div><div><b>${THR.ledgers[T.id]?.length || '–'}</b>ledger</div><span class="stack">${T.people.slice(0, 4).map((k) => `<span class="avatar sm" style="--h:${P[k].hue}">${P[k].h[0].toUpperCase()}</span>`).join('')}</span></div></article>`; }).join('')}
   <div style="padding:6px 14px 150px"><button class="btn" style="width:100%" id="newThread">${ic('plus', 'sm')}Start a reconstruction</button><p style="font-size:11.5px;color:var(--text3);text-align:center;margin-top:12px">Concept · illustrative data. Witness posts, handles and claims are fictional.</p></div></div>
   <div class="ws" id="ws"></div>`;
   $('#newThread').addEventListener('click', () => APP.toast(`${ic('threads', 'sm')} New thread · add your first observation`));
+  const host = $('#roomsLive'); const sq = GE.feed.squawkTrack();
+  const extra = [{ id: 'room-sq', arch: 'room', band: 'inside', sit: 'squawk', title: 'Squawk 7700 over the North Atlantic', place: 'Diverting to ' + sq.div.iata, lat: sq.cur[0], lon: sq.cur[1], ago: 3, ev: [['cabin', { seed: 81 }], ['track', { track: sq }]] }, { id: 'room-fi', arch: 'room', band: 'inside', sit: 'fires', title: 'Central Portugal fires', place: 'N2 · Pampilhosa da Serra', lat: 40.13, lon: -8.05, ago: 8, ev: [['firewit', { seed: 71 }], ['firesat', {}]] }];
+  const mine = GE.feed.user.filter((x) => x.sit && !['cyclone', 'quake', 'squawk', 'fires'].includes(x.sit)).map((x) => ({ id: 'room-' + x.sit, arch: 'room', band: 'inside', sit: x.sit, title: GE.SIT.byId[x.sit].title, place: GE.SIT.byId[x.sit].place, lat: x.lat, lon: x.lon, ago: 0 }));
+  const items = [...mine, ...GE.feed.items().filter((x) => x.arch === 'room' && !x.recon), ...extra];
+  for (const x of items) { x.at = x.at || NOW - (x.ago || 1) * 60000; x.dist = GE.feed.distFromMe(x.lat, x.lon); x.wide = true; host.append(GE.now.cardEl(x)); }
   $$('.tcard').forEach((c) => {
     c.addEventListener('click', () => THR.openWs(c.dataset.t));
     const cv = c.querySelector('canvas'); const s = GE.SIT.byId[c.dataset.id]; const done = GE.thumbs.done.get(s.id);

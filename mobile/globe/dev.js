@@ -48,7 +48,7 @@ const drawLabels = () => {
   labelLayer.replaceChildren(
     ...globe.labels(40).map((l) => {
       const el = document.createElement('span');
-      el.textContent = l.title;
+      el.textContent = l.detail ? `${l.title} · ${l.detail}` : l.title;
       el.style.left = `${l.x}px`;
       el.style.top = `${l.y}px`;
       return el;

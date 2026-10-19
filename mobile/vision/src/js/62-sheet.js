@@ -1,7 +1,7 @@
 /* Situation sheet: detents (peek / medium / large), drag with velocity snapping, the world always
    wins (touching the globe collapses to peek). Tufte-grade brief: direct-labelled sparklines with
    uncertainty, small multiples rendered from the globe, evidence strip, every number sourced + aged. */
-const SH = (GE.sheet = { id: null, detent: 'medium' });
+const SH = (GE.sheet = { id: null, detent: 'medium', seg: 'room' });
 const sheetEl = () => $('#sheet');
 SH.heights = function () {
   const H = $('#app').clientHeight; const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
@@ -19,7 +19,7 @@ SH.setDetent = function (d, animate = true) {
 SH.open = function (id, o = {}) {
   const s = GE.SIT.byId[id]; if (!s) return;
   const W = GE.world;
-  SH.id = id; SH.sit = s;
+  SH.fromTab = APP.mode === 'situation' ? SH.fromTab : APP.tab; SH.id = id; SH.sit = s; SH.opts = o; SH.seg = o.seg || 'room';
   if (APP.tab !== 'globe' && !APP.isWide()) { APP.tab = 'globe'; $('#app').dataset.tab = 'globe'; $$('.tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === 'globe')); $$('.pane .view').forEach((v) => v.classList.remove('on')); APP.moveLens(); }
   APP.setMode('situation');
   // layers & time window
@@ -28,9 +28,9 @@ SH.open = function (id, o = {}) {
   bus.emit('layers', W.layers);
   if (s.time) { W.setWindow({ start: s.time.start ?? s.time.at - 6 * 3600000, end: s.time.end ?? s.time.at + 6 * 3600000 }); W.setTime(s.time.at); }
   W.auroraK = s.auroraK ?? 0.85;
-  GE.setExtras && GE.setExtras(s.id); GE.setLabels3d(s.thread ? GE.threads.data[s.thread].labels : s.labels3d);
+  GE.setExtras && GE.setExtras(s.id); GE.setLabels3d(s.thread ? GE.threads.data[s.thread].labels : s.labels3d); GE.roomUI.labels(s, o.post);
   // camera
-  const cam = GE.SIT.cameraFor(s);
+  const cam = o.cam || GE.SIT.cameraFor(s);
   const hs = SH.heights();
   const shiftY = APP.isWide() ? 0 : hs.medium / hs.H;
   SH.targetShift = shiftY;
@@ -48,13 +48,14 @@ SH.open = function (id, o = {}) {
 SH.close = function (silent, keepTime) {
   if (!SH.id) return; const id = SH.id; const W = GE.world;
   const el = sheetEl(); el.classList.remove('drag', 'wopen'); el.style.transform = APP.isWide() ? '' : 'translateY(100%)';
-  SH.id = null; W.focus = null; GE.setExtras && GE.setExtras(null); GE.setLabels3d(null);
+  SH.id = null; W.focus = null; GE.setExtras && GE.setExtras(null); GE.setLabels3d(null); GE.roomUI.composer(false);
   if (SH._savedLayers) { W.layers.forEach((l, i) => (l.on = SH._savedLayers[i])); SH._savedLayers = null; bus.emit('layers', W.layers); }
   if (!keepTime) { W.setWindow(null); W.setTime(null); } W.auroraK = 0.85;
   APP.setMode('');
   if (silent) return;
   const fromNow = !APP.isWide() && GE.now && $(`#v-now .card[data-id="${id}"]`);
-  if (fromNow) { APP.setTab('now', { force: true }); requestAnimationFrame(() => GE.now.foldBack(id)); }
+  if (SH.fromTab === 'threads' || SH.fromTab === 'you') APP.setTab(SH.fromTab, { force: true });
+  else if (fromNow) { APP.setTab('now', { force: true }); requestAnimationFrame(() => GE.now.foldBack(id)); }
   else { Cam.flyTo({ range: Math.max(Cam.range * 3, 0.6), shiftY: APP.isWide() ? 0 : 0.06, tilt: 0 }); }
 };
 
@@ -127,8 +128,26 @@ function barsSVG(items, w) {
   items.forEach(([k, v], i) => { const y = i * 22; s += `<text x="0" y="${y + 14}" font-size="12" fill="rgba(232,238,248,.75)" font-family="var(--font)">${k}</text><rect x="92" y="${y + 6}" width="${(w - 132) * v}" height="10" rx="3" fill="rgba(124,196,255,.55)"/><text x="${92 + (w - 132) * v + 6}" y="${y + 15}" font-size="11" fill="rgba(232,238,248,.55)" font-family="var(--font)">${Math.round(v * 100)}</text>`; });
   return `<svg viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}">${s}</svg>`;
 }
+const bandOfSit = (s) => (GE.now?._item?.sit === s.id ? GE.now._item.band : { orbit: 'orbit', sky: 'sky', wx: 'sky', eyes: 'ground' }[s.fam] || 'ground');
 SH.render = function (s) {
-  const c = GE.FAM[s.fam].color; const el = $('#sheetC');
+  const el = $('#sheetC'); const b = bandOfSit(s); const B = GE.BANDS[b]; const room = GE.rooms.get(s.id);
+  const live = s.live ? `<span class="badge live"><span class="dot pulse"></span>Live</span>` : s.d4 ? `<span class="badge d4">4D</span>` : `<span class="badge replay">Replay</span>`;
+  const ppl = [...new Set(room.posts.map((p) => p.by))].slice(0, 5);
+  el.innerHTML = `<div class="sh-hd"><div class="t"><div class="tags" style="--c:${B.c}"><span class="bt">${B.name.toUpperCase()}</span>${live}<span class="age num" data-sage>${fmt.ago(Date.now() - s.updatedAt)}</span></div>
+    <h2>${esc(s.title)}</h2><div class="pl">${esc(s.place)} · <span class="mono">${fmt.ll(s.lat, s.lon, 2)}</span> · <b>${GE.feed.fmtDist(GE.feed.distFromMe(s.lat, s.lon))}</b> from you</div></div></div>
+    <div class="presence-row"><span class="stack">${ppl.map((k) => GE.avatarHTML(k)).join('')}</span><span><b class="num" data-watch>${fmt.n(room.watching)}</b> watching</span><span class="rate">${room.rate} posts/min</span></div>
+    <div class="seg2" id="shSegs"><button data-seg="room" class="${SH.seg === 'room' ? 'on' : ''}">${ic('threads', 'xs')}Room <span class="num">${room.posts.length}</span></button><button data-seg="brief" class="${SH.seg === 'brief' ? 'on' : ''}">${ic('signal', 'xs')}Brief &amp; sources</button></div>
+    <div id="shSeg"></div>`;
+  el.querySelectorAll('[data-seg]').forEach((bt) => bt.addEventListener('click', () => { SH.seg = bt.dataset.seg; el.querySelectorAll('[data-seg]').forEach((x) => x.classList.toggle('on', x === bt)); SH.renderSeg(s); haptic(4); }));
+  SH.renderSeg(s);
+};
+SH.renderSeg = function (s) {
+  const host = $('#shSeg'); GE.roomUI.composer(SH.seg === 'room');
+  if (SH.seg === 'room') { GE.roomUI.render(host, s, { post: SH.opts?.post }); return; }
+  SH.renderBrief(s, host);
+};
+SH.renderBrief = function (s, el) {
+  const c = GE.FAM[s.fam].color;
   const ms = s.metrics();
   const live = s.live ? `<span class="badge live"><span class="dot pulse"></span>Live</span>` : s.d4 ? `<span class="badge d4">4D</span>` : `<span class="badge replay">Replay</span>`;
   const acts = [
@@ -139,8 +158,6 @@ SH.render = function (s) {
   ].join('');
   const b = s.brief || {};
   el.innerHTML = `
-  <div class="sh-hd"><div class="t"><div style="display:flex;gap:6px;align-items:center"><span class="badge fam" style="--c:${c}"><i></i>${GE.FAM[s.fam].name}</span>${live}<span style="font-size:12px;color:var(--text3)" class="num" data-sage>${fmt.ago(Date.now() - s.updatedAt)}</span></div>
-    <h2>${esc(s.title)}</h2><div class="pl">${esc(s.place)} · <span class="mono">${fmt.ll(s.lat, s.lon, 2)}</span></div></div></div>
   <div class="metrics" id="shMetrics">${ms.map((m) => `<div class="metric"><div class="v">${m.v}<small>${m.u}</small></div><div class="l">${m.l}</div><div class="s">${m.s}</div></div>`).join('')}</div>
   <div class="acts sh-acts">${acts}</div>
   <div class="brief">

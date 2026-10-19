@@ -6,6 +6,30 @@
  * an adaptive pixel-ratio governor, a single-full-res-pass post chain, and
  * live layers drawn with batched billboards and polylines (never Entities,
  * never Cesium labels).
+ *
+ * Round-two contract additions (full notes in ./API.md):
+ *
+ *   globe.setViewer({ lon, lat } | null) / globe.viewer()
+ *   globe.situations({ observer? }) → Promise<Situation[]>, each Situation now
+ *     also has band: 'orbit'|'sky'|'ground'|'inside',
+ *     archetype: 'sensor'|'eye'|'track'|'number', telemetry: string,
+ *     media?: { kind:'image', url, refreshMs, cameraId, headingDeg? },
+ *     series?: [{ t, v }], seriesLabel?, headline?: { value, unit, label },
+ *     distanceKm? (once a viewer is known)
+ *   globe.omitted() → [{ genre, reason }]   globe.timings() → { genre: ms }
+ *   globe.thumbnail(situation, { width=360, height=480, dpr=2 })
+ *     → Promise<string> (blob: URL of a composited JPEG; never the viewer)
+ *   globe.addPin({ id, lon, lat, kind:'post'|'witness'|'eye'|'live'|'hologram',
+ *     headingDeg?, fovDeg?, rangeM?, color?, label?, altM? }) → id
+ *   globe.removePin(id) → boolean      globe.pins() → Pin[]
+ *     'pick' → { kind:'pin', pinKind, id, title, subtitle, lon, lat, meta }
+ *   globe.nearestEye(lon, lat, km=50)
+ *     → Promise<{ id, title, lon, lat, distanceKm, headingDeg, fovDeg,
+ *                 imageUrl, city, provider } | null>
+ *   globe.eyeFrameUrl(cameraId) → string | null
+ *   labels() entries may carry `detail` ('CAT 2 · 85 KT · 974 HPA', 'SQ 7700')
+ *   New layers: radar, clouds, lightning, wind, jet, air-quality, gnss,
+ *     transit; cyclones gain a filled cone and NHC wind radii.
  */
 import * as Cesium from 'cesium';
 import { createImagery } from './imagery.js';
@@ -30,6 +54,19 @@ import {
   createTleFeed,
   createVesselsFeed,
 } from './feeds.js';
+import {
+  createAirQualityFeed,
+  createJetFeed,
+  createRegionalFlights,
+  createTcmFeed,
+  createTransitCatalogFeed,
+  createWeatherManifestFeed,
+  createWindFeed,
+} from './feedsWeather.js';
+import { cctvFrameUrl, flightFromState } from './feeds.js';
+import { createPins } from './pins.js';
+import { createCompositor } from './compositor.js';
+import { haversineKm } from './geo.js';
 import { applyModelAtmosphereWorkaround } from '../../src/app/atmosphereCompat.js';
 
 export { LENSES, FAMILIES };
@@ -46,6 +83,7 @@ export const DEFAULT_LAYERS = Object.freeze([
 
 const LABEL_PRIORITY = [
   'squawk',
+  'air-quality',
   'iss',
   'cyclones',
   'launches',
@@ -67,6 +105,7 @@ const LABEL_PRIORITY = [
 
 const PLANETARY_LABELS = new Set([
   'squawk',
+  'air-quality',
   'iss',
   'cyclones',
   'launches',
@@ -93,6 +132,14 @@ const DATA_CREDITS = {
   floods:
     'Bhote Koshi: GeoPera river centerline (CC BY-NC 4.0), Vantor (Maxar) Open Data',
   cctv: 'Cameras: public agency traffic camera feeds (see per-camera provider)',
+  radar: 'Radar: NOAA/NWS MRMS via nowCOAST',
+  clouds: 'Satellite IR: NOAA/NESDIS via nowCOAST',
+  lightning: 'Lightning: NOAA/NWS nowCOAST (Vaisala NLDN/GLD360)',
+  wind: 'Wind: NOAA GFS / Open-Meteo',
+  jet: 'Jet stream: Open-Meteo (250 hPa)',
+  'air-quality': 'Air quality: Open-Meteo / Copernicus CAMS',
+  gnss: 'GNSS integrity: adsb.lol (ODbL), gpsjam.org method',
+  transit: 'Transit: agency GTFS-realtime feeds (see per-feed credit)',
 };
 
 function viewerOptions(creditContainer, options) {
@@ -266,6 +313,15 @@ export async function createGlobe(container, options = {}) {
     cyclones: createCyclonesFeed(eonet),
     cctv: createCctvFeed(),
     flood: createFloodFeed(),
+    radar: createWeatherManifestFeed('radar'),
+    clouds: createWeatherManifestFeed('clouds'),
+    lightning: createWeatherManifestFeed('lightning'),
+    wind: createWindFeed(),
+    jet: createJetFeed(),
+    tcm: createTcmFeed(),
+    airQuality: createAirQualityFeed(),
+    transitCatalog: createTransitCatalogFeed(),
+    regionalFlights: createRegionalFlights(flightFromState),
   };
 
   let layersTimer = null;
@@ -285,6 +341,24 @@ export async function createGlobe(container, options = {}) {
     },
   };
   const layers = buildLayers(ctx, feeds);
+  const pins = createPins({ scene, requestRender });
+  const compositor = createCompositor({ feeds });
+  // Slow keyless sources warm in the background so the first feed has them.
+  setTimeout(() => {
+    for (const f of [
+      feeds.jet,
+      feeds.tcm,
+      feeds.airQuality,
+      feeds.cctv,
+      feeds.lightning,
+      feeds.radar,
+      feeds.clouds,
+    ])
+      f.get().catch(() => {});
+  }, 1500);
+  let viewerPos = opts.observer
+    ? { lon: opts.observer.lon, lat: opts.observer.lat }
+    : null;
 
   // ── Selection visuals ────────────────────────────────────────────
   const selectionRoot = scene.primitives.add(new Cesium.PrimitiveCollection());
@@ -437,7 +511,15 @@ export async function createGlobe(container, options = {}) {
   handler.setInputAction((movement) => {
     const picked = scene.pick(movement.position, 30, 30);
     const id = picked?.id;
-    if (id && typeof id === 'object' && id.layer && layers.has(id.layer)) {
+    if (id && typeof id === 'object' && id.layer === 'pins') {
+      if (selected) api.select(null);
+      emit('pick', pins.pick(id.key));
+    } else if (
+      id &&
+      typeof id === 'object' &&
+      id.layer &&
+      layers.has(id.layer)
+    ) {
       api.select({ layer: id.layer, id: id.key });
       emit('pick', selected?.pick ?? null);
     } else {
@@ -458,6 +540,7 @@ export async function createGlobe(container, options = {}) {
       drawSelection();
       moved = true;
     }
+    if (pins.tick()) moved = true;
     if (moved) requestRender();
   }, 1000);
 
@@ -751,10 +834,92 @@ export async function createGlobe(container, options = {}) {
     },
 
     situations(extra = {}) {
-      return buildSituations(
-        { feeds, timeMs },
-        { observer: extra.observer ?? opts.observer },
-      );
+      const observer = extra.observer ?? viewerPos ?? opts.observer;
+      return buildSituations({ feeds, timeMs }, { observer }).then((list) => {
+        if (observer && Number.isFinite(observer.lat))
+          for (const s of list)
+            s.distanceKm = Math.round(
+              haversineKm(observer.lat, observer.lon, s.lat, s.lon),
+            );
+        return list;
+      });
+    },
+
+    /** Genres the last situations() call left out, and why (for QA/UI). */
+    omitted() {
+      return buildSituations.lastOmitted || [];
+    },
+
+    /** Per-genre build times (ms since the feeds resolved) of the last call. */
+    timings() {
+      return buildSituations.lastTimings || {};
+    },
+
+    /** Where the person is (for distanceKm and "near you"); null clears. */
+    setViewer(pos) {
+      viewerPos =
+        pos && Number.isFinite(pos.lon) && Number.isFinite(pos.lat)
+          ? { lon: pos.lon, lat: pos.lat }
+          : null;
+      emit('viewer', viewerPos);
+    },
+
+    viewer() {
+      return viewerPos ? { ...viewerPos } : null;
+    },
+
+    /** Card compositor: Promise<object URL> (see API.md). */
+    thumbnail(situation, options) {
+      return compositor.thumbnail(situation, options);
+    },
+
+    addPin(pin) {
+      return pins.add(pin);
+    },
+
+    removePin(id) {
+      return pins.remove(id);
+    },
+
+    pins() {
+      return pins.list();
+    },
+
+    /** Nearest public camera within `km`, from the CCTV catalog. */
+    async nearestEye(lon, lat, km = 50) {
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      let data;
+      try {
+        data = await feeds.cctv.get();
+      } catch {
+        return null;
+      }
+      let best = null;
+      for (const c of data.records) {
+        if (Math.abs(c.lat - lat) > km / 100 + 0.5) continue;
+        const d = haversineKm(lat, lon, c.lat, c.lon);
+        if (d <= km && (!best || d < best.d)) best = { c, d };
+      }
+      if (!best) return null;
+      const c = best.c;
+      return {
+        id: c.id,
+        title: c.name,
+        lon: c.lon,
+        lat: c.lat,
+        distanceKm: Math.round(best.d * 100) / 100,
+        headingDeg: c.heading,
+        fovDeg: c.fovDeg,
+        imageUrl: cctvFrameUrl(c),
+        city: c.city,
+        provider: c.provider,
+      };
+    },
+
+    /** A fresh same-origin frame URL for a catalog camera (or null). */
+    eyeFrameUrl(cameraId) {
+      const c = feeds.cctv.data?.records.find((r) => r.id === cameraId);
+      return c ? cctvFrameUrl(c) : null;
     },
 
     credits() {
@@ -803,6 +968,7 @@ export async function createGlobe(container, options = {}) {
         if (!glyphs) continue;
         // Semantic zoom for words too: from orbit only the headline layers.
         if (planetary && !PLANETARY_LABELS.has(layer.id)) continue;
+        if (layer.id === 'lightning') continue; // the glow is the label
         const rank = LABEL_PRIORITY.indexOf(layer.id);
         for (let i = 0; i < glyphs.length; i++) {
           const bb = glyphs.get(i);
@@ -820,6 +986,19 @@ export async function createGlobe(container, options = {}) {
             score: (isSelected ? -100 : 0) + (rank < 0 ? 20 : rank) + d * 4,
           });
         }
+      }
+      for (let i = 0; i < pins.billboards.length; i++) {
+        const bb = pins.billboards.get(i);
+        if (!occluder.isPointVisible(bb.position)) continue;
+        const p = scene.cartesianToCanvasCoordinates(bb.position, scratch);
+        if (!p || p.x < 0 || p.y < 0 || p.x > w || p.y > h) continue;
+        candidates.push({
+          layer: { id: 'pins', pick: (key) => pins.pick(key) },
+          key: bb.id.key,
+          x: p.x,
+          y: p.y,
+          score: -50,
+        });
       }
       candidates.sort((a, b) => a.score - b.score);
       // Greedy placement: a label never overlaps one already placed.
@@ -854,6 +1033,8 @@ export async function createGlobe(container, options = {}) {
           layer: c.layer.id,
           kind: pick.kind,
           title: pick.title,
+          ...(pick.labelDetail ? { detail: pick.labelDetail } : {}),
+          ...(pick.pinKind ? { pinKind: pick.pinKind } : {}),
           x: c.x,
           y: c.y,
         });
@@ -886,6 +1067,8 @@ export async function createGlobe(container, options = {}) {
       removeMoveEnd();
       handler.destroy();
       for (const layer of layers.values()) layer.destroy();
+      pins.destroy();
+      compositor.destroy();
       governor.destroy();
       post.destroy();
       viewer.destroy();
