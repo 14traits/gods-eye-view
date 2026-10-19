@@ -418,6 +418,19 @@ export function parseTcm(text) {
       quadrantsKm: [m[2], m[3], m[4], m[5]].map((x) => Number(x) * NM_KM),
     });
   }
+  // Forecast and outlook positions (used when the cone geometry is pending).
+  const forecast = [];
+  for (const m of text.matchAll(
+    /(?:FORECAST|OUTLOOK) VALID\s+(\d\d)\/(\d\d)(\d\d)Z\s+(\d+\.\d)([NS])\s+(\d+\.\d)([EW])[\s\S]*?MAX WIND\s+(\d+) KT/g,
+  )) {
+    forecast.push({
+      day: Number(m[1]),
+      hourZ: Number(m[2]),
+      lat: Number(m[4]) * (m[5] === 'S' ? -1 : 1),
+      lon: Number(m[6]) * (m[7] === 'W' ? -1 : 1),
+      windKt: Number(m[8]),
+    });
+  }
   const pressure = /MINIMUM CENTRAL PRESSURE\s+(\d+) MB/.exec(text)?.[1];
   const maxWind = /MAX SUSTAINED WINDS\s+(\d+) KT/.exec(block ? text : '')?.[1];
   return {
@@ -425,6 +438,7 @@ export function parseTcm(text) {
     lat,
     lon,
     radii,
+    forecast,
     pressureHpa: pressure ? Number(pressure) : null,
     windKt: maxWind ? Number(maxWind) : null,
   };

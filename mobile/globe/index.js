@@ -969,6 +969,7 @@ export async function createGlobe(container, options = {}) {
         // Semantic zoom for words too: from orbit only the headline layers.
         if (planetary && !PLANETARY_LABELS.has(layer.id)) continue;
         if (layer.id === 'lightning') continue; // the glow is the label
+        const crowd = layer.id === 'transit'; // hundreds of buses: selected only
         const rank = LABEL_PRIORITY.indexOf(layer.id);
         for (let i = 0; i < glyphs.length; i++) {
           const bb = glyphs.get(i);
@@ -977,6 +978,7 @@ export async function createGlobe(container, options = {}) {
           if (!p || p.x < 0 || p.y < 0 || p.x > w || p.y > h) continue;
           const isSelected =
             selected?.layer === layer.id && selected?.key === bb.id.key;
+          if (crowd && !isSelected) continue;
           const d = Math.hypot(p.x - w / 2, p.y - h / 2) / Math.max(w, h);
           candidates.push({
             layer,

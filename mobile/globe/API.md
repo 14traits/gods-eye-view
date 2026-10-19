@@ -101,3 +101,13 @@ globe.eyeFrameUrl(cameraId) → string | null   // a fresh same-origin frame URL
 Rasters are drawn a few kilometres above the ground and unlit, so storms stay visible on the night side. When an upstream is down, the layer reports `status: 'error'` with a `message`.
 
 When a weather layer is on, `layers()` entries can also carry `frames` (the number of frames available) and a `message` that gives the product title and the frame age.
+
+When NHC has published an advisory but its cone geometry is still pending, the cyclone layer and cards take the forecast positions from the advisory text, so a track is still drawn but there is no cone.
+
+## Dev harnesses
+
+- `mobile/globe/dev.html` shows the globe full-screen and exposes `window.globe`. Its labels show `detail`.
+- `mobile/globe/contact.html` is the contact sheet: it calls `situations()`, then `thumbnail()` for every card.
+  - `?lat=&lon=` sets the viewer.
+  - `?only=cyclone,eye` filters cards by id prefix.
+  - `?w=330` sets the card width.

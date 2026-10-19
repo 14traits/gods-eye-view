@@ -685,12 +685,12 @@ const SCENE_DRAW = {
     );
     const box = bb || sc.bounds;
     const colors = [
-      'rgba(255,250,225,1)',
-      'rgba(255,214,120,0.85)',
-      'rgba(255,150,80,0.7)',
-      'rgba(240,90,160,0.55)',
-      'rgba(170,90,255,0.45)',
-      'rgba(110,90,255,0.35)',
+      'rgba(255,255,255,1)',
+      'rgba(255,226,122,0.75)',
+      'rgba(255,150,70,0.6)',
+      'rgba(255,85,150,0.5)',
+      'rgba(176,107,255,0.42)',
+      'rgba(106,107,255,0.34)',
     ];
     // Sample at the product's native ~8 km grid, one dot per cell.
     const kmPerPx =
@@ -722,7 +722,7 @@ const SCENE_DRAW = {
             continue;
           const lvl = strikeLevel(px[k], px[k + 1], px[k + 2]);
           const r =
-            dotR * (age === 0 ? 1.9 : 1.1 - age * 0.08) * (0.7 + lvl * 0.3);
+            dotR * (age === 0 ? 0.85 : 1.6 - age * 0.1) * (0.75 + lvl * 0.2);
           g.drawImage(sprite, sx - r, sy - r, r * 2, r * 2);
         }
     });

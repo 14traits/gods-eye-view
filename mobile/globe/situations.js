@@ -412,7 +412,17 @@ export async function buildSituations(engine, { observer } = {}) {
         'Storm';
       const kmh = s.windKt ? Math.round(s.windKt * 1.852) : null;
       const lastTau = s.forecast?.at(-1)?.tauHours ?? 0;
-      const radii = radiiFor(s, tcm)?.radii || null;
+      const adv = radiiFor(s, tcm);
+      const radii = adv?.radii || null;
+      // NHC sometimes publishes an advisory before its cone geometry: the
+      // TCM text still carries the forecast positions.
+      const forecast = s.forecast?.length
+        ? s.forecast
+        : (adv?.forecast || []).map((p) => ({
+            lon: p.lon,
+            lat: p.lat,
+            windKt: p.windKt,
+          }));
       const r34 = radii?.find((r) => r.kt === 34);
       const cat = stormCategory(s.windKt);
       return card(
@@ -485,7 +495,7 @@ export async function buildSituations(engine, { observer } = {}) {
             lat: s.lat,
             windKt: s.windKt,
             cone: s.cone,
-            forecast: s.forecast || [],
+            forecast,
             pastTrack: s.pastTrack || null,
             track: s.track || null,
             radii,

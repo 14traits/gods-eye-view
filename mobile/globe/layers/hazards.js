@@ -345,6 +345,7 @@ class CycloneLayer extends Layer {
     if (this.fills) this.root.remove(this.fills);
     this.fills = null;
     const instances = [];
+    let relined = false;
     const poly = (ring, css, alpha, height) => {
       if (!ring || ring.length < 4) return;
       instances.push(
@@ -368,6 +369,32 @@ class CycloneLayer extends Layer {
       poly(outerRing(s.cone), '#FFFFFF', 0.1, 1500);
       const tcm = radiiFor(s, this.tcm?.data);
       if (tcm) s.radii = tcm.radii;
+      // Cone geometry pending: the advisory text still has the positions.
+      if (tcm?.forecast?.length && !s.forecast?.length) {
+        const t0 = new Date(s.t);
+        s.forecast = tcm.forecast.map((p) => {
+          let at = Date.UTC(
+            t0.getUTCFullYear(),
+            t0.getUTCMonth(),
+            p.day,
+            p.hourZ,
+          );
+          if (at < s.t - 15 * 86_400_000)
+            at = Date.UTC(
+              t0.getUTCFullYear(),
+              t0.getUTCMonth() + 1,
+              p.day,
+              p.hourZ,
+            );
+          return {
+            lon: p.lon,
+            lat: p.lat,
+            windKt: p.windKt,
+            tauHours: Math.round((at - s.t) / 3_600_000),
+          };
+        });
+        relined = true;
+      }
       for (const r of [...(s.radii || [])].sort((a, b) => a.kt - b.kt)) {
         if (!r.quadrantsKm.some((k) => k > 0)) continue;
         poly(
@@ -378,6 +405,7 @@ class CycloneLayer extends Layer {
         );
       }
     }
+    if (relined) this._lines(storms);
     if (!instances.length) return;
     this.fills = this.root.add(
       new Cesium.Primitive({
