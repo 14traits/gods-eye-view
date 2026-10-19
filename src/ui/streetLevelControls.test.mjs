@@ -425,6 +425,7 @@ function uiState({
   sinceDays = 0,
   renderMode = 'letterbox',
   keyRequired = false,
+  streetError = null,
 } = {}) {
   return {
     enabled,
@@ -439,7 +440,7 @@ function uiState({
       loading: false,
       renderMode,
       imageId: open ? 'img-1' : null,
-      error: null,
+      error: streetError,
     },
   };
 }
@@ -784,6 +785,21 @@ test('a photo opening opens the panel, unstored; switching the layer on does not
     assert.deepEqual(calls.collapsed, [], 'a switch-on leaves the panel be');
     layer.publish(uiState({ enabled: true, open: true }));
     assert.deepEqual(calls.collapsed, [[false, { persist: false }]]);
+    controls.destroy();
+  }));
+
+test('a photo that fails to open opens the panel too, so its error shows', () =>
+  withDom(async (dom) => {
+    const { layer, calls, controls } = stubPanel(dom, uiState());
+    // A line click whose lookup KartaView never answered.
+    layer.publish(uiState({ streetError: 'KartaView did not answer in time' }));
+    assert.deepEqual(calls.collapsed, [[false, { persist: false }]]);
+    // The same error again opens nothing more; a new one does.
+    layer.publish(uiState({ streetError: 'KartaView did not answer in time' }));
+    assert.equal(calls.collapsed.length, 1);
+    layer.publish(uiState());
+    layer.publish(uiState({ streetError: 'No street-level imagery here' }));
+    assert.equal(calls.collapsed.length, 2);
     controls.destroy();
   }));
 

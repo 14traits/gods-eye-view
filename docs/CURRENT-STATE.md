@@ -3539,8 +3539,8 @@ image; FIT/FILL starts at FIT each session. IMAGERY and FIT/FILL are rows of
 toggle buttons (`aria-pressed`), each its own tab stop. SINCE is a select of
 the nine windows; a link's day count between them gets its own option, and
 the tooltip names the cut-off date. The panel opens by itself only when a
-photo opens (a click on the map or a line would otherwise load it out of
-sight), never when the layer is switched on.
+photo opens or fails to (a click on the map or a line would otherwise load
+it, or its error, out of sight), never when the layer is switched on.
 
 MapillaryJS loads on the first photo. Opening one frames it with a single
 camera flight through the application's deferred navigation (`begin` /
