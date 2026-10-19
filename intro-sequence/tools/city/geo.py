@@ -221,8 +221,8 @@ def clip_polyline(pts, xmin, ymin, xmax, ymax):
                 pieces.append(cur)
                 cur = []
             continue
-        a = (x1 + t0 * dx, y1 + t0 * dy)
-        b = (x1 + t1 * dx, y1 + t1 * dy)
+        a = (x1, y1) if t0 == 0.0 else (x1 + t0 * dx, y1 + t0 * dy)
+        b = (x2, y2) if t1 == 1.0 else (x1 + t1 * dx, y1 + t1 * dy)
         if not cur:
             cur = [a, b]
         else:

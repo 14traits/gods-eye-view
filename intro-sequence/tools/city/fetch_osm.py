@@ -394,7 +394,7 @@ def nyc_extra(slug, F):
         print(f"   {p['kind']:9s} {p['x']:8.1f} {p['y']:8.1f} {'in ' if p['inside'] else 'OUT'} {p['name']}")
     found = {k: [p for p in pads if p['kind'] == 'heliport' and k.split()[0].lower() in p['name'].lower()
                  and 'heliport' in p['name'].lower()] for k in KNOWN_HELI}
-    helipads = [[p['x'], p['y'], p['name'] or p['kind']] for p in pads]
+    helipads = [[p['x'], p['y'], p['name'] or (f"{p['kind']} {p['ref']}".strip())] for p in pads]
     write_json(os.path.join(OUT, slug, 'extra.json'),
                {'helipads': helipads,
                 'detail': pads,
