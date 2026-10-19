@@ -1,5 +1,12 @@
 # God's Eye View Current State
 
+CCTV live-media requests are same-site gated before catalog or media work, including
+HLS renewal, segment reads and DELETE cleanup. HLS leases belong to their socket
+peer (IPv4-mapped IPv6 is normalized), with eight leases per peer across the two
+global sessions. Peers behind the same NAT share that budget; this is resource
+admission, not authentication. Native same-origin video and range requests remain
+supported.
+
 Shared distance checks use `src/geoDistance.js` with `{ lat, lon }` points and
 the IUGG mean spherical Earth radius, 6371.0088 km. `greatCircleKm` is
 canonical; `greatCircleMeters` is its exact metre conversion. Missing,
