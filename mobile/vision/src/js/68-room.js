@@ -37,7 +37,7 @@ RUI.render = function (host, s, o = {}) {
     <div class="srcs room-srcs"><div class="h3">Sources in this room</div>${Object.entries(room.src || {}).map(([k, v]) => `<div class="r"><span class="tagid">${k}</span><b style="font-weight:500">${esc(v)}</b></div>`).join('')}</div>
     <p class="fine">Posts are ordered by evidence, then time — never by followers. Concept · illustrative data; people and posts are fictional.</p>`;
   RUI.bind(host, room, s);
-  if (o.post) setTimeout(() => RUI.focusPost(o.post, true), 60);
+  if (o.post) setTimeout(() => RUI.focusPost(o.post, false), 60);
 };
 RUI.bind = function (host, room, s) {
   host.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => { RUI.sort = b.dataset.sort; RUI.render(host, s); haptic(4); }));
@@ -67,7 +67,7 @@ RUI.focusPost = function (id, fly) {
 };
 RUI.anchor = function (p, which, quiet) {
   const W = GE.world; const s = RUI.sit;
-  if (p.place && which !== 'time') { const wide = APP.isWide(); const hs = GE.sheet.heights(); Cam.flyTo({ lat: p.place.lat - 0.12, lon: p.place.lon - 0.05, range: 0.03, heading: 0.4, tilt: 0.95, shiftY: wide ? 0 : hs[GE.sheet.detent === 'large' ? 'medium' : GE.sheet.detent] / hs.H, shiftX: 0 }, { duration: 1.8 }); GE.roomUI.labels(s, p.id); }
+  if (p.place && which !== 'time') { const wide = APP.isWide(); const hs = GE.sheet.heights(); Cam.flyTo({ lat: p.place.lat - 0.35, lon: p.place.lon - 0.15, range: 0.075, heading: 0.4, tilt: 0.8, shiftY: wide ? 0 : hs[GE.sheet.detent === 'large' ? 'medium' : GE.sheet.detent] / hs.H, shiftX: 0 }, { duration: 1.8 }); GE.roomUI.labels(s, p.id); }
   const at = p.time || p.at; if (which !== 'place') W.setTime(at);
   if (!quiet) APP.toast(`${ic(p.place && which !== 'time' ? 'location' : 'clock', 'sm')} ${p.place && which !== 'time' ? esc(p.place.label) + ' · ' : ''}${fmt.hm(at)} UTC · ${fmt.ago(Date.now() - at)}`);
   if (GE.sheet.detent === 'large' && !APP.isWide()) GE.sheet.setDetent('medium');
@@ -92,8 +92,10 @@ setInterval(() => { if (APP.mode === 'situation' && GE.sheet.seg === 'room' && !
 RUI.composer = function (show) {
   const c = $('#roomComp'); if (!c) return; c.classList.toggle('on', !!show); if (!show) return;
   if (c.dataset.bound) return; c.dataset.bound = '1';
-  c.innerHTML = `<button class="capbtn" id="rcCap" aria-label="Reply with a capture">${ic('viewfinder')}<span>Capture</span></button><div class="rcin glass"><div class="kinds" id="rcKinds">${Object.entries(GE.rooms.KINDS).map(([k, K]) => `<button data-k="${k}" class="${k === 'context' ? 'on' : ''}">${ic(KIND_ICON[k], 'xs')}${K.name}</button>`).join('')}</div><div class="rcrow"><input id="rcText" placeholder="Add context, ask, correct…" autocomplete="off"><button class="send" id="rcSend" aria-label="Post">${ic('arrowup', 'sm')}</button></div></div>`;
-  let kind = 'context';
+  c.innerHTML = `<button class="capbtn" id="rcCap" aria-label="Reply with a capture">${ic('viewfinder')}<span>Capture</span></button><div class="rcin glass"><div class="kinds" id="rcKinds">${Object.entries(GE.rooms.KINDS).map(([k, K]) => `<button data-k="${k}" class="${k === 'context' ? 'on' : ''}">${ic(KIND_ICON[k], 'xs')}${K.name}</button>`).join('')}<i class="ksep"></i><button data-pin="place">${ic('location', 'xs')}Pin this view</button><button data-pin="time" class="on">${ic('clock', 'xs')}Pin ribbon time</button></div><div class="rcrow"><input id="rcText" placeholder="Add context, ask, correct…" autocomplete="off"><button class="send" id="rcSend" aria-label="Post">${ic('arrowup', 'sm')}</button></div></div>`;
+  let kind = 'context'; const pins = { place: false, time: true };
+  c.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('mousedown', (e) => e.preventDefault())); c.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('mousedown', (e) => e.preventDefault()));
+  c.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', () => { pins[b.dataset.pin] = !pins[b.dataset.pin]; b.classList.toggle('on', pins[b.dataset.pin]); haptic(3); }));
   c.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { kind = b.dataset.k; c.querySelectorAll('[data-k]').forEach((x) => x.classList.toggle('on', x === b)); haptic(3); }));
   $('#rcCap').addEventListener('click', () => RUI.replyCapture(RUI.sit));
   const inp = $('#rcText'); inp.addEventListener('focus', () => c.classList.add('typing')); inp.addEventListener('blur', () => setTimeout(() => c.classList.remove('typing'), 150));
@@ -101,8 +103,9 @@ RUI.composer = function (show) {
   $('#rcSend').addEventListener('click', async () => {
     const t = inp.value.trim(); if (!t || !RUI.room) return; inp.value = '';
     const p = { id: 'u' + Date.now(), kind, by: 'you', at: Date.now(), text: t, mine: true, reacts: {}, replies: 0 };
+    if (pins.place) p.place = { lat: +Cam.lat.toFixed(4), lon: +Cam.lon.toFixed(4), label: 'Pinned view' }; if (pins.time) p.time = GE.world.simMs;
     RUI.room.posts.push(p); const e = await GE.rooms.append(RUI.room, 'post.' + kind, 'you', { id: p.id, text: t });
-    RUI.render($('#shSeg'), RUI.sit); setTimeout(() => RUI.focusPost(p.id), 80);
+    RUI.render($('#shSeg'), RUI.sit); RUI.labels(RUI.sit, p.id); setTimeout(() => RUI.focusPost(p.id), 80);
     APP.toast(`${ic('link', 'sm')} Posted · ledger #${e.i} · text ranks below evidence`, 2600); haptic(8);
   });
 };

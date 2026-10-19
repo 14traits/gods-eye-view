@@ -940,6 +940,10 @@ input, textarea { font: inherit; color: inherit; }
 .metric .v { font: 700 21px/1.1 var(--mono); letter-spacing: -.02em; }
 .metric .v small { font-family: var(--font); }
 .metric .l { font-size: 11.5px; } .metric .s { font-family: var(--mono); font-size: 9.5px; letter-spacing: .03em; }
+.sheet.glass.strong { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015) 60%), rgba(9,11,15,.88); }
+.rcin .kinds .ksep { flex: none; width: 1px; background: rgba(255,255,255,.15); margin: 3px 2px; }
+.rcin .kinds button[data-pin].on { background: rgba(242,207,122,.18); color: var(--b-inside); }
+.app[data-tab="capture"] .concept-tag { top: calc(var(--sat) + 142px); bottom: auto; right: 14px; left: auto; }
 
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -3948,7 +3952,7 @@ SCN.crossing = {
     // vehicles waiting, lights on
     for (const [u, v, d] of [[-0.05, 0.4, 1], [-0.05, 0.55, 1], [-0.05, 0.7, 1], [1.05, 0.35, -1], [1.05, 0.5, -1], [0.35, -0.05, 0], [0.55, 1.08, 0]]) { const [x, y, s] = M(u, v); ctx.fillStyle = '#18181d'; ctx.fillRect(x - 22 * s, y - 9 * s, 44 * s, 18 * s); ctx.save(); ctx.globalCompositeOperation = 'lighter'; if (d >= 0) { glow(ctx, x + 22 * s, y - 5 * s, 26 * s, 'rgba(255,248,225,A)', 0.8); glow(ctx, x + 22 * s, y + 5 * s, 26 * s, 'rgba(255,248,225,A)', 0.8); } else { glow(ctx, x + 22 * s, y, 18 * s, 'rgba(255,40,40,A)', 0.7); } ctx.restore(); }
     // people
-    const P = []; const corners = [[0.06, 0.08], [0.94, 0.08], [0.06, 0.94], [0.94, 0.94]]; const cols = ['226,60,72', '34,44,64', '236,236,242', '56,134,228', '248,188,44', '26,26,32', '118,196,124', '240,120,170', '40,40,46', '190,190,200'];
+    const P = []; const corners = [[0.06, 0.08], [0.94, 0.08], [0.06, 0.94], [0.94, 0.94]]; const cols = ['214,220,232', '214,220,232', '214,220,232', '200,206,220', '26,28,36', '34,40,58', '22,22,28', '44,46,56', '226,60,72', '56,134,228', '248,188,44', '240,120,170'];
     for (let i = 0; i < 520; i++) { const wait = i < 170; const ci = i % 4; const a = corners[ci], b = wait ? a : corners[[3, 2, 1, 0, 1, 0, 3, 2][(i >> 2) % 8] ?? 3 - ci]; const umb = R() < 0.72; P.push({ a, b, wait, off: R(), sp: 0.035 + R() * 0.03, jx: R.gauss() * (wait ? 0.035 : 0.03), jy: R.gauss() * (wait ? 0.03 : 0.022), umb, col: cols[R.int(cols.length)], s: 0.8 + R() * 0.45 }); }
     c.P = P; c.M = M; return c;
   },
@@ -3956,7 +3960,7 @@ SCN.crossing = {
     ctx.drawImage(B, 0, 0); const M = B.M; const list = [];
     for (const p of B.P) { const u = p.wait ? 0 : (p.off + t * p.sp) % 1; const [x, y, s] = M(lerp(p.a[0], p.b[0], u) + p.jx, lerp(p.a[1], p.b[1], u) + p.jy); list.push([y, x, s * (w / 46) * p.s, p]); }
     list.sort((a, b) => a[0] - b[0]);
-    for (const [y, x, s, p] of list) { if (p.umb) { ctx.fillStyle = `rgba(${p.col},.95)`; ctx.beginPath(); ctx.ellipse(x, y, s * 1.1, s * 0.82, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.beginPath(); ctx.ellipse(x - s * 0.25, y - s * 0.22, s * 0.5, s * 0.32, 0, 0, TAU); ctx.fill(); } else { ctx.fillStyle = '#17161b'; ctx.beginPath(); ctx.ellipse(x, y + s * 0.2, s * 0.55, s * 0.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#2b2622'; ctx.beginPath(); ctx.arc(x, y - s * 0.1, s * 0.33, 0, TAU); ctx.fill(); } }
+    for (const [y, x, s, p] of list) { if (p.umb) { ctx.fillStyle = `rgba(${p.col},${p.col.startsWith('2') && p.col.length > 9 && +p.col.split(',')[0] > 190 ? 0.62 : 0.95})`; ctx.beginPath(); ctx.ellipse(x, y, s * 1.1, s * 0.82, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.beginPath(); ctx.ellipse(x - s * 0.25, y - s * 0.22, s * 0.5, s * 0.32, 0, 0, TAU); ctx.fill(); } else { ctx.fillStyle = '#17161b'; ctx.beginPath(); ctx.ellipse(x, y + s * 0.2, s * 0.55, s * 0.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#2b2622'; ctx.beginPath(); ctx.arc(x, y - s * 0.1, s * 0.33, 0, TAU); ctx.fill(); } }
     ctx.save(); ctx.strokeStyle = 'rgba(210,215,230,.15)'; ctx.lineWidth = 1; const R = rng(Math.floor(t * 10)); ctx.beginPath(); for (let i = 0; i < 160; i++) { const x = R() * w, y = R() * h; ctx.moveTo(x, y); ctx.lineTo(x - 2, y + h * 0.025); } ctx.stroke(); ctx.restore();
     vignette(ctx, w, h, 0.45); scan(ctx, w, h, 0.05); grain(ctx, w, h, 0.1);
     if (!o.noOSD) cctvOSD(ctx, w, h, t, o);
@@ -3983,18 +3987,20 @@ SCN.seawall = {
     const road = [[w * 0.22, h], [vp[0] + 2, vp[1]], [w * 0.9, vp[1] + h * 0.02], [w * 1.2, h]]; const rg = ctx.createLinearGradient(0, hz, 0, h); rg.addColorStop(0, '#141316'); rg.addColorStop(1, '#0a0a0b'); ctx.fillStyle = rg; poly(ctx, road, true); ctx.fill();
     ctx.strokeStyle = 'rgba(200,190,170,.18)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(L1[0], L1[1]); ctx.lineTo(vp[0] + 2, vp[1]); ctx.stroke();
     // lamps along the road edge
-    const lamps = []; for (let i = 0; i < 7; i++) { const f = Math.pow(i / 7, 0.8); const bx = lerp(w * 0.5, vp[0] + w * 0.02, f), by = lerp(h * 1.0, vp[1] + h * 0.004, f); const lh = lerp(h * 0.5, h * 0.02, f); ctx.fillStyle = '#050506'; ctx.fillRect(bx, by - lh, Math.max(1.2, 6 * (1 - f)), lh); ctx.fillRect(bx - lh * 0.12, by - lh, lh * 0.14, Math.max(1, 4 * (1 - f))); lamps.push([bx - lh * 0.1, by - lh + 3, 1 - f, by]); }
-    if (o.palm) { ctx.save(); ctx.translate(w * 0.9, h * 0.98); ctx.strokeStyle = '#040404'; ctx.lineWidth = w / 45; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-w * 0.02, -h * 0.3, -w * 0.12, -h * 0.5); ctx.stroke(); ctx.lineWidth = w / 160; for (let k = 0; k < 9; k++) { const a = -2.6 + k * 0.28; ctx.beginPath(); ctx.moveTo(-w * 0.12, -h * 0.5); ctx.quadraticCurveTo(-w * 0.12 + Math.cos(a) * w * 0.08, -h * 0.5 + Math.sin(a) * h * 0.04, -w * 0.12 + Math.cos(a) * w * 0.17 - w * 0.05, -h * 0.5 + Math.sin(a) * h * 0.06 + h * 0.06); ctx.stroke(); } ctx.restore(); }
+    const lamps = []; for (let i = 0; i < 8; i++) { const f = Math.pow(i / 8, 0.75); const bx = lerp(w * 1.0, vp[0] + w * 0.035, f), by = lerp(h * 1.04, vp[1] + h * 0.006, f); const lh = Math.max(2, (by - hz) * 1.9); ctx.fillStyle = '#050506'; ctx.fillRect(bx, by - lh, Math.max(1.2, 7 * (1 - f)), lh); ctx.fillRect(bx - lh * 0.16, by - lh, lh * 0.18, Math.max(1, 5 * (1 - f))); lamps.push([bx - lh * 0.13, by - lh + 4 * (1 - f), 1 - f, by]); }
+    // kerb line along the road edge, wet sheen
+    ctx.strokeStyle = 'rgba(210,200,180,.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(w * 0.95, h); ctx.lineTo(vp[0] + w * 0.03, vp[1] + h * 0.006); ctx.stroke();
+    if (o.palm) { ctx.save(); ctx.translate(w * 0.8, hz + h * 0.06); ctx.strokeStyle = '#030303'; ctx.lineWidth = w / 160; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-w * 0.01, -h * 0.12, -w * 0.05, -h * 0.2); ctx.stroke(); for (let k = 0; k < 9; k++) { const a = -2.9 + k * 0.32; ctx.lineWidth = w / 420; ctx.beginPath(); ctx.moveTo(-w * 0.05, -h * 0.2); ctx.quadraticCurveTo(-w * 0.05 + Math.cos(a) * w * 0.03, -h * 0.2 + Math.sin(a) * h * 0.02, -w * 0.05 + Math.cos(a) * w * 0.06 - w * 0.02, -h * 0.2 + Math.sin(a) * h * 0.03 + h * 0.03); ctx.stroke(); } ctx.restore(); }
     c.lamps = lamps; c.hz = hz; c.vp = vp; return c;
   },
   frame(ctx, w, h, t, o, B) {
     const shake = o.handheld ? [Math.sin(t * 7.1) * w * 0.004 + Math.sin(t * 2.3) * w * 0.006, Math.cos(t * 6.3) * h * 0.003] : [0, 0];
     ctx.save(); ctx.translate(shake[0], shake[1]); ctx.drawImage(B, -4, -4, w + 8, h + 8);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const [x, y, f, gy] of B.lamps) { glow(ctx, x, y, w * 0.14 * (0.3 + f), 'rgba(255,150,50,A)', 0.55 + 0.1 * Math.sin(t * 13 + x)); const g = ctx.createLinearGradient(0, gy - h * 0.01, 0, gy + h * 0.16 * f); g.addColorStop(0, 'rgba(255,150,60,.0)'); g.addColorStop(0.2, 'rgba(255,150,60,.3)'); g.addColorStop(1, 'rgba(255,150,60,0)'); ctx.fillStyle = g; ctx.fillRect(x - w * 0.012 * (0.5 + f), gy - h * 0.01, w * 0.024 * (0.5 + f) + 1.5, h * 0.17 * f); }
+    for (const [x, y, f, gy] of B.lamps) { glow(ctx, x, y, w * 0.07 * (0.3 + f), 'rgba(255,150,50,A)', 0.5 + 0.1 * Math.sin(t * 13 + x)); glow(ctx, x, y, w * 0.012 * (0.4 + f), 'rgba(255,230,180,A)', 0.9); const g = ctx.createLinearGradient(0, gy - h * 0.01, 0, gy + h * 0.16 * f); g.addColorStop(0, 'rgba(255,150,60,.0)'); g.addColorStop(0.2, 'rgba(255,150,60,.3)'); g.addColorStop(1, 'rgba(255,150,60,0)'); ctx.fillStyle = g; ctx.fillRect(x - w * 0.012 * (0.5 + f), gy - h * 0.01, w * 0.024 * (0.5 + f) + 1.5, h * 0.17 * f); }
     // breaking swells: spray sheets rise off the wall and blow right with the wind
     const R0 = rng(7); for (let b = 0; b < 3; b++) { const per = 3.6 + b * 1.3; const tt = t + b * 1.7; const ph = (tt % per) / per; if (ph > 0.6) continue; const k = Math.sin((ph / 0.6) * Math.PI); const f = [0.18, 0.42, 0.68][b]; const bx = lerp(w * 0.08, B.vp[0], f), by = lerp(h * 0.98, B.vp[1], f); const sz = (1 - f * 0.85) * h * 0.55; const R = rng(b * 97 + Math.floor(tt / per));
-      for (let i = 0; i < 90; i++) { const up = Math.pow(R(), 0.7) * sz * k, side = (R() - 0.35) * sz * 0.35 + up * 0.6 * ph; const x = bx + side, y = by - up; const r = (0.002 + R() * 0.007) * w * (1 - f * 0.6) * (0.6 + k); ctx.fillStyle = `rgba(210,218,230,${(0.04 + R() * 0.1) * k})`; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+      for (let i = 0; i < 90; i++) { const up = Math.pow(R(), 0.7) * sz * k, side = (R() - 0.35) * sz * 0.35 + up * 0.6 * ph; const x = bx + side, y = by - up; const r = (0.002 + R() * 0.007) * w * (1 - f * 0.6) * (0.6 + k); ctx.fillStyle = `rgba(214,222,234,${(0.06 + R() * 0.14) * k})`; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
       ctx.strokeStyle = `rgba(220,226,236,${0.08 * k})`; ctx.lineWidth = Math.max(1, w / 400); ctx.beginPath(); for (let i = 0; i < 40; i++) { const up = R() * sz * k; const x = bx + (R() - 0.3) * sz * 0.3, y = by - up * 0.3; ctx.moveTo(x, y); ctx.lineTo(x + sz * 0.12 * ph + R() * 6, y - up * 0.7); } ctx.stroke();
       const g = ctx.createRadialGradient(bx + sz * 0.25 * ph, by - sz * 0.35 * k, 0, bx + sz * 0.25 * ph, by - sz * 0.35 * k, sz * 0.55); g.addColorStop(0, `rgba(190,198,212,${0.13 * k})`); g.addColorStop(1, 'rgba(190,198,212,0)'); ctx.fillStyle = g; ctx.fillRect(bx - sz, by - sz * 1.2, sz * 2.2, sz * 1.4); }
     ctx.restore();
@@ -4577,7 +4583,7 @@ const ROOMS = {
     watching: 3204, rate: 4,
     src: { O1: 'Geostationary IR mosaic · 01:40Z', O2: 'Advisory + 14 ensemble tracks · 3 h', O3: 'AIS vessel positions · 40 s', S1: 'Sealed live stream, 6 segments · @nadia_basco' },
     posts: [
-      { id: 'cy1', kind: 'witness', by: 'nadia', ago: 4, live: true, text: 'Waves are coming over the seawall by the port every 30–40 seconds. The road behind it is ankle-deep. The wall itself is intact from what I can see — I\'m 200 m up the slope.', place: { lat: 20.4485, lon: 121.9705, label: 'Basco seawall' }, att: { paint: 'seawall', o: { palm: true, handheld: true, noOSD: true, seed: 52 }, tier: 'sealed-live', segs: 6, distKm: 0.2 }, reacts: { eye: 1240, heart: 212, alert: 48 }, replies: 31 },
+      { id: 'cy1', kind: 'witness', by: 'nadia', ago: 4, live: true, text: 'Waves are coming over the seawall by the port every 30–40 seconds. The road behind it is ankle-deep. The wall itself is intact from what I can see — I\'m 200 m up the slope.', place: { lat: 20.4485, lon: 121.9705, label: 'Basco seawall' }, att: { paint: 'seawall', o: { handheld: true, noOSD: true, seed: 52 }, tier: 'sealed-live', segs: 6, distKm: 0.2 }, reacts: { eye: 1240, heart: 212, alert: 48 }, replies: 31 },
       { id: 'cy2', kind: 'question', by: 'rafa', ago: 6, text: 'Is the Magapit bridge into Aparri still open? Nobody here knows and the power is out.', place: { lat: 18.12, lon: 121.65, label: 'Magapit bridge' }, reacts: { eye: 96 }, replies: 2 },
       { id: 'cy3', kind: 'context', by: 'lin', ago: 11, text: 'An eyewall replacement looks likely in the next 12 h. Expect the peak wind number to drop while the wind field gets wider. For Batanes that is not good news, so don\'t read a lower number as "weakening".', cites: ['O1', 'O2'], reacts: { heart: 340, eye: 520 }, replies: 18 },
       { id: 'cy4', kind: 'witness', by: 'repost', ago: 9, text: 'VIDEO: Basco port pier has COLLAPSED!! Share before it\'s deleted', att: { paint: 'harbour', o: { seed: 19, cam: 'CAM 03', place: 'PORT' }, tier: 'unverified', distKm: null }, reacts: { alert: 860 }, replies: 77,
@@ -4740,18 +4746,18 @@ FD.items = function () {
   if (FD._items) return FD._items;
   const C = GE.CYCLONE.at(0); const sq = FD.squawkTrack(); const iss = GE.SIT.issPass(Date.now());
   const it = [
-    { id: 'basco', arch: 'witness', band: 'inside', sit: 'cyclone', post: 'cy1', wide: true, prio: 100, live: true, by: 'nadia', paint: 'seawall', po: { palm: true, handheld: true, noOSD: true, seed: 52 }, aspect: 0.62,
-      title: 'Waves over the Basco seawall — live from the port', place: 'Basco, Batanes', lat: 20.4485, lon: 121.9705, ago: 14, cam: { lat: 18.6, lon: 123.4, range: 0.18, heading: -0.55, tilt: 0.62 },
+    { id: 'basco', arch: 'witness', band: 'inside', sit: 'cyclone', post: 'cy1', wide: true, prio: 100, live: true, by: 'nadia', paint: 'seawall', po: { handheld: true, noOSD: true, seed: 52 }, aspect: 0.62,
+      title: 'Waves over the Basco seawall — live from the port', place: 'Basco, Batanes', lat: 20.4485, lon: 121.9705, ago: 14,
       tele: () => `WITNESS · SEALED LIVE · ±4 M · ${fmt.n(Math.round(RM.kmBetween(20.4485, 121.9705, C.lat, C.lon)))} KM FROM EYE` },
     { id: 'ir', arch: 'sensor', band: 'orbit', sit: 'cyclone', prio: 95, paint: 'ir', aspect: 1.25, title: 'Typhoon Halcyon: −83 °C cloud tops and lightning in the eyewall', place: 'Philippine Sea', lat: C.lat, lon: C.lon, ago: 2,
       tele: () => `ORBIT · GEO IR · 35,786 KM · ${llz(C.lat, C.lon)}` },
     { id: 'cabin', arch: 'witness', band: 'inside', sit: 'squawk', post: 'sq1', prio: 92, by: 'seat', paint: 'cabin', aspect: 1.3, title: '“Masks dropped. Crew calm. We’re descending.” — on board the 7700', place: 'Over the North Atlantic', lat: sq.cur[0], lon: sq.cur[1], ago: 7,
       tele: () => 'WITNESS · SEALED · ON BOARD · FL240' },
-    { id: 'harbour', arch: 'eye', band: 'ground', sit: 'cyclone', post: 'cy5', prio: 90, live: true, paint: 'harbour', po: { seed: 8, cam: 'HBR-07', place: 'KAOHSIUNG · PIER 70' }, aspect: 1.0, title: 'Kaohsiung harbour cam: ships leave ahead of Halcyon', place: 'Kaohsiung, Taiwan', lat: 22.61, lon: 120.27, ago: 0, cam: { lat: 21.2, lon: 121.6, range: 0.2, heading: -0.7, tilt: 0.6 },
+    { id: 'harbour', arch: 'eye', band: 'ground', sit: 'cyclone', post: 'cy5', prio: 90, live: true, paint: 'harbour', po: { seed: 8, cam: 'HBR-07', place: 'KAOHSIUNG · PIER 70' }, aspect: 1.0, title: 'Kaohsiung harbour cam: ships leave ahead of Halcyon', place: 'Kaohsiung, Taiwan', lat: 22.61, lon: 120.27, ago: 0,
       tele: () => `GROUND · CAM HBR-07 · ${llz(22.61, 120.27)} · ${hmsZ()}` },
     { id: 'squawk', arch: 'track', band: 'sky', sit: 'squawk', prio: 89, live: true, paint: 'track', po: { track: sq }, aspect: 1.15, title: `Squawk 7700 — diverting to ${sq.div.iata} ${sq.div.city ? '(' + sq.div.city + ')' : ''}`, place: 'Over the North Atlantic', lat: sq.cur[0], lon: sq.cur[1], ago: 3,
       readout: 'SQ 7700 · FL240 ↓', tele: () => 'SKY · ADS-B · 2,400 FPM ↓ · 412 KT', cta: ['airplane', 'Follow the track'] },
-    { id: 'room-cy', arch: 'room', band: 'inside', sit: 'cyclone', prio: 88, wide: true, title: 'Typhoon Halcyon', place: 'Batanes · Babuyan · Luzon Strait', lat: 20.45, lon: 121.97, ago: 1, ev: [['seawall', { palm: true, noOSD: true, seed: 52 }], ['harbour', { seed: 8, cam: 'HBR-07' }], ['blackout', { seed: 91 }], ['ir', {}]] },
+    { id: 'room-cy', arch: 'room', band: 'inside', sit: 'cyclone', prio: 88, wide: true, title: 'Typhoon Halcyon', place: 'Batanes · Babuyan · Luzon Strait', lat: 20.45, lon: 121.97, ago: 1, ev: [['seawall', { noOSD: true, seed: 52 }], ['harbour', { seed: 8, cam: 'HBR-07' }], ['blackout', { seed: 91 }], ['ir', {}]] },
     { id: 'radar', arch: 'sensor', band: 'sky', sit: 'dfw', prio: 86, paint: 'radar', aspect: 1.2, title: 'Bowing squall line crossing Dallas–Fort Worth — tornado warning', place: 'Dallas–Fort Worth', lat: 32.82, lon: -97.0, ago: 2,
       tele: () => 'SKY · RADAR 0.5° · 62 DBZ · 72 KM/H E' },
     { id: 'crossing', arch: 'eye', band: 'ground', sit: 'shibuya', prio: 84, live: true, paint: 'crossing', po: { seed: 31, cam: 'CAM 0412', place: 'SHIBUYA SCRAMBLE' }, aspect: 1.25, title: 'Shibuya crossing in the rain: ~2,400 people every cycle', place: 'Shibuya, Tokyo', lat: 35.6595, lon: 139.7005, ago: 0,
@@ -4774,7 +4780,7 @@ FD.items = function () {
       readout: `MAX ${Math.round(iss.max)}° · ${Math.round((iss.end - iss.start) / 60000)} MIN`, tele: () => 'ORBIT · ISS PASS · TLE · COMPUTED', cta: ['bell', 'Remind me'] },
     { id: 'plume', arch: 'track', band: 'orbit', sit: 'launch', prio: 71, paint: 'plume', aspect: 1.3, title: 'Twilight launch: the plume was seen along 600 km of coast', place: 'Cape Canaveral', lat: 28.5618, lon: -80.5772, ago: 34,
       readout: () => `T+${fmt.dur((Date.now() - GE.LAUNCH_T0) / 1000)}`, tele: () => 'ORBIT · TRACKING CAM · 2ND STAGE 212 KM' },
-    { id: 'room-qk', arch: 'room', band: 'inside', sit: 'quake', prio: 70, title: 'M 6.4 off Honshu', place: 'Fukushima · Miyagi · Ibaraki', lat: GE.BIGQ.lat, lon: GE.BIGQ.lon, ago: 3, ev: [['shake', {}], ['crossing', { seed: 33, cam: 'PHONE', rec: false }]] },
+    { id: 'room-qk', arch: 'room', band: 'inside', sit: 'quake', prio: 70, wide: true, title: 'M 6.4 off Honshu', place: 'Fukushima · Miyagi · Ibaraki', lat: GE.BIGQ.lat, lon: GE.BIGQ.lon, ago: 3, ev: [['shake', {}], ['crossing', { seed: 33, cam: 'PHONE', rec: false }]] },
     { id: 'gnss', arch: 'number', band: 'sky', sit: 'gnss', prio: 68, paint: 'gnss', aspect: 1.05, title: 'GPS interference over the Baltic', place: 'Baltic Sea', lat: 56.8, lon: 21.5, ago: 10,
       big: '340', unit: 'aircraft', label: 'lost GPS integrity in the last hour', spark: [120, 160, 150, 210, 260, 240, 300, 340], tele: () => 'SKY · ADS-B NIC/NACp · 10 MIN' },
     { id: 'heli', arch: 'track', band: 'sky', sit: 'novosel', prio: 66, live: true, paint: 'heli', po: { laps: 14 }, aspect: 1.1, title: 'HAWK 21 is flying its 14th circuit at Fort Novosel', place: 'Cairns Army Airfield, Alabama', lat: 31.276, lon: -85.713, ago: 0, ride: true,
@@ -4887,10 +4893,10 @@ APP.renderAccessory = function () {
   else { const r = GE.rooms.byId.cyclone; const n = r ? r.watching : 3204; ttl = '@nadia_basco · Basco seawall'; sub = `Sealed live · Typhoon Halcyon room · ${fmt.n(n)} watching`; open = () => { const it = GE.feed.items().find((x) => x.id === 'basco'); GE.now._item = it; GE.sheet.open('cyclone', { post: 'cy1' }); }; }
   APP._accOpen = open;
   const html = `<span class="accdot"><span class="dot pulse"></span></span><span class="txt"><div class="ttl">${esc(ttl)}</div><div class="sub num">${esc(sub)}</div></span><canvas class="accv" width="120" height="68"></canvas><span class="ab"><svg class="ic sm"><use href="#i-chevu"/></svg></span>`;
-  const a = $('#acc'); if (a._k !== ttl + sub) { a.innerHTML = html; a._k = ttl + sub; }
+  const a = $('#acc'); if (a._t !== ttl) { a.innerHTML = html; a._t = ttl; } else { a.querySelector('.ttl').textContent = ttl; a.querySelector('.sub').textContent = sub; }
   const m = $('#accMini'); if (m._k !== ttl + sub) { m.innerHTML = `<span class="dot pulse"></span><span class="txt"><div class="ttl">${esc(ttl)}</div><div class="sub num">${esc(sub)}</div></span>`; m._k = ttl + sub; }
 };
-APP.accFrame = function () { const cv = $('#acc .accv'); if (!cv || $('#accHost').classList.contains('hidden')) return; const me = GE.capture?.live; if (me && me.on) GE.paint.draw('seawall', cv, { skyline: true, noOSD: true, seed: 53, t: performance.now() / 1000 }); else GE.paint.draw('seawall', cv, { palm: true, noOSD: true, seed: 52, t: performance.now() / 1000 }); };
+APP.accFrame = function () { const cv = $('#acc .accv'); if (!cv || $('#accHost').classList.contains('hidden')) return; const me = GE.capture?.live; if (me && me.on) GE.paint.draw('seawall', cv, { skyline: true, noOSD: true, seed: 53, t: performance.now() / 1000 }); else GE.paint.draw('seawall', cv, { noOSD: true, seed: 52, t: performance.now() / 1000 }); };
 setInterval(() => { try { APP.accFrame(); } catch {} }, 200);
 function sparkPath(data, w, h, col, sw = 1.6) {
   const mn = Math.min(...data), mx = Math.max(...data), n = data.length;
@@ -5560,7 +5566,8 @@ GUI.drawRibbon = function () {
 GUI.pips = function () {
   const nowMs = Date.now(); const W = GE.world;
   if (W.window && GE.threads?.ws?.beats) return GE.threads.ws.beats.map((b) => ({ h: (b.at - nowMs) / 3600000, c: '#E9C46A', l: b.t }));
-  return [{ h: GE.BIGQ.t / 3600, c: '#FF6A3D', l: 'M6.4' }, { h: 2.24, c: '#C9A7FF', l: 'Launch' }, { h: 40, c: '#FF6A3D', l: 'Landfall' }, { h: (GE.SIT.byId.aurora.time.at - nowMs) / 3600000, c: '#5CF2A0', l: 'Aurora' }, { h: -30, c: '#FF6A3D', l: 'Fire run' }, { h: (SIT._iss?.start - nowMs) / 3600000 || 3, c: '#C9A7FF', l: 'ISS' }];
+  if (APP.mode === 'situation' && GE.sheet.id && GE.rooms.byId[GE.sheet.id]) { const KC = { witness: '#F2CF7A', context: '#8CD4FF', question: '#FFFFFF', correction: '#FFB25C', prediction: '#B79CFF' }; return GE.rooms.byId[GE.sheet.id].posts.map((p) => ({ h: ((p.time || p.at) - nowMs) / 3600000, c: KC[p.kind], l: '@' + (GE.PEOPLE[p.by]?.h || p.by) })); }
+  return [{ h: GE.BIGQ.t / 3600, c: '#FF6A3D', l: 'M6.4' }, { h: (GE.LAUNCH_T0 - nowMs) / 3600000, c: '#C9A7FF', l: 'Launch' }, { h: 40, c: '#FF6A3D', l: 'Landfall' }, { h: (GE.SIT.byId.aurora.time.at - nowMs) / 3600000, c: '#5CF2A0', l: 'Aurora' }, { h: -30, c: '#FF6A3D', l: 'Fire run' }, { h: (SIT._iss?.start - nowMs) / 3600000 || 3, c: '#C9A7FF', l: 'ISS' }];
 };
 
 /* ---------- pick card ---------- */
@@ -6340,7 +6347,7 @@ RUI.render = function (host, s, o = {}) {
     <div class="srcs room-srcs"><div class="h3">Sources in this room</div>${Object.entries(room.src || {}).map(([k, v]) => `<div class="r"><span class="tagid">${k}</span><b style="font-weight:500">${esc(v)}</b></div>`).join('')}</div>
     <p class="fine">Posts are ordered by evidence, then time — never by followers. Concept · illustrative data; people and posts are fictional.</p>`;
   RUI.bind(host, room, s);
-  if (o.post) setTimeout(() => RUI.focusPost(o.post, true), 60);
+  if (o.post) setTimeout(() => RUI.focusPost(o.post, false), 60);
 };
 RUI.bind = function (host, room, s) {
   host.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => { RUI.sort = b.dataset.sort; RUI.render(host, s); haptic(4); }));
@@ -6370,7 +6377,7 @@ RUI.focusPost = function (id, fly) {
 };
 RUI.anchor = function (p, which, quiet) {
   const W = GE.world; const s = RUI.sit;
-  if (p.place && which !== 'time') { const wide = APP.isWide(); const hs = GE.sheet.heights(); Cam.flyTo({ lat: p.place.lat - 0.12, lon: p.place.lon - 0.05, range: 0.03, heading: 0.4, tilt: 0.95, shiftY: wide ? 0 : hs[GE.sheet.detent === 'large' ? 'medium' : GE.sheet.detent] / hs.H, shiftX: 0 }, { duration: 1.8 }); GE.roomUI.labels(s, p.id); }
+  if (p.place && which !== 'time') { const wide = APP.isWide(); const hs = GE.sheet.heights(); Cam.flyTo({ lat: p.place.lat - 0.35, lon: p.place.lon - 0.15, range: 0.075, heading: 0.4, tilt: 0.8, shiftY: wide ? 0 : hs[GE.sheet.detent === 'large' ? 'medium' : GE.sheet.detent] / hs.H, shiftX: 0 }, { duration: 1.8 }); GE.roomUI.labels(s, p.id); }
   const at = p.time || p.at; if (which !== 'place') W.setTime(at);
   if (!quiet) APP.toast(`${ic(p.place && which !== 'time' ? 'location' : 'clock', 'sm')} ${p.place && which !== 'time' ? esc(p.place.label) + ' · ' : ''}${fmt.hm(at)} UTC · ${fmt.ago(Date.now() - at)}`);
   if (GE.sheet.detent === 'large' && !APP.isWide()) GE.sheet.setDetent('medium');
@@ -6395,8 +6402,10 @@ setInterval(() => { if (APP.mode === 'situation' && GE.sheet.seg === 'room' && !
 RUI.composer = function (show) {
   const c = $('#roomComp'); if (!c) return; c.classList.toggle('on', !!show); if (!show) return;
   if (c.dataset.bound) return; c.dataset.bound = '1';
-  c.innerHTML = `<button class="capbtn" id="rcCap" aria-label="Reply with a capture">${ic('viewfinder')}<span>Capture</span></button><div class="rcin glass"><div class="kinds" id="rcKinds">${Object.entries(GE.rooms.KINDS).map(([k, K]) => `<button data-k="${k}" class="${k === 'context' ? 'on' : ''}">${ic(KIND_ICON[k], 'xs')}${K.name}</button>`).join('')}</div><div class="rcrow"><input id="rcText" placeholder="Add context, ask, correct…" autocomplete="off"><button class="send" id="rcSend" aria-label="Post">${ic('arrowup', 'sm')}</button></div></div>`;
-  let kind = 'context';
+  c.innerHTML = `<button class="capbtn" id="rcCap" aria-label="Reply with a capture">${ic('viewfinder')}<span>Capture</span></button><div class="rcin glass"><div class="kinds" id="rcKinds">${Object.entries(GE.rooms.KINDS).map(([k, K]) => `<button data-k="${k}" class="${k === 'context' ? 'on' : ''}">${ic(KIND_ICON[k], 'xs')}${K.name}</button>`).join('')}<i class="ksep"></i><button data-pin="place">${ic('location', 'xs')}Pin this view</button><button data-pin="time" class="on">${ic('clock', 'xs')}Pin ribbon time</button></div><div class="rcrow"><input id="rcText" placeholder="Add context, ask, correct…" autocomplete="off"><button class="send" id="rcSend" aria-label="Post">${ic('arrowup', 'sm')}</button></div></div>`;
+  let kind = 'context'; const pins = { place: false, time: true };
+  c.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('mousedown', (e) => e.preventDefault())); c.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('mousedown', (e) => e.preventDefault()));
+  c.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', () => { pins[b.dataset.pin] = !pins[b.dataset.pin]; b.classList.toggle('on', pins[b.dataset.pin]); haptic(3); }));
   c.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { kind = b.dataset.k; c.querySelectorAll('[data-k]').forEach((x) => x.classList.toggle('on', x === b)); haptic(3); }));
   $('#rcCap').addEventListener('click', () => RUI.replyCapture(RUI.sit));
   const inp = $('#rcText'); inp.addEventListener('focus', () => c.classList.add('typing')); inp.addEventListener('blur', () => setTimeout(() => c.classList.remove('typing'), 150));
@@ -6404,8 +6413,9 @@ RUI.composer = function (show) {
   $('#rcSend').addEventListener('click', async () => {
     const t = inp.value.trim(); if (!t || !RUI.room) return; inp.value = '';
     const p = { id: 'u' + Date.now(), kind, by: 'you', at: Date.now(), text: t, mine: true, reacts: {}, replies: 0 };
+    if (pins.place) p.place = { lat: +Cam.lat.toFixed(4), lon: +Cam.lon.toFixed(4), label: 'Pinned view' }; if (pins.time) p.time = GE.world.simMs;
     RUI.room.posts.push(p); const e = await GE.rooms.append(RUI.room, 'post.' + kind, 'you', { id: p.id, text: t });
-    RUI.render($('#shSeg'), RUI.sit); setTimeout(() => RUI.focusPost(p.id), 80);
+    RUI.render($('#shSeg'), RUI.sit); RUI.labels(RUI.sit, p.id); setTimeout(() => RUI.focusPost(p.id), 80);
     APP.toast(`${ic('link', 'sm')} Posted · ledger #${e.i} · text ranks below evidence`, 2600); haptic(8);
   });
 };
@@ -6466,7 +6476,7 @@ GE.EYES = [
   { id: 'rafa', lat: 18.357, lon: 121.637, hdg: 40, fov: 60, label: '@rafa_aparri', kind: 'witness', sit: 'cyclone', post: 'cy6' },
 ];
 GE.eyeLines = function (rangeR) {
-  const out = []; const D = clamp((rangeR || 1) * EARTH_KM * 0.07, 0.25, 420);
+  const out = []; const D = clamp((rangeR || 1) * EARTH_KM * 0.032, 0.2, 160);
   for (const e of GE.EYES) {
     const col = e.kind === 'you' ? [1, 0.86, 0.5, 0.95] : e.kind === 'cctv' ? [1, 0.66, 0.26, 0.7] : [0.96, 0.82, 0.48, 0.8];
     const tip = geo.vec(e.lat, e.lon, 0.03 + D * 0.004); const half = (e.fov / 2) * D2R; const h0 = e.hdg * D2R; const cs = [];

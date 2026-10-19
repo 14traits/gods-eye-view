@@ -18,7 +18,7 @@ GE.EYES = [
   { id: 'rafa', lat: 18.357, lon: 121.637, hdg: 40, fov: 60, label: '@rafa_aparri', kind: 'witness', sit: 'cyclone', post: 'cy6' },
 ];
 GE.eyeLines = function (rangeR) {
-  const out = []; const D = clamp((rangeR || 1) * EARTH_KM * 0.07, 0.25, 420);
+  const out = []; const D = clamp((rangeR || 1) * EARTH_KM * 0.032, 0.2, 160);
   for (const e of GE.EYES) {
     const col = e.kind === 'you' ? [1, 0.86, 0.5, 0.95] : e.kind === 'cctv' ? [1, 0.66, 0.26, 0.7] : [0.96, 0.82, 0.48, 0.8];
     const tip = geo.vec(e.lat, e.lon, 0.03 + D * 0.004); const half = (e.fov / 2) * D2R; const h0 = e.hdg * D2R; const cs = [];

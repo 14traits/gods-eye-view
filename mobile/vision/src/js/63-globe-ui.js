@@ -144,7 +144,8 @@ GUI.drawRibbon = function () {
 GUI.pips = function () {
   const nowMs = Date.now(); const W = GE.world;
   if (W.window && GE.threads?.ws?.beats) return GE.threads.ws.beats.map((b) => ({ h: (b.at - nowMs) / 3600000, c: '#E9C46A', l: b.t }));
-  return [{ h: GE.BIGQ.t / 3600, c: '#FF6A3D', l: 'M6.4' }, { h: 2.24, c: '#C9A7FF', l: 'Launch' }, { h: 40, c: '#FF6A3D', l: 'Landfall' }, { h: (GE.SIT.byId.aurora.time.at - nowMs) / 3600000, c: '#5CF2A0', l: 'Aurora' }, { h: -30, c: '#FF6A3D', l: 'Fire run' }, { h: (SIT._iss?.start - nowMs) / 3600000 || 3, c: '#C9A7FF', l: 'ISS' }];
+  if (APP.mode === 'situation' && GE.sheet.id && GE.rooms.byId[GE.sheet.id]) { const KC = { witness: '#F2CF7A', context: '#8CD4FF', question: '#FFFFFF', correction: '#FFB25C', prediction: '#B79CFF' }; return GE.rooms.byId[GE.sheet.id].posts.map((p) => ({ h: ((p.time || p.at) - nowMs) / 3600000, c: KC[p.kind], l: '@' + (GE.PEOPLE[p.by]?.h || p.by) })); }
+  return [{ h: GE.BIGQ.t / 3600, c: '#FF6A3D', l: 'M6.4' }, { h: (GE.LAUNCH_T0 - nowMs) / 3600000, c: '#C9A7FF', l: 'Launch' }, { h: 40, c: '#FF6A3D', l: 'Landfall' }, { h: (GE.SIT.byId.aurora.time.at - nowMs) / 3600000, c: '#5CF2A0', l: 'Aurora' }, { h: -30, c: '#FF6A3D', l: 'Fire run' }, { h: (SIT._iss?.start - nowMs) / 3600000 || 3, c: '#C9A7FF', l: 'ISS' }];
 };
 
 /* ---------- pick card ---------- */

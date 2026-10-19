@@ -210,10 +210,13 @@ export function createGlobeChrome({
     const W = chrome.clientWidth;
     const html = list
       .map((l) => {
-        const flip = l.x > W - 9 * Math.min(24, l.title.length) - 40;
+        // Launch names run to 60 characters; a label names, the pick card explains.
+        const title =
+          l.title.length > 26 ? `${l.title.slice(0, 25).trimEnd()}…` : l.title;
+        const flip = l.x > W - 9 * title.length - 40;
         const tf = `translate(${Math.round(l.x)}px,${Math.round(l.y)}px)${flip ? ' translateX(calc(-100% - 16px))' : ''}`;
         const pin = l.layer === 'pins';
-        return `<span ${pin ? `class="lb-pin" data-band="${KIND_FAM_L[l.kind] || 'inside'}"` : ''} data-family="${KIND_FAM_L[l.kind] || 'infra'}" style="transform:${tf}"><i></i>${esc(l.title)}</span>`;
+        return `<span ${pin ? `class="lb-pin" data-band="${KIND_FAM_L[l.kind] || 'inside'}"` : ''} data-family="${KIND_FAM_L[l.kind] || 'infra'}" style="transform:${tf}"><i></i>${esc(title)}</span>`;
       })
       .join('');
     if (labelLayer.innerHTML !== html) labelLayer.innerHTML = html;

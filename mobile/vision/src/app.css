@@ -935,3 +935,7 @@ input, textarea { font: inherit; color: inherit; }
 .metric .v { font: 700 21px/1.1 var(--mono); letter-spacing: -.02em; }
 .metric .v small { font-family: var(--font); }
 .metric .l { font-size: 11.5px; } .metric .s { font-family: var(--mono); font-size: 9.5px; letter-spacing: .03em; }
+.sheet.glass.strong { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015) 60%), rgba(9,11,15,.88); }
+.rcin .kinds .ksep { flex: none; width: 1px; background: rgba(255,255,255,.15); margin: 3px 2px; }
+.rcin .kinds button[data-pin].on { background: rgba(242,207,122,.18); color: var(--b-inside); }
+.app[data-tab="capture"] .concept-tag { top: calc(var(--sat) + 142px); bottom: auto; right: 14px; left: auto; }

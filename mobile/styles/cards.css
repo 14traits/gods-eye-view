@@ -376,9 +376,16 @@
   background: #07080a;
 }
 
+/* The composite is evidence, so it stays in colour; it fades out toward the
+   bottom, where the number sits, so the type keeps its contrast. */
 .c-number .card-media > img.c-num-bg.loaded {
-  opacity: 0.2;
-  filter: grayscale(1) contrast(1.2);
+  opacity: 0.85;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 40%,
+    rgba(0, 0, 0, 0.15) 85%
+  );
+  mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.15) 85%);
 }
 
 .c-number .fr i {

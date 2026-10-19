@@ -73,10 +73,10 @@ APP.renderAccessory = function () {
   else { const r = GE.rooms.byId.cyclone; const n = r ? r.watching : 3204; ttl = '@nadia_basco · Basco seawall'; sub = `Sealed live · Typhoon Halcyon room · ${fmt.n(n)} watching`; open = () => { const it = GE.feed.items().find((x) => x.id === 'basco'); GE.now._item = it; GE.sheet.open('cyclone', { post: 'cy1' }); }; }
   APP._accOpen = open;
   const html = `<span class="accdot"><span class="dot pulse"></span></span><span class="txt"><div class="ttl">${esc(ttl)}</div><div class="sub num">${esc(sub)}</div></span><canvas class="accv" width="120" height="68"></canvas><span class="ab"><svg class="ic sm"><use href="#i-chevu"/></svg></span>`;
-  const a = $('#acc'); if (a._k !== ttl + sub) { a.innerHTML = html; a._k = ttl + sub; }
+  const a = $('#acc'); if (a._t !== ttl) { a.innerHTML = html; a._t = ttl; } else { a.querySelector('.ttl').textContent = ttl; a.querySelector('.sub').textContent = sub; }
   const m = $('#accMini'); if (m._k !== ttl + sub) { m.innerHTML = `<span class="dot pulse"></span><span class="txt"><div class="ttl">${esc(ttl)}</div><div class="sub num">${esc(sub)}</div></span>`; m._k = ttl + sub; }
 };
-APP.accFrame = function () { const cv = $('#acc .accv'); if (!cv || $('#accHost').classList.contains('hidden')) return; const me = GE.capture?.live; if (me && me.on) GE.paint.draw('seawall', cv, { skyline: true, noOSD: true, seed: 53, t: performance.now() / 1000 }); else GE.paint.draw('seawall', cv, { palm: true, noOSD: true, seed: 52, t: performance.now() / 1000 }); };
+APP.accFrame = function () { const cv = $('#acc .accv'); if (!cv || $('#accHost').classList.contains('hidden')) return; const me = GE.capture?.live; if (me && me.on) GE.paint.draw('seawall', cv, { skyline: true, noOSD: true, seed: 53, t: performance.now() / 1000 }); else GE.paint.draw('seawall', cv, { noOSD: true, seed: 52, t: performance.now() / 1000 }); };
 setInterval(() => { try { APP.accFrame(); } catch {} }, 200);
 function sparkPath(data, w, h, col, sw = 1.6) {
   const mn = Math.min(...data), mx = Math.max(...data), n = data.length;
