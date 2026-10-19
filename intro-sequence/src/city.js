@@ -564,7 +564,8 @@ export function buildCity(d, opts = {}) {
       const pts = [];
       for (let i = 1; i < m.length - 1; i += 2) pts.push([m[i], m[i + 1]]);
       return { name: m[0], pts };
-    });
+    }).filter((p) => p.pts.length > 2 && p.pts.every(([x, y]) => Math.abs(x) < half * 1.35 && Math.abs(y) < half * 1.35));
+    // the reservation itself is bigger than the scene: keep what fits
     out.milPolys = polys;
     insideMil = (x, y) => polys.some((p) => pip(x, y, p.pts));
   }
