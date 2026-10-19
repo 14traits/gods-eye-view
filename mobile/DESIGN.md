@@ -157,3 +157,93 @@ globe.situations()  → Promise<Situation[]>  // live feed cards
 `Situation = { id, kind, family, title, subtitle, place, lon, lat, camera:{lon,lat,height,heading,pitch}, layers:[ids], time?:{start,end}, metrics:[{label,value,unit}], thumbnail: url, live:boolean, updatedAt, source }`.
 
 Thumbnails use the keyless Esri World Imagery `export` endpoint for the situation's bounding box, so every card shows the real place.
+
+---
+
+## 11. Round two: from weather app to God's Eye
+
+Review notes on the first build: the feed showed one kind of picture (open ocean under a cyclone), the app read as a weather app, there was nowhere for people to talk, and capture stopped at a sealed photo. This section is the response. Where it disagrees with §1–§10, it wins.
+
+### 11.1 Identity: space → sky → ground → inside
+
+The app's subject is altitude. Every surface tells you **where the sensor is** and **how high it is**, from orbit down to street level and finally inside: a room, a cockpit, a person's own capture. That is the brand, and it replaces the weather-app palette of blue gradients and big temperature-style numbers.
+
+| Altitude band | Sensor | Telemetry burned into the frame |
+| --- | --- | --- |
+| **Orbit** · 400–36,000 km | satellites, ISS, launches, weather satellite IR | `ORBIT · 412 KM · 7.66 KM/S · PASS 21:04` |
+| **Sky** · 0–15 km | ADS-B aircraft, helicopters, military, radar returns, lightning | `SKY · FL350 · 487 KT · SQ 7700` |
+| **Ground** · 0 m | CCTV, traffic, transit, fires, quakes, floods | `GROUND · CAM 0412 · I-5 S · 14:02:11Z` |
+| **Inside** · you | signed captures, live broadcasts, holograms, conversations | `WITNESS · SEALED · ±4 M · 1.2 KM FROM EVENT` |
+
+Visual rules:
+
+- **Sensor framing.** Feed cards and the globe chrome use corner brackets, a hairline reticle, and a monospace telemetry strip burned into the image (coordinates, MGRS, UTC, sensor id, altitude). It is restrained: one strip per card, never a full military HUD.
+- **Type.** Display: the system face, tight and heavy. Telemetry: a monospace face (JetBrains Mono, which the desktop app already loads) in small caps with tabular numerals. The monospace face is the voice of the instruments, not of the UI.
+- **Color.** Ground stays near-black. Each altitude band has one signal hue: Orbit violet, Sky ice-blue, Ground amber, Inside warm gold for sealed. Hazard red is reserved for things that hurt people. No blue-gradient cards.
+- **Imagery is evidence.** Thumbnails are composited from the layers that actually describe the situation (§11.2). A picture of empty ocean is never acceptable.
+
+### 11.2 The feed: compelling, diverse, real
+
+The Now feed is the global equivalent of a neighborhood safety feed: it tells you what is happening, where, how close, and who saw it. Diversity is a requirement. The feed mixes **card archetypes** and **altitude bands**, and never puts two cards of the same archetype or band side by side when it can avoid it.
+
+Card archetypes:
+
+1. **Sensor card**: a composited frame. The base is the Esri image of the place or GIBS satellite IR. On top go the real data layers (radar, lightning strikes, cyclone cone and track, flight trails, quake rings, fire hotspots and smoke direction from wind), with sensor framing and telemetry burned in.
+2. **Eye card**: a real frame from the nearest public camera (`/api/cctv`), with a LIVE timestamp, camera id, and direction of view. This is the most Citizen-like card: you see the street.
+3. **Track card**: one moving thing, such as an aircraft squawking 7700, a helicopter on its 14th circuit at Fort Novosel, or the ISS crossing your night sky. It shows a trail, a big readout, and a "ride along" call to action.
+4. **Number card**: one striking fact with a sparkline. Examples: "4,812 lightning strikes in the last hour over the Gulf", "GNSS jamming over the Baltic, 340 aircraft affected".
+5. **Witness card**: a signed capture or a live broadcast from a person. It shows the seal, the distance from the event, and the reply count.
+6. **Room card**: a conversation that is heating up. It shows the top claim, its status (*Confirmed by 3 signed captures* / *Disputed*), and the participants.
+
+Situation genres to source from keyless layers. Each card must say its source:
+
+- Cyclones (NHC cone, track and wind radii, GIBS IR)
+- Severe-storm cells (radar plus lightning density)
+- Heavy rain over a major city (radar)
+- Jet-stream wind anomalies (GFS wind)
+- Quakes (USGS, with intensity rings)
+- Wildfires (FIRMS or EONET, with smoke direction from wind)
+- Emergency squawks (7500, 7600, 7700)
+- Military activity
+- Helicopter schools
+- Launches (pad and trajectory)
+- ISS and Starlink passes over the viewer
+- GNSS interference (`/api/gnss-integrity`)
+- Transit at rush hour (`/api/transit`)
+- Busiest airport arrivals
+- Live public cameras at famous places (Times Square, Shibuya, Tower Bridge where available, otherwise any busy feed)
+- Ship queues at chokepoints
+- The Bhote Koshi reconstruction
+
+### 11.3 Discourse: every situation has a room
+
+People will talk about events anyway, on other platforms and without the evidence. The room puts the conversation **on the evidence**: anchored in space and time, and graded by how it was observed.
+
+- **Structured posts.** Each post is one of: **Witness** (I saw or recorded this), **Context** (background, a link, a map), **Question**, **Correction**, or **Prediction**. The kind is chosen in the composer and drawn as an icon. Questions float to the top until answered.
+- **Anchored.** A post can pin a place (a dot on the globe) and a time (a pip on the time ribbon). Tapping a post flies the globe there and scrubs the ribbon to that moment. Pinned posts appear in 3D as small speech glyphs at their location.
+- **Earned badges, not follower counts.** Badges come from evidence:
+  - *Was there*: a signed capture within N km and M minutes of the event.
+  - *Sealed*: the post has a sealed attachment.
+  - *Local*: the author's home area is set.
+  - *Domain*: pilot, mariner, met, first responder, held as a verified credential.
+
+  Posts are ordered by evidence first, then recency, never by follower count.
+- **Community notes with bridging.** Any claim can get a note. A note becomes visible only when raters who usually disagree both rate it helpful (bridging-based ranking, as Community Notes does), which resists brigading.
+- **AI synthesis, kept honest.** A pinned card at the top of every room is labelled **Known / Disputed / Unknown**. AI writes it from the observations and the posts, and every line cites its sources. It is regenerated as the room changes, with its prompt and inputs recorded in the ledger. It never states anything that has no citation.
+- **Live layer.** While you are in a room, presence shows as small avatars, reactions float up the side, and a "N people watching" count appears. Rooms for live situations sit in the feed as Room cards.
+- **Reply with evidence.** "Reply" offers **Capture** first and text second. The best answer to "is the bridge still standing?" is a sealed photo from 200 m away.
+
+### 11.4 Capture: contribute a place, an event, or a live stream
+
+Capture is how a person becomes a sensor. Four modes share one dial:
+
+| Mode | What it makes | Trust tier |
+| --- | --- | --- |
+| **Look** | AR overlay of contacts around you. Nothing is recorded unless you tap. | none |
+| **Witness** | A sealed photo or clip with the IMU, GPS and heading trace (§6). | **Sealed** |
+| **Live** | A broadcast from your camera. It appears on the globe as an *eye*: a frustum cone at your position and heading, with live telemetry, watchable by the room. Every 10 s the stream is sealed as hash-chained segments. | **Sealed live** |
+| **Upload** | A photo or video from your library. EXIF is read if present, then you place it on the map and set the time. | **Unverified**: labelled as such everywhere, and it can never become an observation, only cited by a hypothesis. |
+
+After the shutter comes the **attach sheet**. It suggests the situation you are probably at, from distance and time ("Typhoon Champi · 4.2 km from track", "Times Square camera · 180 m"). It offers "new place" if none fits, a post kind (Witness by default), an optional note, and whether to drop it as a **hologram** that others can find at this spot later. Posting puts the capture in that situation's room, and a Witness card in the feed when it is notable.
+
+Privacy: faces and plates are blurred before upload by on-device detection (a native-build commitment, and a disclosed limitation in the web prototype). Your exact location is shared at the precision you choose (exact, 100 m, 1 km), and the seal still proves the exact value to verifiers without publishing it.
