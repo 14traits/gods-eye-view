@@ -1,0 +1,853 @@
+/* ------------------------------------------------------------------ */
+/* Card archetypes: Sensor · Eye · Track · Number · Witness · Room    */
+/* Sensor framing: corner brackets, hairline reticle, one strip.      */
+/* ------------------------------------------------------------------ */
+
+.card {
+  position: relative;
+  border-radius: 6px;
+  background: var(--ground-1);
+  overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+  transition: transform var(--dur-2) var(--spring);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.card:has(.card-hit:active) {
+  transform: scale(0.97);
+}
+
+.card.is-selected {
+  box-shadow:
+    inset 0 0 0 1.5px var(--band),
+    0 0 0 3px color-mix(in srgb, var(--band) 22%, transparent);
+}
+
+.card:has(.card-hit:focus-visible) {
+  outline: 2.5px solid var(--tint);
+  outline-offset: 2px;
+}
+
+.card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: inherit;
+}
+
+.card-hit:focus-visible {
+  outline: none;
+}
+
+.card:not([data-band]) {
+  --band: var(--ink-3);
+}
+
+.card-media {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 90% at 50% 40%,
+      color-mix(in srgb, var(--band) 10%, #0c0e11),
+      #07080a
+    ),
+    #07080a;
+}
+
+.card-media > img,
+.card-media > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 520ms var(--ease-out),
+    transform 900ms var(--ease-out);
+}
+
+.card-media > img.loaded,
+.card-media > video.loaded {
+  opacity: 1;
+  transform: none;
+}
+
+.card-media > img.failed {
+  display: none;
+}
+
+/* The plain still waits, desaturated, for its composited frame. */
+.card-media > img.still {
+  filter: saturate(0.4) brightness(0.62);
+}
+
+.card-media > img.composited {
+  animation: composite-in 600ms var(--ease-out);
+}
+
+@keyframes composite-in {
+  from {
+    filter: saturate(0.4) brightness(0.62);
+  }
+  to {
+    filter: none;
+  }
+}
+
+.card.is-stale .card-media img {
+  filter: saturate(0.25) brightness(0.8);
+}
+
+/* Corner brackets */
+.fr {
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.fr i {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 0 solid color-mix(in srgb, var(--band) 70%, #fff);
+  opacity: 0.85;
+}
+
+.fr i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-left-width: 1.25px;
+  border-top-width: 1.25px;
+}
+
+.fr i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-right-width: 1.25px;
+  border-top-width: 1.25px;
+}
+
+.fr i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-left-width: 1.25px;
+  border-bottom-width: 1.25px;
+}
+
+.fr i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-right-width: 1.25px;
+  border-bottom-width: 1.25px;
+}
+
+/* Hairline reticle: a 16 px cross with an open centre. */
+.reticle {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  margin: -8.5px 0 0 -8.5px;
+  opacity: 0.5;
+  pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) center top / 1px 6px no-repeat,
+    linear-gradient(#fff, #fff) center bottom / 1px 6px no-repeat,
+    linear-gradient(#fff, #fff) left center / 6px 1px no-repeat,
+    linear-gradient(#fff, #fff) right center / 6px 1px no-repeat;
+}
+
+.c-top {
+  position: absolute;
+  z-index: 3;
+  left: 14px;
+  right: 14px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.5625rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.c-top .tele {
+  font-size: 0.5625rem;
+}
+
+.c-sid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.8;
+}
+
+.c-sid .i {
+  font-size: 0.75rem;
+}
+
+.c-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.c-live i {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--band);
+  box-shadow: 0 0 6px var(--band);
+}
+
+.c-live i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: pulse-ring 1.8s var(--ease-out) infinite;
+}
+
+.c-live.recon {
+  color: var(--b-inside);
+}
+
+.c-live.onair i {
+  background: var(--b-inside);
+}
+
+/* The telemetry strip, burned into the frame. */
+.c-strip {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 12px 8px;
+  background: linear-gradient(to top, rgba(3, 4, 5, 0.82), rgba(3, 4, 5, 0));
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.5625rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.card-body {
+  padding: 9px 10px 11px;
+}
+
+.c-band {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+  font-size: 0.5625rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.c-band b {
+  font-weight: 400;
+  color: var(--ink-4);
+}
+
+.c-band .bd {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--band);
+}
+
+.card-title {
+  margin: 5px 0 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.26;
+  letter-spacing: -0.012em;
+  min-height: 2.52em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.card-place span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-stale {
+  flex: none;
+  color: var(--ink-4);
+  font-size: 0.5rem;
+}
+
+.c-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  margin-top: 8px;
+  padding: 0 9px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--band) 55%, transparent);
+  color: var(--band);
+  font-size: 0.5625rem;
+}
+
+.c-cta .i {
+  font-size: 0.8125rem;
+}
+
+/* ---------- Track: one moving thing, a big readout ---------- */
+.c-readout {
+  position: absolute;
+  z-index: 3;
+  left: 14px;
+  right: 14px;
+  bottom: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 4px;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.c-readout b {
+  font-family: var(--mono);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.c-readout small {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.c-readout .tele {
+  flex-basis: 100%;
+  margin-top: 4px;
+  color: var(--band);
+  font-size: 0.5625rem;
+}
+
+.c-track.is-harm .c-readout b,
+.c-track.is-harm .c-readout .tele {
+  color: var(--harm);
+}
+
+.c-track.is-harm .fr i {
+  border-color: var(--harm);
+}
+
+/* ---------- Number: typography is the picture ---------- */
+.c-number .card-media {
+  background: #07080a;
+}
+
+.c-number .card-media > img.c-num-bg.loaded {
+  opacity: 0.2;
+  filter: grayscale(1) contrast(1.2);
+}
+
+.c-number .fr i {
+  opacity: 0.45;
+}
+
+.c-num {
+  position: absolute;
+  z-index: 3;
+  inset: 16px 14px 28px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.c-big {
+  margin-top: auto;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 11vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  color: #fff;
+}
+
+@media (min-width: 600px) {
+  .c-big {
+    font-size: 2.6rem;
+  }
+}
+
+.c-big small {
+  margin-left: 3px;
+  font-size: 0.4em;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--band);
+}
+
+.c-big-l {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.c-spark {
+  width: 100%;
+  height: 42px;
+  margin-top: 10px;
+  overflow: visible;
+}
+
+.c-spark .a {
+  fill: color-mix(in srgb, var(--band) 16%, transparent);
+}
+
+.c-spark .l {
+  fill: none;
+  stroke: var(--band);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.c-spark-l {
+  margin-top: 3px;
+  font-size: 0.5rem;
+  color: var(--ink-4);
+}
+
+.c-number .card-title {
+  min-height: 0;
+  margin-top: 0;
+  -webkit-line-clamp: 2;
+}
+
+/* ---------- Eye: the street, live ---------- */
+.c-eye .card-media > img {
+  transform: none;
+  transition: opacity 700ms var(--ease-out);
+}
+
+.c-eye .card-media > img.eye-b {
+  opacity: 0;
+}
+
+.c-eye .card-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(3, 4, 5, 0.78) 0, rgba(3, 4, 5, 0) 48%),
+    linear-gradient(to bottom, rgba(3, 4, 5, 0.45) 0, rgba(3, 4, 5, 0) 22%);
+}
+
+.c-eye.flash .c-live {
+  animation: eye-tick 900ms var(--ease-out);
+}
+
+@keyframes eye-tick {
+  0% {
+    color: var(--b-ground);
+  }
+  100% {
+    color: #fff;
+  }
+}
+
+.c-eye-cap {
+  position: absolute;
+  z-index: 3;
+  left: 14px;
+  right: 14px;
+  bottom: 30px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.c-eye-cap .card-title {
+  min-height: 0;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+  -webkit-line-clamp: 1;
+}
+
+.c-eye-cap .card-place {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* View direction: a compass ring with the camera's cone. */
+.c-fov {
+  flex: none;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.c-fov::before {
+  content: 'N';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  font-family: var(--mono);
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.c-fov i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from calc(var(--hd) - 25deg),
+    color-mix(in srgb, var(--b-ground) 80%, transparent) 0 50deg,
+    transparent 50deg
+  );
+  -webkit-mask: radial-gradient(circle, #000 0 62%, transparent 63%);
+  mask: radial-gradient(circle, #000 0 62%, transparent 63%);
+}
+
+.c-eye .card-body.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px 10px;
+}
+
+.c-src {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-4);
+  font-size: 0.5rem;
+}
+
+.eye-offline .c-live {
+  opacity: 0.5;
+}
+
+/* ---------- Witness: you, sealed ---------- */
+.c-witness .fr i {
+  border-color: var(--b-inside);
+}
+
+.c-seal {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--b-inside);
+  --seal-ink: #1d1406;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6));
+}
+
+.c-seal .i {
+  font-size: 1.1rem;
+}
+
+.c-seal.un {
+  color: var(--ink-2);
+}
+
+.c-witness.is-unverified .fr i {
+  border-color: var(--ink-3);
+  border-style: dashed;
+}
+
+.c-witness.is-onair {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--b-inside) 60%, transparent);
+}
+
+/* The prompt: an empty frame that asks you to fill it. */
+.c-prompt .card-media {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(235, 199, 119, 0.035) 0 6px,
+      transparent 6px 12px
+    ),
+    #08090a;
+}
+
+.c-prompt .fr i {
+  border-color: var(--b-inside);
+}
+
+.c-prompt-in {
+  position: absolute;
+  inset: 22px 18px 34px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.c-prompt-ic {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--b-inside);
+  font-size: 1.5rem;
+}
+
+.c-prompt-in b {
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.c-prompt-in > span:last-child {
+  font-size: 0.71875rem;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+
+.c-prompt .card-body {
+  padding-top: 0;
+}
+
+.c-prompt .c-cta {
+  --band: var(--b-inside);
+  margin-top: 8px;
+}
+
+/* ---------- Room: a conversation heating up ---------- */
+.c-room {
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      rgba(235, 199, 119, 0.06),
+      rgba(235, 199, 119, 0) 60%
+    ),
+    var(--ground-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
+}
+
+.c-room-in {
+  padding: 13px 14px 12px;
+}
+
+.c-room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.c-room-head .c-band {
+  color: var(--ink-2);
+}
+
+.c-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-2);
+  font-size: 0.5625rem;
+}
+
+.c-watch i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--b-inside);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.c-claim {
+  margin: 10px 0 10px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--b-inside);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.32;
+  letter-spacing: -0.016em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.c-claim.is-example {
+  border-left-style: dashed;
+  color: var(--ink-2);
+}
+
+.c-room[data-status='disputed'] .c-claim {
+  border-left-style: dashed;
+  border-left-color: var(--ink-3);
+}
+
+.c-room-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.c-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 0.5625rem;
+  color: var(--b-inside);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--b-inside) 50%, transparent);
+  --seal-ink: #1d1406;
+}
+
+.c-status .i {
+  font-size: 0.8125rem;
+}
+
+.c-status[data-status='disputed'] {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.c-status[data-status='open'] {
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.c-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+  font-size: 0.5625rem;
+}
+
+.c-kind .i {
+  font-size: 0.8125rem;
+}
+
+.c-room-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--hairline);
+  color: var(--ink-3);
+}
+
+.c-room-foot .tele {
+  flex: 1;
+  font-size: 0.5625rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-join {
+  color: var(--ink-2);
+}
+
+.avs {
+  display: inline-flex;
+  padding-left: 6px;
+}
+
+.av {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: hsl(var(--h) 28% 30%);
+  box-shadow: 0 0 0 1.5px var(--ground-1);
+  font-style: normal;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: hsl(var(--h) 60% 86%);
+}
+
+.av.self {
+  background: var(--b-inside);
+  color: #1d1406;
+}
+
+.av.live {
+  box-shadow:
+    0 0 0 1.5px var(--ground-1),
+    0 0 0 3px var(--b-inside);
+}
+
+.card.pulse {
+  animation: card-pulse 1.6s var(--ease-out);
+}
+
+@keyframes card-pulse {
+  0% {
+    box-shadow: inset 0 0 0 1.5px var(--band);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0.5px var(--hairline);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-live i::after,
+  .c-watch i {
+    animation: none;
+  }
+}

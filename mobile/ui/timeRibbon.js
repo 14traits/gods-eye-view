@@ -141,7 +141,7 @@ export function createTimeRibbon(parent, { getWindow, onTime }) {
     if (!custom) {
       const xn = x(n);
       if (xn > -10 && xn < W + 10) {
-        ctx.fillStyle = '#FF453A';
+        ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
         ctx.arc(xn, mid + 13, 2.4, 0, Math.PI * 2);
         ctx.fill();
@@ -391,6 +391,14 @@ export function createTimeRibbon(parent, { getWindow, onTime }) {
         setLive(true);
       }
       resize();
+    },
+    /** Animate to a moment and tell the globe (post anchors). */
+    scrubTo(ms) {
+      const lo = start();
+      const hi = end();
+      const target = Math.min(hi, Math.max(lo, ms));
+      setLive(false);
+      animateTo(target, () => emit());
     },
     /** Programmatic scrub (narrative playback). */
     seek(ms) {

@@ -18,6 +18,9 @@ import {
 } from './dom.js';
 import { canonical, sha256Hex } from '../capture/provenance.js';
 import { loadEventPack } from './world.js';
+import { KIND } from './rooms.js';
+import { avatar } from './cards.js';
+import { BAND_NAME, bandOf, fmtKm } from './bands.js';
 
 const LOCAL_KEY = 'gev.mobile.threads.local.v1';
 const DRAFTS_KEY = 'gev.mobile.threads.drafts.v1';
@@ -328,12 +331,16 @@ function simulateRefinement(thread, prompt) {
 /* View                                                                */
 /* ------------------------------------------------------------------ */
 
-export function createThreads(view, { bindScroll, onPlay, onShowOnGlobe }) {
+export function createThreads(
+  view,
+  { bindScroll, onPlay, onShowOnGlobe, rooms, rt, getSituations, onOpenRoom },
+) {
   view.innerHTML = `
     <div class="th-list">
       <header class="navbar"><span class="nav-title">Threads</span></header>
       <h1 class="large-title">Threads</h1>
-      <div class="title-sub">Reconstructions built in the open: observations, hypotheses, a ledger</div>
+      <div class="title-sub tele">Rooms on the evidence · 4D reconstructions</div>
+      <div class="th-rooms"></div>
       <div class="th-cards"></div>
     </div>
     <div class="th-detail" hidden></div>`;
@@ -350,7 +357,49 @@ export function createThreads(view, { bindScroll, onPlay, onShowOnGlobe }) {
   );
   bindScroll(view);
 
+  function roomRow(r) {
+    const s = r.situation;
+    const band = bandOf(s);
+    const here = rt.presence(r.id).length;
+    const k = r.top ? KIND[r.top.kind] : null;
+    return `<button class="rm-row" type="button" data-room="${esc(s.id)}" data-band="${band}" data-status="${esc(r.status.id)}">
+      <div class="rm-top"><span class="c-band tele" data-band="${band}"><i class="bd"></i>${esc(BAND_NAME[band])}<b>·</b>${esc(ago(r.lastAt))}${Number.isFinite(s.distanceKm) ? `<b>·</b>${esc(fmtKm(s.distanceKm))}` : ''}</span>${here > 1 ? `<span class="c-watch tele"><i></i>${here} here</span>` : ''}</div>
+      <h3>${esc(s.title)}</h3>
+      ${r.top ? `<p class="rm-claim">${k ? icon(k.icon) : ''}<span>${esc(r.top.text)}</span></p>` : ''}
+      <div class="rm-foot"><span class="c-status tele" data-status="${esc(r.status.id)}">${icon(r.status.id === 'disputed' ? 'dispute' : r.status.id === 'open' ? 'question' : 'sealFill')}${esc(r.status.label)}</span>
+        <span class="avs">${r.participants.slice(0, 4).map(avatar).join('')}</span>
+        <span class="tele rm-n">${r.posts.length} posts${r.openQ.length ? ` · ${r.openQ.length} open` : ''}${r.ownCount ? ` · ${r.ownCount} yours` : ''}</span></div>
+    </button>`;
+  }
+
+  async function renderRooms() {
+    const host = $('.th-rooms', view);
+    if (!getSituations || !rooms) return;
+    const sits = (await getSituations().catch(() => [])).filter(
+      (x) => x.kind !== 'reconstruction',
+    );
+    if (!sits.length) return;
+    const list = await rooms.hot(sits, 8);
+    host.innerHTML = `<div class="section-h">Rooms <small>hottest first · every situation has one</small></div>
+      <div class="rm-list">${list.map(roomRow).join('')}</div>
+      <p class="footnote" style="padding:6px 2px 0">Example posts in rooms are written by fictional people (handles end in .example) to show the format. Your own posts are real, stored on this device, and appear live in your other tabs.</p>
+      <div class="section-h">Reconstructions <small>observations · hypotheses · ledger</small></div>`;
+  }
+  $('.th-rooms', view).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-room]');
+    if (!b) return;
+    haptic('light');
+    getSituations().then((sits) => {
+      const s = sits.find((x) => String(x.id) === b.dataset.room);
+      if (s) onOpenRoom?.(s);
+    });
+  });
+  rooms?.on('post', () => {
+    if (!view.hidden && !open) renderRooms();
+  });
+
   async function renderList() {
+    renderRooms();
     bhote =
       bhote || (await bhoteThread().catch((err) => (console.error(err), null)));
     const drafts = readLocal(DRAFTS_KEY, []);

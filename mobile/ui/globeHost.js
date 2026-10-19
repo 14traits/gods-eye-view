@@ -26,6 +26,18 @@ const REQUIRED = [
   'situations',
 ];
 
+/** Round-two additions (mobile/globe/API.md), optional. */
+const ROUND_TWO = [
+  'setViewer',
+  'viewer',
+  'thumbnail',
+  'addPin',
+  'removePin',
+  'pins',
+  'nearestEye',
+  'eyeFrameUrl',
+];
+
 export const contractReport = {
   engine: 'none',
   missing: [],
@@ -111,10 +123,38 @@ function guard(engine, kind) {
       const v = call('contactsNear', [], lon, lat, km);
       return Array.isArray(v) ? v : [];
     },
-    situations: async () => {
-      const v = await asyncCall('situations', []);
+    situations: async (opts) => {
+      const v = await asyncCall('situations', [], opts);
       return Array.isArray(v) ? v.map(normSituation) : [];
     },
+    /* ---- round two (mobile/globe/API.md); every one feature-detected ---- */
+    has: (name) => typeof engine[name] === 'function',
+    setViewer: (v) => call('setViewer', undefined, v),
+    viewer: () => call('viewer', null),
+    /** Composited card image (blob: URL); falls back to the plain still. */
+    thumbnail: async (s, o) => {
+      if (typeof engine.thumbnail !== 'function') return s?.thumbnail || '';
+      try {
+        return (await engine.thumbnail(s, o)) || s?.thumbnail || '';
+      } catch {
+        return s?.thumbnail || '';
+      }
+    },
+    addPin: (p) => call('addPin', null, p),
+    removePin: (id) => call('removePin', false, id),
+    pins: () => {
+      const v = call('pins', []);
+      return Array.isArray(v) ? v : [];
+    },
+    nearestEye: async (lon, lat, km = 50) => {
+      if (typeof engine.nearestEye === 'function')
+        return asyncCall('nearestEye', null, lon, lat, km);
+      const cams = (call('contactsNear', [], lon, lat, km) || []).filter((c) =>
+        /cam|cctv|eye/i.test(c.kind),
+      );
+      return cams[0] ? { ...cams[0], imageUrl: null } : null;
+    },
+    eyeFrameUrl: (id) => call('eyeFrameUrl', null, id),
     credits: () => {
       const v = call('credits', null);
       return Array.isArray(v) ? v : null;
@@ -163,6 +203,9 @@ export async function mountGlobe(container, opts = {}) {
         contractReport.notes.push(
           'credits() not provided (optional, used for attribution sheet)',
         );
+      contractReport.roundTwo = Object.fromEntries(
+        ROUND_TWO.map((m) => [m, typeof engine?.[m] === 'function']),
+      );
       if (contractReport.missing.length)
         console.warn('[globe] contract gaps', contractReport.missing);
       return guard(engine, 'cesium');
@@ -179,5 +222,8 @@ export async function mountGlobe(container, opts = {}) {
     quality: opts.quality || 'auto',
   });
   contractReport.engine = 'stub';
+  contractReport.roundTwo = Object.fromEntries(
+    ROUND_TWO.map((m) => [m, typeof engine?.[m] === 'function']),
+  );
   return guard(engine, 'stub');
 }

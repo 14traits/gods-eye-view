@@ -1,7 +1,10 @@
-/** Minimal promise wrapper over the device's IndexedDB for keys and captures. */
+/**
+ * Minimal promise wrapper over the device's IndexedDB: signing keys, sealed
+ * captures (+ media), and round two's room posts, uploads and small state.
+ */
 
 const DB_NAME = 'gev-mobile';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbp = null;
 
 export function openDb() {
@@ -22,9 +25,27 @@ export function openDb() {
       }
       if (!db.objectStoreNames.contains('media'))
         db.createObjectStore('media', { keyPath: 'id' });
+      // v2: rooms and uploads.
+      if (!db.objectStoreNames.contains('posts')) {
+        const p = db.createObjectStore('posts', { keyPath: 'id' });
+        p.createIndex('room', 'room');
+      }
+      if (!db.objectStoreNames.contains('uploads'))
+        db.createObjectStore('uploads', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('kv'))
+        db.createObjectStore('kv', { keyPath: 'id' });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Another tab upgraded the schema: let it, and reopen next time.
+      db.onversionchange = () => {
+        db.close();
+        dbp = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('IndexedDB upgrade blocked'));
   });
   dbp.catch(() => (dbp = null));
   return dbp;
@@ -89,5 +110,12 @@ export async function captureBySeq(seq) {
   const db = await openDb();
   return wrap(
     db.transaction('captures').objectStore('captures').index('seq').get(seq),
+  );
+}
+
+export async function byIndex(store, index, key) {
+  const db = await openDb();
+  return wrap(
+    db.transaction(store).objectStore(store).index(index).getAll(key),
   );
 }

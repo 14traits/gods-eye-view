@@ -35,14 +35,14 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 30px 30px 0 0;
-  background: var(--glass-specular), rgba(16, 20, 28, 0.78);
-  -webkit-backdrop-filter: blur(30px) saturate(1.7);
-  backdrop-filter: blur(30px) saturate(1.7);
+  border-radius: 18px 18px 0 0;
+  background: rgba(8, 9, 11, 0.86);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
   box-shadow:
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08),
-    0 -12px 40px rgba(0, 0, 0, 0.35);
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.07),
+    0 -12px 40px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
   will-change: transform;
   transform: translate3d(0, 110%, 0);
@@ -61,6 +61,15 @@
   place-items: center;
   cursor: grab;
   touch-action: none;
+}
+
+.sheet-grabber:focus-visible {
+  outline: none;
+}
+
+.sheet-grabber:focus-visible span {
+  outline: 2px solid var(--tint);
+  outline-offset: 3px;
 }
 
 .sheet-grabber span {
@@ -142,13 +151,25 @@
 .brief-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   height: 22px;
-  font-size: var(--t-cap);
-  font-weight: 650;
+  font-size: 0.625rem;
   color: var(--ink-3);
-  letter-spacing: 0.02em;
   padding-right: 40px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.brief-top .bd {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--band);
+}
+
+.brief-top > span:nth-child(2) {
+  color: var(--band);
 }
 
 .fam-tag {
@@ -178,7 +199,7 @@
 }
 
 .live-tag .live-dot {
-  --fam: var(--live);
+  --fam: var(--band, var(--ink));
   width: 6px;
   height: 6px;
 }
@@ -200,18 +221,29 @@
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 0;
   margin: 12px 0 4px;
+  border-top: 0.5px solid var(--hairline-strong);
+  border-bottom: 0.5px solid var(--hairline-strong);
 }
 
 .metric {
   min-width: 0;
+  padding: 10px 10px 9px;
+}
+
+.metric + .metric {
+  border-left: 0.5px solid var(--hairline);
+}
+
+.metric:first-child {
+  padding-left: 0;
 }
 
 .metric-v {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
@@ -229,12 +261,13 @@
 }
 
 .metric-l {
-  font-size: var(--t-cap2);
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-3);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .metric.long .metric-v {
@@ -243,13 +276,14 @@
 }
 
 .metric:first-child .metric-v {
-  color: var(--fam);
+  color: var(--band, var(--fam));
 }
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
   margin: 14px 0 6px;
 }
 
@@ -259,19 +293,21 @@
   align-items: center;
   gap: 6px;
   padding: 10px 0 9px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.07);
-  font-size: var(--t-cap2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  font-size: 0.65625rem;
   font-weight: 600;
   color: var(--ink-2);
+  text-align: center;
   transition:
     transform var(--dur-1) var(--ease-out),
     background var(--dur-1) linear;
 }
 
 .action .i {
-  font-size: 1.35rem;
-  color: var(--tint);
+  font-size: 1.25rem;
+  color: var(--ink);
 }
 
 .action:active {
@@ -322,12 +358,13 @@
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
 }
 
 .spark-row svg {
-  color: var(--fam);
+  color: var(--band, var(--fam));
   flex: 1;
   height: 42px;
   min-width: 0;
@@ -335,7 +372,7 @@
 
 .spark-row .spark-line {
   fill: none;
-  stroke: var(--fam);
+  stroke: var(--band, var(--fam));
   stroke-width: 1.8;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -347,7 +384,7 @@
 }
 
 .spark-row .spark-end {
-  fill: var(--fam);
+  fill: var(--band, var(--fam));
 }
 
 .spark-label {

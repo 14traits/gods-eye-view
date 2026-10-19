@@ -1,9 +1,14 @@
 /**
- * Capture tab: one dial, two modes.
+ * Capture tab: one dial, four modes (DESIGN.md §11.4).
  *  Look    — the God's-eye view projected around you (aircraft, satellites,
  *            ships) on the camera, aligned by compass + gyro. Drag to look on
- *            devices without motion sensors.
+ *            devices without motion sensors. Nothing is recorded.
  *  Witness — signed photo/video with IMU, GPS, heading and a hash chain.
+ *  Live    — a broadcast: you appear on the globe as an eye with a frustum,
+ *            segments are sealed every 10 s into a hash chain.
+ *  Upload  — a photo or video from the library, EXIF read, placed on a
+ *            mini-map, and marked Unverified everywhere.
+ * After any capture comes the attach sheet.
  */
 
 import { icon } from './icons.js';
@@ -28,7 +33,12 @@ import {
   projectDir,
   dirFromAzEl,
 } from '../capture/sensors.js';
-import { seal, networkTimeOffset } from '../capture/provenance.js';
+import { seal, networkTimeOffset, sha256Hex } from '../capture/provenance.js';
+import { createLiveSession, canBroadcast } from '../capture/live.js';
+import { readExif } from '../capture/exif.js';
+import { put } from '../capture/db.js';
+import { createMiniMap } from './minimap.js';
+import { llShort, cardinal } from './bands.js';
 
 const KIND_COLOR = {
   aircraft: '#7CC4FF',
@@ -53,7 +63,10 @@ const KIND_LABEL = {
 const FALLBACK_POS = { lat: 37.7749, lon: -122.4194, alt: 16, simulated: true };
 const GATE_KEY = 'gev.mobile.capture.gate';
 
-export function createCapture(view, { globe, onSealed, onVerify }) {
+export function createCapture(
+  view,
+  { globe, onSealed, onVerify, rt, attach, getLocation },
+) {
   view.innerHTML = `
     <div class="cap" data-mode="look">
       <video class="cap-video" playsinline muted autoplay></video>
@@ -72,14 +85,31 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
         </div>
       </div>
       <div class="cap-status glass-strong" hidden></div>
+      <button class="cap-target" type="button" hidden aria-label="Replying in this room. Tap to clear"></button>
+      <div class="live-hud" aria-live="polite">
+        <div class="lh-top"><span class="lh-pill tele"><i></i><b data-lh="state">OFF AIR</b><span data-lh="elapsed">tap ● to go live</span></span><span class="lh-view tele">${icon('users')}<span data-lh="viewers">0</span> watching</span></div>
+        <div class="lh-chain" aria-label="Sealed segments"></div>
+        <div class="lh-tele tele" data-lh="tele">STANDBY</div>
+      </div>
+      <div class="cap-upload" hidden>
+        <div class="up-pick">
+          <span class="up-ic">${icon('upload')}</span>
+          <h2>Add from your library</h2>
+          <p>A photo or video you already have. We read its EXIF position and time if present, you place it on the map, and it is marked <b>Unverified</b> everywhere: without a capture-time seal it can be cited, never treated as an observation.</p>
+          <label class="pill-btn primary up-btn">${icon('upload')}Choose photo or video<input type="file" accept="image/*,video/*" hidden/></label>
+        </div>
+        <div class="up-place" hidden></div>
+      </div>
       <div class="cap-bottom">
         <div class="cap-modes" role="tablist" aria-label="Capture mode">
           <button role="tab" type="button" data-mode="look" aria-selected="true">Look</button>
           <button role="tab" type="button" data-mode="witness" aria-selected="false">Witness</button>
+          <button role="tab" type="button" data-mode="live" aria-selected="false">Live</button>
+          <button role="tab" type="button" data-mode="upload" aria-selected="false">Upload</button>
         </div>
         <div class="cap-controls">
           <button class="cap-thumb" type="button" aria-label="Last capture"><span>${icon('seal')}</span></button>
-          <button class="shutter" type="button" aria-label="Seal a photo. Hold for video"><span class="shutter-ring"></span><span class="shutter-core"></span></button>
+          <button class="shutter" type="button" aria-label="Seal a photo. Hold for video"><span class="shutter-ring"></span><span class="shutter-core"></span><span class="shutter-label tele"></span></button>
           <button class="cap-side icon-btn glass-strong" type="button" data-act="recenter" aria-label="Sensors">${icon('scope')}</button>
         </div>
         <div class="cap-legend"></div>
@@ -131,7 +161,13 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   let dpr = 1;
   let lastCapture = null;
   let netOffset = null;
+  let target = null; // { s, replyTo } — the room this capture answers
+  let live = null; // { session, id, t0, pin, frameTimer }
   const VFOV = 62;
+  const MODES = ['look', 'witness', 'live', 'upload'];
+  const upload = $('.cap-upload', view);
+  const liveHud = $('.live-hud', view);
+  const targetChip = $('.cap-target', view);
 
   /* ---------- lifecycle ---------- */
   function resize() {
@@ -203,6 +239,12 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   }
 
   function leave() {
+    if (live) {
+      endLive();
+      toast('Broadcast ended and sealed — find it in You', {
+        icon: icon('sealFill'),
+      });
+    }
     active = false;
     cancelAnimationFrame(raf);
     raf = 0;
@@ -227,7 +269,11 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
 
   /* ---------- mode dial ---------- */
   function setMode(m) {
-    if (m === mode) return;
+    if (m === mode || !MODES.includes(m)) return;
+    if (live && m !== 'live') {
+      showStatus('End the broadcast first');
+      return;
+    }
     mode = m;
     root.dataset.mode = m;
     view
@@ -237,7 +283,19 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
       );
     haptic('tick');
     if (m === 'witness' && started) sensors.beginSession();
-    if (m === 'look') sensors.endSession();
+    if (m === 'look' || m === 'upload') sensors.endSession();
+    upload.hidden = m !== 'upload';
+    const lbl = $('.shutter-label', view);
+    lbl.textContent = m === 'live' ? 'GO LIVE' : '';
+    shutter.setAttribute(
+      'aria-label',
+      m === 'live'
+        ? 'Go live'
+        : m === 'upload'
+          ? 'Choose a photo or video'
+          : 'Seal a photo. Hold for video',
+    );
+    if (m === 'live') updateLiveHud(pose());
   }
   $('.cap-modes', view).addEventListener('click', (e) => {
     const b = e.target.closest('[data-mode]');
@@ -248,7 +306,9 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   root.addEventListener(
     'touchstart',
     (e) =>
-      (swipe = e.target.closest('.cap-bottom, .cap-seal, .cap-gate')
+      (swipe = e.target.closest(
+        '.cap-bottom, .cap-seal, .cap-gate, .cap-upload, .minimap',
+      )
         ? null
         : { x: e.touches[0].clientX, y: e.touches[0].clientY }),
     { passive: true },
@@ -259,8 +319,10 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
       if (!swipe || mode === 'look') return (swipe = null);
       const t = e.changedTouches[0];
       const dx = t.clientX - swipe.x;
-      if (Math.abs(dx) > 70 && Math.abs(t.clientY - swipe.y) < 50)
-        setMode(dx > 0 ? 'look' : 'witness');
+      if (Math.abs(dx) > 70 && Math.abs(t.clientY - swipe.y) < 50) {
+        const i = MODES.indexOf(mode) + (dx > 0 ? -1 : 1);
+        setMode(MODES[Math.max(0, Math.min(MODES.length - 1, i))]);
+      }
       swipe = null;
     },
     { passive: true },
@@ -302,7 +364,11 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
       if (!active) return;
       const p = pose();
       if (mode === 'look') drawLook(p);
-      else drawWitness(p);
+      else if (mode === 'upload') {
+        actx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        actx.clearRect(0, 0, W, H);
+      } else drawWitness(p);
+      if (mode === 'live') updateLiveHud(p);
       drawTape(p);
       raf = requestAnimationFrame(frame);
     };
@@ -699,12 +765,12 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   let hold = null;
   let recording = null;
   shutter.addEventListener('pointerdown', (e) => {
-    if (mode === 'look') return;
+    if (mode === 'look' || mode === 'live' || mode === 'upload') return;
     e.preventDefault();
     hold = setTimeout(startVideo, 380);
   });
   const release = async () => {
-    if (mode === 'look') return;
+    if (mode === 'look' || mode === 'live' || mode === 'upload') return;
     if (hold) {
       clearTimeout(hold);
       hold = null;
@@ -717,6 +783,15 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   shutter.addEventListener('click', (e) => {
     if (mode === 'look') {
       setMode('witness');
+      return;
+    }
+    if (mode === 'live') {
+      if (live) endLive();
+      else goLive();
+      return;
+    }
+    if (mode === 'upload') {
+      $('.up-btn input', view).click();
       return;
     }
     if (e.detail === 0) takePhoto();
@@ -787,14 +862,15 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
     }).finished.then(() => f.remove());
   }
 
-  async function sealMedia(blob, kind, test = false) {
-    const session = sensors.endSession() || {
-      start: new Date().toISOString(),
-      end: new Date().toISOString(),
-      imu: [],
-      gps: [],
-      heading: null,
-    };
+  async function sealMedia(blob, kind, test = false, preset = null) {
+    const session = preset ||
+      sensors.endSession() || {
+        start: new Date().toISOString(),
+        end: new Date().toISOString(),
+        imu: [],
+        gps: [],
+        heading: null,
+      };
     if (!session.heading) {
       const p = pose();
       session.heading = {
@@ -836,7 +912,7 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
     try {
       const bundle = await seal({ media: blob, session, context });
       lastCapture = { bundle, url };
-      setThumb(url, kind);
+      setThumb(url, kind === 'live' ? 'video' : kind);
       showSealed(bundle, url, kind, test);
       onSealed?.(bundle);
     } catch (err) {
@@ -870,7 +946,7 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
   function showSealing(url, kind, test) {
     sealEl.hidden = false;
     sealEl.innerHTML = `<div class="seal-card glass-strong">
-        <div class="seal-media">${kind === 'video' ? `<video src="${url}" muted playsinline autoplay loop></video>` : `<img src="${url}" alt="Captured frame"/>`}${test ? '<span class="badge-example">Test frame</span>' : ''}</div>
+        <div class="seal-media">${kind === 'video' || kind === 'live' ? `<video src="${url}" muted playsinline autoplay loop></video>` : `<img src="${url}" alt="Captured frame"/>`}${test ? '<span class="badge-example">Test frame</span>' : ''}</div>
         <div class="seal-glyph"><svg viewBox="0 0 100 100" aria-hidden="true"><path class="seal-ring" d="${SEAL_D}"/><path class="seal-check" d="M33 51 l11 11 l23 -24"/></svg></div>
         <div class="seal-state">Sealing…</div>
         <div class="seal-hash mono" aria-label="Bundle hash"></div>
@@ -906,7 +982,9 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
     card.classList.add('sealed');
     haptic('seal');
     $('.seal-state', sealEl).innerHTML =
-      `<b>Sealed</b> · capture #${bundle.seq}`;
+      bundle.session?.mode === 'live'
+        ? `<b>Sealed live</b> · ${bundle.session.segments?.length || 0} segments · capture #${bundle.seq}`
+        : `<b>Sealed</b> · capture #${bundle.seq}`;
     scramble($('.seal-hash', sealEl), bundle.hash);
     const imu = bundle.session.imu;
     const mags = imu.map((s) => Math.hypot(s.ax ?? 0, s.ay ?? 0, s.az ?? 0));
@@ -923,7 +1001,7 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
         <dt>Heading</dt><dd>${bundle.session.heading ? `${Math.round(bundle.session.heading.deg)}° · ${esc(bundle.session.heading.source)}` : '—'}</dd>
         <dt>Media</dt><dd>${esc(bundle.media.type)} · ${(bundle.media.bytes / 1024).toFixed(0)} KB</dd>
       </dl>
-      <div class="seal-actions"><button class="pill-btn seal" type="button" data-seal="verify">${icon('seal')}Verify</button><button class="pill-btn plain" type="button" data-seal="done">Done</button></div>`,
+      <div class="seal-actions"><button class="pill-btn primary" type="button" data-seal="post">${icon('sendUp')}${target ? 'Post to the room' : 'Post to a room'}</button><button class="pill-btn seal" type="button" data-seal="verify">${icon('seal')}Verify</button><button class="pill-btn plain" type="button" data-seal="done">Keep private</button></div>`,
     );
   }
 
@@ -931,7 +1009,38 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
     const a = e.target.closest('[data-seal]')?.dataset.seal;
     if (a === 'done') sealEl.hidden = true;
     if (a === 'verify' && lastCapture) onVerify?.(lastCapture.bundle);
+    if (a === 'post' && lastCapture) {
+      sealEl.hidden = true;
+      openAttach(lastCapture.bundle, lastCapture.url);
+    }
   });
+
+  /** Hand a sealed bundle to the attach sheet. */
+  function openAttach(bundle, url) {
+    const g = bundle.session?.gps || [];
+    const f = g[g.length - 1];
+    const sim = observer();
+    const fix = f
+      ? { lat: f.lat, lon: f.lon, acc: f.acc }
+      : sim.simulated
+        ? null
+        : { lat: sim.lat, lon: sim.lon, acc: sim.acc };
+    attach?.open(
+      {
+        kind: bundle.session?.mode === 'live' ? 'live' : 'capture',
+        id: bundle.id,
+        seq: bundle.seq,
+        at: Date.parse(bundle.session?.end || bundle.sealedAt),
+        fix,
+        sealed: true,
+        previewUrl: url,
+        isVideo: /video/.test(bundle.media?.type || ''),
+        headingDeg: bundle.session?.heading?.deg ?? null,
+        segments: bundle.session?.segments?.length || 0,
+      },
+      { preset: target?.s || null, replyTo: target?.replyTo || null },
+    );
+  }
 
   $('.cap-thumb', view).addEventListener('click', () => {
     if (lastCapture) onVerify?.(lastCapture.bundle);
@@ -945,9 +1054,316 @@ export function createCapture(view, { globe, onSealed, onVerify }) {
     );
   });
 
+  /* ---------- live broadcast ---------- */
+  let hudLiveT = 0;
+  function updateLiveHud(p) {
+    const now = performance.now();
+    if (now - hudLiveT < 250) return;
+    hudLiveT = now;
+    const o = observer();
+    const q = (k) => liveHud.querySelector(`[data-lh="${k}"]`);
+    q('state').textContent = live ? 'LIVE' : 'OFF AIR';
+    if (!live) q('elapsed').textContent = 'tap the shutter to go live';
+    if (live) {
+      const sec = Math.round((Date.now() - live.t0) / 1000);
+      q('elapsed').textContent =
+        `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+      q('viewers').textContent = String(rt.viewersOf(live.id));
+    }
+    q('tele').textContent = [
+      `HDG ${String(Math.round(p.az)).padStart(3, '0')}° ${cardinal(p.az)}`,
+      `PITCH ${p.el >= 0 ? '+' : ''}${Math.round(p.el)}°`,
+      `${llShort(o.lat, o.lon, 4)}${o.simulated ? ' SIM' : ` ±${Math.round(o.acc || 0)} M`}`,
+      `IMU ${sensors.state.hasMotion ? 'ON' : 'OFF'}`,
+      live ? `SEG ${live.session.segments.length}` : 'STANDBY',
+    ].join(' · ');
+  }
+
+  async function goLive() {
+    const stream = video.srcObject;
+    if (!camOk || !canBroadcast(stream)) {
+      showStatus('Live needs a camera on this device');
+      return;
+    }
+    const id = `${rt.tab}-${Date.now().toString(36)}`;
+    const session = createLiveSession({
+      stream,
+      sensors,
+      pose,
+      fix: () => {
+        const o = observer();
+        return o.simulated ? null : o;
+      },
+      onSegment: addSegment,
+    });
+    try {
+      session.start();
+    } catch (err) {
+      showStatus(`Could not start: ${err.message}`);
+      return;
+    }
+    live = { id, session, t0: Date.now(), pin: null, lastHd: null, timer: 0 };
+    root.classList.add('is-live');
+    $('.shutter-label', view).textContent = 'END';
+    shutter.setAttribute('aria-label', 'End broadcast');
+    $('.lh-chain', view).innerHTML =
+      '<span class="seg pending tele"><i></i>sealing every 10 s</span>';
+    haptic('medium');
+    broadcastTick();
+    live.timer = setInterval(broadcastTick, 1000);
+  }
+
+  function broadcastTick() {
+    if (!live) return;
+    const p = pose();
+    const o = observer();
+    const hd = Math.round(p.az / 5) * 5;
+    if (live.lastHd !== hd) {
+      if (live.pin) globe.removePin(live.pin);
+      live.pin = globe.addPin({
+        id: `live:${live.id}`,
+        kind: 'live',
+        lon: o.lon,
+        lat: o.lat,
+        headingDeg: p.az,
+        fovDeg: VFOV,
+        label: 'You · live',
+      });
+      live.lastHd = hd;
+    }
+    let frame = null;
+    try {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw && vh) {
+        const c =
+          live.canvas || (live.canvas = document.createElement('canvas'));
+        c.width = 320;
+        c.height = 180;
+        const x = c.getContext('2d');
+        const sc = Math.max(320 / vw, 180 / vh);
+        x.drawImage(
+          video,
+          (320 - vw * sc) / 2,
+          (180 - vh * sc) / 2,
+          vw * sc,
+          vh * sc,
+        );
+        frame = c.toDataURL('image/jpeg', 0.6);
+      }
+    } catch {
+      frame = null;
+    }
+    rt.liveTick(
+      {
+        id: live.id,
+        handle: rt.me.handle,
+        startedAt: live.t0,
+        lat: o.lat,
+        lon: o.lon,
+        acc: o.acc,
+        simulated: !!o.simulated,
+        headingDeg: p.az,
+        segments: live.session.segments.length,
+        viewers: rt.viewersOf(live.id),
+        situationTitle: target?.s?.title || null,
+      },
+      frame,
+    );
+  }
+
+  function addSegment(seg) {
+    const chain = $('.lh-chain', view);
+    chain.querySelector('.pending')?.remove();
+    chain.appendChild(
+      h(
+        `<span class="seg tele" title="sha256 ${esc(seg.hash)}"><i></i>#${seg.i + 1} ${esc(seg.hash.slice(0, 6))}${seg.prev ? ` ← ${esc(seg.prev.slice(0, 4))}` : ''}</span>`,
+      ),
+    );
+    while (chain.children.length > 4) chain.firstElementChild.remove();
+    haptic('tick');
+  }
+
+  async function endLive() {
+    const l = live;
+    if (!l) return;
+    live = null;
+    clearInterval(l.timer);
+    root.classList.remove('is-live');
+    $('.shutter-label', view).textContent = 'GO LIVE';
+    shutter.setAttribute('aria-label', 'Go live');
+    rt.liveEnd(l.id);
+    if (l.pin) globe.removePin(l.pin);
+    showStatus('Sealing the broadcast…', 2500);
+    const out = await l.session.stop();
+    const p = pose();
+    const session = {
+      ...out.session,
+      heading: out.session.heading || {
+        deg: Math.round(p.az * 10) / 10,
+        pitch: Math.round(p.el * 10) / 10,
+        roll: 0,
+        source: sensors.state.hasOrientation ? 'relative' : 'simulated',
+      },
+      segments: out.segments,
+      liveId: l.id,
+    };
+    if (out.blob.size) await sealMedia(out.blob, 'live', false, session);
+  }
+
+  /* ---------- upload ---------- */
+  const fileInput = $('.up-btn input', view);
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files?.[0];
+    fileInput.value = '';
+    if (f) await placeUpload(f);
+  });
+
+  const toLocalInput = (ms) => {
+    const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);
+    return d.toISOString().slice(0, 16);
+  };
+
+  async function placeUpload(file) {
+    const isJpeg = /jpe?g/i.test(file.type) || /\.jpe?g$/i.test(file.name);
+    const exif = isJpeg ? await readExif(file).catch(() => null) : null;
+    const url = URL.createObjectURL(file);
+    const isVideo = /^video/.test(file.type);
+    const me = getLocation?.() || sensors.state.fix;
+    const loc =
+      exif?.lat != null
+        ? { lat: exif.lat, lon: exif.lon, src: 'EXIF GPS' }
+        : target?.s
+          ? { lat: target.s.lat, lon: target.s.lon, src: 'ROOM LOCATION' }
+          : me
+            ? { lat: me.lat, lon: me.lon, src: 'YOUR LOCATION' }
+            : { lat: FALLBACK_POS.lat, lon: FALLBACK_POS.lon, src: 'DEFAULT' };
+    const taken = exif?.takenAt || file.lastModified || Date.now();
+    const place = $('.up-place', view);
+    $('.up-pick', view).hidden = true;
+    place.hidden = false;
+    const rows = [
+      [
+        'Position',
+        exif?.lat != null
+          ? `${llShort(exif.lat, exif.lon, 5)} (EXIF)`
+          : 'none in file',
+      ],
+      [
+        'Taken',
+        exif?.takenAt
+          ? `${new Date(exif.takenAt).toLocaleString()}${exif.takenAtHasZone ? '' : ' (no time zone in file)'}`
+          : `unknown · file date ${new Date(file.lastModified).toLocaleDateString()}`,
+      ],
+      [
+        'Camera',
+        (exif?.model && exif?.make && exif.model.startsWith(exif.make)
+          ? exif.model
+          : [exif?.make, exif?.model].filter(Boolean).join(' ')) || '—',
+      ],
+      [
+        'Direction',
+        Number.isFinite(exif?.headingDeg)
+          ? `${Math.round(exif.headingDeg)}° ${cardinal(exif.headingDeg)}`
+          : '—',
+      ],
+    ];
+    place.innerHTML = `
+      <div class="up-head"><span class="up-thumb">${isVideo ? `<video src="${esc(url)}#t=0.1" muted playsinline preload="metadata"></video>` : `<img src="${esc(url)}" alt="Chosen file"/>`}</span>
+        <div class="up-name"><b>${esc(file.name || 'Untitled')}</b><span class="tele">${esc((file.type || 'file').toUpperCase())} · ${(file.size / 1024).toFixed(0)} KB</span></div>
+        <span class="bdg" data-b="unverified">${icon('hazards')}Unverified</span></div>
+      <dl class="up-exif">${rows.map(([k, v]) => `<dt class="tele">${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      <div class="up-h tele">${icon('pin')}Place it — drag the map under the pin</div>
+      <div class="up-map"></div>
+      <div class="up-h tele">${icon('clock')}When was it taken</div>
+      <input class="up-time" type="datetime-local" value="${toLocalInput(taken)}" aria-label="When it was taken"/>
+      <p class="up-why">${icon('info')}<span>Marked <b>Unverified</b> everywhere. EXIF is easy to edit and nothing was sealed when this was taken, so it can be cited by a hypothesis but never counted as an observation or earn Was there.</span></p>
+      <div class="up-actions"><button class="pill-btn plain" type="button" data-up="cancel">Cancel</button><button class="pill-btn primary" type="button" data-up="next">${icon('chevronRight')}Continue</button></div>`;
+    let moved = false;
+    const map = createMiniMap($('.up-map', place), {
+      lat: loc.lat,
+      lon: loc.lon,
+      spanDeg: exif?.lat != null ? 0.008 : 0.05,
+      label: loc.src,
+      onChange: () => (moved = true),
+    });
+    place.onclick = async (e) => {
+      const a = e.target.closest('[data-up]')?.dataset.up;
+      if (a === 'cancel') return resetUpload(url);
+      if (a !== 'next') return;
+      const c = map.center;
+      const t = Date.parse($('.up-time', place).value) || taken;
+      const rec = {
+        id: `up-${Date.now().toString(36)}`,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        sha256: await sha256Hex(file),
+        lat: c.lat,
+        lon: c.lon,
+        takenAt: t,
+        placedBy: moved ? 'hand' : loc.src.toLowerCase(),
+        exif: exif
+          ? {
+              lat: exif.lat,
+              lon: exif.lon,
+              takenAt: exif.takenAt,
+              make: exif.make,
+              model: exif.model,
+              headingDeg: exif.headingDeg,
+            }
+          : null,
+        addedAt: Date.now(),
+        blob: file,
+      };
+      await put('uploads', rec).catch((err) =>
+        console.warn('upload not stored', err),
+      );
+      resetUpload();
+      onSealed?.(null);
+      attach?.open(
+        {
+          kind: 'upload',
+          id: rec.id,
+          at: t,
+          fix: { lat: c.lat, lon: c.lon },
+          unverified: true,
+          sealed: false,
+          previewUrl: url,
+          isVideo,
+          headingDeg: exif?.headingDeg ?? null,
+        },
+        { preset: target?.s || null, replyTo: target?.replyTo || null },
+      );
+    };
+  }
+
+  function resetUpload(url) {
+    if (url) URL.revokeObjectURL(url);
+    const place = $('.up-place', view);
+    place.hidden = true;
+    place.innerHTML = '';
+    $('.up-pick', view).hidden = false;
+  }
+
+  /* ---------- reply target ---------- */
+  function attachTo(s, { replyTo = null } = {}) {
+    target = s ? { s, replyTo } : null;
+    targetChip.hidden = !target;
+    if (target) {
+      targetChip.innerHTML = `${icon('reply')}<span>Answering in <b>${esc(s.title)}</b>${replyTo ? ` · ${esc(replyTo.author.handle)}` : ''}</span>${icon('close')}`;
+      if (mode === 'look') setMode('witness');
+    }
+  }
+  targetChip.addEventListener('click', () => attachTo(null));
+
   return {
     enter,
     leave,
+    attachTo,
+    get live() {
+      return !!live;
+    },
     setMode,
     get mode() {
       return mode;

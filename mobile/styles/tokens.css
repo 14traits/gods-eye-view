@@ -7,13 +7,21 @@
 :root {
   color-scheme: dark;
 
-  /* Ground */
-  --ground: #05070b;
-  --ground-1: #0a0e15;
-  --ground-2: #10151e;
-  --ground-3: #171d28;
+  /* Ground: near-black, the globe is the only light source. */
+  --ground: #050607;
+  --ground-1: #0a0b0d;
+  --ground-2: #101215;
+  --ground-3: #171a1e;
   --hairline: rgba(255, 255, 255, 0.08);
   --hairline-strong: rgba(255, 255, 255, 0.14);
+
+  /* Altitude bands (DESIGN.md §11.1): one signal hue per band. */
+  --b-orbit: #b39dff;
+  --b-sky: #a3d8ff;
+  --b-ground: #ffb547;
+  --b-inside: #ebc777;
+  /* Hazard red is reserved for things that hurt people. */
+  --harm: #ff4436;
 
   /* Ink */
   --ink: #f4f7fb;
@@ -36,7 +44,7 @@
   --ok: #30d158;
   --warn: #ffd60a;
   --bad: #ff453a;
-  --tint: #7cc4ff;
+  --tint: #a3d8ff;
 
   /* Glass */
   --glass-bg: rgba(22, 27, 37, 0.52);
@@ -79,7 +87,10 @@
     'Segoe UI', sans-serif;
   --font-rounded: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
   --mono:
-    ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, 'Roboto Mono', monospace;
+    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, 'Roboto Mono', monospace;
+  /* The voice of the instruments: small caps, tabular, tracked. */
+  --tele-size: 0.625rem;
+  --tele-track: 0.06em;
   --t-large: 2.125rem; /* 34 pt */
   --t-title2: 1.375rem;
   --t-title3: 1.25rem;
@@ -293,6 +304,32 @@ svg.i {
 }
 [data-family='infra'] {
   --fam: var(--infra);
+}
+
+/* Band colour binding (wins over family where both are set). */
+[data-band='orbit'] {
+  --band: var(--b-orbit);
+}
+[data-band='sky'] {
+  --band: var(--b-sky);
+}
+[data-band='ground'] {
+  --band: var(--b-ground);
+}
+[data-band='inside'] {
+  --band: var(--b-inside);
+}
+
+/* Telemetry: the instrument voice. */
+.tele {
+  font-family: var(--mono);
+  font-size: var(--tele-size);
+  font-weight: 500;
+  letter-spacing: var(--tele-track);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum', 'zero';
+  line-height: 1.25;
 }
 
 @keyframes pulse-ring {

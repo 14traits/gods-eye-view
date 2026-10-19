@@ -59,6 +59,8 @@ export function createSheet(o) {
       ? `transform ${reducedMotion() ? 160 : 520}ms ${spring ? 'var(--spring)' : 'var(--ease-out)'}`
       : 'none';
     sheet.style.transform = `translate3d(0, ${y}px, 0)`;
+    // Lets docked controls sit at the bottom of the visible part.
+    sheet.style.setProperty('--off', `${Math.max(0, y)}px`);
     if (scrim) {
       const lowest = offsetFor(detents[0]);
       const k = clamp(1 - y / Math.max(1, lowest + 120), 0, 1);

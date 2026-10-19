@@ -24,6 +24,11 @@ import { createYou } from './ui/you.js';
 import { createSearch } from './ui/search.js';
 import { createInspector } from './ui/inspector.js';
 import { createNarrative } from './ui/narrative.js';
+import { createRealtime } from './ui/realtime.js';
+import { createRooms } from './ui/rooms.js';
+import { createAttach } from './ui/attach.js';
+import { createLiveViewer } from './ui/liveViewer.js';
+import { BAND_COLOR, bandOf } from './ui/bands.js';
 
 const app = $('#app');
 const stage = $('#stage');
@@ -56,7 +61,17 @@ const globeReady = mountGlobe($('#globe'), { quality: store.get('quality') })
 
 async function getSituations({ fresh = false } = {}) {
   const g = await globeReady;
-  if (!situationsCache || fresh) situationsCache = await g.situations();
+  if (!situationsCache || fresh) {
+    const [live, places] = await Promise.all([
+      g.situations(userLoc ? { observer: userLoc } : undefined),
+      rooms.places().catch(() => []),
+    ]);
+    // Places people started from a capture have rooms too.
+    situationsCache = [
+      ...live,
+      ...places.filter((p) => !live.some((s) => String(s.id) === p.id)),
+    ];
+  }
   return situationsCache;
 }
 const situationById = (id) =>
@@ -87,6 +102,16 @@ let threads = null;
 let search = null;
 let inspector = null;
 let narrative = null;
+let liveViewer = null;
+
+/** After posting, offer the way into the room. */
+function toastOpen(s, p) {
+  setTimeout(() => {
+    if (current !== 'capture') return;
+    const s2 = situationById(s.id) || s;
+    openSituation(s2, null, { tab: 'room', focusPost: p.id });
+  }, 900);
+}
 
 function applyTab(tab) {
   const prev = current;
@@ -107,6 +132,7 @@ function applyTab(tab) {
     updateGlobeActivity();
   }
   if (tab === 'you') you?.render();
+  if (tab === 'threads') threads?.refresh?.();
   if (tab === 'globe' && two) chrome?.renderLeadView();
   if (tab !== 'globe') chrome?.hidePick();
 }
@@ -146,32 +172,86 @@ new MutationObserver(updateGlobeActivity).observe(app, {
   attributeFilter: ['class'],
 });
 
+/* ---------------- Realtime + rooms ---------------- */
+const rt = createRealtime();
+const rooms = createRooms({ rt });
+
+/** The feed is built before the globe mounts; it talks to it lazily. */
+const lazyGlobe = {
+  thumbnail: async (s, o) => (await globeReady).thumbnail(s, o),
+  eyeFrameUrl: (id) => globe?.eyeFrameUrl(id) ?? null,
+  setViewer: (v) => globeReady.then((g) => g.setViewer(v)).catch(() => {}),
+};
+
+function locate({ quiet = false } = {}) {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const loc = {
+          lat: p.coords.latitude,
+          lon: p.coords.longitude,
+          acc: p.coords.accuracy,
+        };
+        userLoc = loc;
+        resolve(loc);
+      },
+      () => {
+        if (!quiet)
+          toast('Location unavailable — distances are hidden', {
+            icon: icon('location'),
+          });
+        resolve(null);
+      },
+      { maximumAge: 600000, timeout: 10000 },
+    );
+  });
+}
+let userLoc = null;
+
 /* ---------------- Feed ---------------- */
 const feed = createFeed(views.now, {
   getSituations: () => getSituations({ fresh: true }),
   onOpen: (s, card) => openSituation(s, card),
-  onLocate: () =>
-    new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
-      navigator.geolocation.getCurrentPosition(
-        (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
-        () => {
-          toast('Location unavailable — sorting from San Francisco', {
-            icon: icon('location'),
-          });
-          resolve(null);
-        },
-        { maximumAge: 600000, timeout: 10000 },
-      );
-    }),
+  onOpenRoom: (s, card) => openSituation(s, card, { tab: 'room' }),
+  onWitness: (w, card) => openWitness(w, card),
+  onCapture: () => selectTab('capture'),
+  onLocate: () => locate(),
   bindScroll: (el) => tabbar.bindScroll(el),
+  globe: lazyGlobe,
+  rooms,
+  rt,
 });
 
-function openSituation(s, card = null) {
+// Distances appear by themselves when location was already granted.
+navigator.permissions
+  ?.query({ name: 'geolocation' })
+  .then((st) => {
+    if (st.state === 'granted')
+      locate({ quiet: true }).then((l) => l && feed.setLocation(l));
+  })
+  .catch(() => {});
+
+function openSituation(s, card = null, opts = {}) {
   if (!world) return;
   if (current === 'capture') applyTab('now');
   if (narrative?.active) narrative.stop();
-  world.open(s, card);
+  world.open(s, card, opts);
+}
+
+async function openWitness(w, card) {
+  if (w.liveNow) {
+    world?.watchLive?.(w);
+    return;
+  }
+  const sid = w.post?.room;
+  const s = sid ? situationById(sid) : null;
+  if (s) return openSituation(s, card, { tab: 'room', focusPost: w.post.id });
+  if (w.bundle) inspector?.open(w.bundle);
+  else
+    toast('Unverified upload · post it to a room from Capture', {
+      icon: icon('upload'),
+    });
 }
 
 function refreshAccessory() {
@@ -191,6 +271,12 @@ globeReady
       isTwoPane,
       onThread: (s) => openThreadFor(s),
       onFollowChange: refreshAccessory,
+      rooms,
+      rt,
+      getChrome: () => chrome,
+      getLocation: () => userLoc,
+      onCapture: (s, o) => captureFor(s, o),
+      onWatchLive: (w) => liveViewer?.open(w),
     });
     world.on('open', (s) => feed.select(s.id));
     world.on('close', () => feed.select(null));
@@ -203,6 +289,15 @@ globeReady
       onThread: (s) => openThreadFor(s),
       getSituations,
       isTwoPane,
+      onPin: (p) => {
+        const m = /^post:(.+)$/.exec(p.id || '');
+        if (!m) return false;
+        const sid = m[1].split('~')[0];
+        const s = situationById(sid);
+        if (!s) return false;
+        openSituation(s, null, { tab: 'room', focusPost: m[1] });
+        return true;
+      },
     });
     narrative = createNarrative({
       app,
@@ -213,6 +308,10 @@ globeReady
     });
     threads = createThreads(views.threads, {
       bindScroll: (el) => tabbar.bindScroll(el),
+      rooms,
+      rt,
+      getSituations,
+      onOpenRoom: (s) => openSituation(s, null, { tab: 'room' }),
       onPlay: (thread) => {
         if (world.current) world.close();
         narrative.play(thread);
@@ -241,6 +340,11 @@ globeReady
       onOpenSituation: (s) => openSituation(s),
       onVerify: (b) => inspector.open(b),
       onCredits: () => chrome.openCredits(),
+      rooms,
+      rt,
+      onOpenRoom: (s, postId) =>
+        openSituation(s, null, { tab: 'room', focusPost: postId }),
+      onLocate: () => locate(),
     });
     search = createSearch({
       getSituations,
@@ -257,14 +361,51 @@ globeReady
         toast('Lens on', { icon: icon('layers') });
       },
     });
+    liveViewer = createLiveViewer({ rt, globe: g });
+    const attach = createAttach({
+      rooms,
+      globe: g,
+      getSituations,
+      onPosted: async (s, p) => {
+        situationsCache = null;
+        await getSituations();
+        feed.refreshSocial();
+        threads?.refresh?.();
+        if (current === 'you') you.render();
+        toastOpen(s, p);
+      },
+    });
     const { createCapture } = await import('./ui/capture.js');
     capture = createCapture(views.capture, {
       globe: g,
+      rt,
+      attach,
+      getLocation: () => userLoc,
       onSealed: () => {
+        feed.refreshSocial();
         if (current === 'you') you.render();
       },
       onVerify: (b) => inspector.open(b),
     });
+    // Holograms and witness posts you left stay pinned on the globe.
+    rooms
+      .myPosts()
+      .then((list) => {
+        for (const p of list)
+          if (
+            p.anchor &&
+            Number.isFinite(p.anchor.lat) &&
+            (p.hologram || p.evidence?.sealed)
+          )
+            g.addPin({
+              id: `post:${p.id}`,
+              lon: p.anchor.lon,
+              lat: p.anchor.lat,
+              kind: p.hologram ? 'hologram' : 'witness',
+              label: p.hologram ? 'Hologram' : 'Your witness',
+            });
+      })
+      .catch(() => {});
 
     // The back chevron also stops a playing narrative.
     $('.world-back').addEventListener(
@@ -286,16 +427,7 @@ globeReady
         (s.events || []).map((ev) => ({
           at: +new Date(ev.at),
           label: ev.label,
-          color: {
-            sky: '#7CC4FF',
-            sea: '#38E1C6',
-            orbit: '#C9A7FF',
-            hazards: '#FF6A3D',
-            eyes: '#FFD166',
-            ground: '#9BE15D',
-            weather: '#8AB4F8',
-            infra: '#B8C0CC',
-          }[s.family],
+          color: BAND_COLOR[bandOf(s)],
         })),
       ),
     );
@@ -319,6 +451,13 @@ globeReady
     console.error(err);
     toast('The globe could not start on this device');
   });
+
+/** Reply with evidence: open Capture with this situation pre-attached. */
+async function captureFor(s, opts = {}) {
+  if (world?.current && !isTwoPane()) await world.close();
+  selectTab('capture');
+  capture?.attachTo?.(s, opts);
+}
 
 async function openThreadFor(s) {
   if (!threads) return;

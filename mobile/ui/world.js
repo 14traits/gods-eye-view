@@ -3,9 +3,10 @@
  * brief sheet (peek / medium / large) and the fold back into the card.
  */
 
-import { icon, FAMILY_ICON, FAMILIES } from './icons.js';
+import { icon, FAMILY_ICON } from './icons.js';
 import {
   $,
+  $$,
   h,
   esc,
   ago,
@@ -25,8 +26,20 @@ import {
 } from './dom.js';
 import { createSheet } from './sheet.js';
 import { isReconstruction } from './feed.js';
+import { createRoomView } from './room.js';
+import { createComposer } from './composer.js';
+import { frame } from './cards.js';
+import {
+  BAND_NAME,
+  bandOf,
+  telemetryOf,
+  realSeries,
+  llShort,
+  mgrs,
+  fmtKm,
+  sensorId,
+} from './bands.js';
 
-const FAM_NAME = Object.fromEntries(FAMILIES.map((f) => [f.id, f.name]));
 let eventPack = null;
 export async function loadEventPack() {
   if (!eventPack)
@@ -50,11 +63,37 @@ export function createWorld({
   isTwoPane,
   onThread,
   onFollowChange,
+  rooms,
+  rt,
+  getChrome,
+  getLocation,
+  onCapture,
+  onWatchLive,
 }) {
   const ev = emitter();
   let current = null;
   let busy = false;
   let originCard = null;
+  let tab = 'brief';
+
+  const roomView = createRoomView({
+    rooms,
+    rt,
+    globe,
+    getChrome,
+    onCapture: (s, o) => onCapture(s, o),
+    onCompose: (s, o) => composer.open(s, o),
+  });
+  const composer = createComposer({
+    rooms,
+    getTime: () => getChrome()?.ribbon?.time || null,
+    getLocation,
+    getView: () => lastView,
+    onCapture: (s, o) => onCapture(s, o),
+    onPosted: () => {},
+  });
+  let lastView = null;
+  globe.on('camera', (c) => (lastView = c));
 
   /* ---------- chrome: back button ---------- */
   const back = h(
@@ -84,6 +123,8 @@ export function createWorld({
     app.dataset.sheet = d;
     stage.style.setProperty('--sheet-h', `${sheet.visibleHeight()}px`);
   });
+  const dock = h('<div class="sheet-dock"></div>');
+  sheet.sheet.appendChild(dock);
   let closingFromCode = false;
 
   const safeBottom = () => safeInsets().bottom;
@@ -134,13 +175,14 @@ export function createWorld({
   }
 
   function sparkHtml(s) {
-    if (!Array.isArray(s.series) || s.series.length < 3) return '';
+    const series = realSeries(s);
+    if (series.length < 3) return '';
     const W = 220;
     const H = 42;
-    const d = sparkPath(s.series, W, H, 3);
+    const d = sparkPath(series, W, H, 3);
     const last = d.split(/[ML]/).filter(Boolean).pop().split(' ').map(Number);
     const m = s.metrics?.[0];
-    return `<div class="block"><div class="block-h">Trend<small>${esc(m?.label || '')} · last ${s.series.length} samples</small></div>
+    return `<div class="block"><div class="block-h">Trend<small>${esc(s.seriesLabel || m?.label || '')} · last ${series.length} samples</small></div>
       <div class="spark-row"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
         <defs><linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
         <path class="spark-area" d="${d}L${W - 3} ${H}L3 ${H}Z"/><path class="spark-line" d="${d}"/><circle class="spark-end" cx="${last[0]}" cy="${last[1]}" r="3"/></svg>
@@ -187,20 +229,32 @@ export function createWorld({
     );
   }
 
-  function render(s) {
-    const followed = store.isFollowed(s.id);
+  function headHtml(s) {
     const recon = isReconstruction(s);
-    sheet.sheet.dataset.family = s.family;
-    const m0 = s.metrics?.[0];
+    const band = bandOf(s);
     const status = s.live
       ? `<span class="live-tag"><span class="live-dot"></span>Live</span>`
       : recon
-        ? '<span>Reconstruction</span>'
+        ? '<span>4D reconstruction</span>'
         : '<span>Stale</span>';
-    sheet.head.innerHTML = `
-      <div class="brief-top"><span class="fam-tag">${icon(FAMILY_ICON[s.family] || 'now')}${esc(FAM_NAME[s.family] || s.family)}</span>${status}<span>·</span><span class="num">${esc(ago(s.updatedAt))}</span></div>
-      <div class="brief-title-row"><h2 class="sheet-title">${esc(s.title)}</h2>${m0 ? `<span class="peek-metric num">${esc(typeof m0.value === 'number' ? fmtNum(m0.value, m0.value % 1 ? 1 : 0) : m0.value)}<small>${esc(m0.unit || '')}</small></span>` : ''}</div>
-      <div class="sheet-sub">${esc(s.place || '')}${s.subtitle ? ` — ${esc(s.subtitle)}` : ''}</div>`;
+    const dist = Number.isFinite(s.distanceKm)
+      ? `<span>·</span><span>${esc(fmtKm(s.distanceKm))} away</span>`
+      : '';
+    return `
+      <div class="brief-top tele" data-band="${band}"><i class="bd"></i><span>${esc(BAND_NAME[band])}</span>${status}<span>·</span><span>${esc(ago(s.updatedAt))}</span>${dist}</div>
+      <div class="brief-title-row"><h2 class="sheet-title">${esc(s.title)}</h2></div>
+      <div class="sheet-sub">${esc(s.place || '')}${s.subtitle ? ` — ${esc(s.subtitle)}` : ''}</div>
+      <div class="brief-tabs" role="tablist" aria-label="Situation">
+        <button role="tab" type="button" data-tab="brief" aria-selected="${tab === 'brief'}">Brief</button>
+        <button role="tab" type="button" data-tab="room" aria-selected="${tab === 'room'}">Room<span class="bt-n tele" data-room-n></span></button>
+        <span class="bt-here tele" data-room-here></span>
+      </div>`;
+  }
+
+  function briefHtml(s) {
+    const followed = store.isFollowed(s.id);
+    const recon = isReconstruction(s);
+    const band = bandOf(s);
     const metrics = (s.metrics || []).slice(0, 3);
     const time = s.time
       ? `${new Date(s.time.start).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} → ${new Date(s.time.end).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`
@@ -213,17 +267,19 @@ export function createWorld({
         return `<span class="chip layer-chip" data-family="${esc(fam)}">${icon(FAMILY_ICON[fam] || 'layers')}${esc(l?.name || id)}</span>`;
       })
       .join('');
-    sheet.body.innerHTML = `
+    return `
+      <div class="brief-strip tele" data-band="${band}">${frame()}<span>${esc(sensorId(s))}</span><span>${esc(telemetryOf(s))}</span></div>
       ${metrics.length ? `<div class="metrics">${metrics.map(metricHtml).join('')}</div>` : ''}
       <div class="actions" role="group" aria-label="Actions">
         <button class="action" type="button" data-act="follow" aria-pressed="${followed}">${icon('star')}<span>${followed ? 'Following' : 'Follow'}</span></button>
         <button class="action" type="button" data-act="ride">${icon('ride')}<span>Ride</span></button>
         <button class="action" type="button" data-act="eye">${icon('video')}<span>Nearest eye</span></button>
-        <button class="action" type="button" data-act="thread">${icon('threads')}<span>Thread</span></button>
+        <button class="action" type="button" data-act="reply">${icon('viewfinder')}<span>Witness</span></button>
+        ${recon ? `<button class="action" type="button" data-act="thread">${icon('threads')}<span>4D thread</span></button>` : ''}
         <button class="action" type="button" data-act="share">${icon('share')}<span>Share</span></button>
       </div>
       ${sparkHtml(s)}
-      <div class="block"><div class="block-h">Evidence<small>${recon ? 'sourced observations · tap for original' : 'context imagery'}</small></div>
+      <div class="block"><div class="block-h">Evidence<small>${recon ? 'sourced observations · tap for original' : 'context imagery · Esri'}</small></div>
         <div class="evidence" data-hscroll>${recon ? '<div class="ev"><div class="ev-img"></div></div>'.repeat(4) : contextEvidence(s)}</div></div>
       <div class="block"><div class="block-h">Every number, its source and age</div>
         <table class="metric-table"><tbody>${(s.metrics || [])
@@ -235,12 +291,44 @@ export function createWorld({
       <div class="block"><div class="block-h">Lenses this situation turns on</div><div class="layer-chips">${layerChips || '<span class="sheet-sub">None</span>'}</div></div>
       <div class="block"><div class="block-h">Details</div><dl class="facts">
         <dt>Where</dt><dd class="mono">${esc(fmtCoord(s.lat, s.lon, 4))}</dd>
+        <dt>MGRS</dt><dd class="mono">${esc(mgrs(s.lat, s.lon, 4) || '—')}</dd>
         <dt>Window</dt><dd>${esc(time)}</dd>
         <dt>Kind</dt><dd>${esc(s.kind || '—')}</dd>
         <dt>Source</dt><dd>${esc(s.source || '—')}</dd></dl></div>
       ${s.caveat ? `<div class="caveat"><b>Caveat</b>${esc(s.caveat)}</div>` : ''}`;
+  }
+
+  async function updateRoomCounts(s) {
+    const r = await rooms.room(s);
+    if (current !== s) return;
+    const n = $('[data-room-n]', sheet.head);
+    if (n) n.textContent = String(r.posts.length);
+    const here = $('[data-room-here]', sheet.head);
+    const k = rt.presence(r.id).length;
+    if (here)
+      here.innerHTML = r.openQ.length
+        ? `${icon('question')}${r.openQ.length} open`
+        : '';
+    void k;
+  }
+
+  async function renderBody(s, opts = {}) {
+    sheet.sheet.dataset.tab = tab;
+    $$('.brief-tabs [data-tab]', sheet.head).forEach((b) =>
+      b.setAttribute('aria-selected', String(b.dataset.tab === tab)),
+    );
+    if (tab === 'room') {
+      sheet.body.innerHTML =
+        '<div class="room-loading tele">Opening the room…</div>';
+      dock.innerHTML = roomView.replyBar() + roomView.reactionRail();
+      await roomView.render(s, sheet.body, opts);
+      return;
+    }
+    roomView.close();
+    dock.innerHTML = '';
+    sheet.body.innerHTML = briefHtml(s);
     if (
-      recon &&
+      isReconstruction(s) &&
       (s.thread === 'bhote-koshi-2026' || s.id === 'bhote-koshi-2026')
     ) {
       packEvidence()
@@ -250,7 +338,8 @@ export function createWorld({
           return loadEventPack();
         })
         .then((pack) => {
-          if (current !== s || $('.caveat', sheet.body)) return;
+          if (current !== s || tab !== 'brief' || $('.caveat', sheet.body))
+            return;
           sheet.body.insertAdjacentHTML(
             'beforeend',
             `<div class="caveat"><b>${esc(pack.reconstruction.label)}</b>${esc(pack.reconstruction.caveat)}</div>`,
@@ -259,6 +348,59 @@ export function createWorld({
         .catch((err) => console.warn(err));
     }
   }
+
+  function render(s, opts = {}) {
+    sheet.sheet.dataset.family = s.family;
+    sheet.sheet.dataset.band = bandOf(s);
+    sheet.head.innerHTML = headHtml(s);
+    updateRoomCounts(s);
+    return renderBody(s, opts);
+  }
+
+  async function setTab(t, opts = {}) {
+    if (!current || t === tab) return;
+    tab = t;
+    haptic('tick');
+    await renderBody(current, opts);
+    if (t === 'room' && sheet.detent !== 'large') sheet.setDetent('large');
+  }
+
+  sheet.head.addEventListener('click', (e) => {
+    const b = e.target.closest('.brief-tabs [data-tab]');
+    if (b) setTab(b.dataset.tab);
+  });
+
+  sheet.body.addEventListener('click', async (e) => {
+    if (tab !== 'room' || !current) return;
+    await roomView.onClick(e, {
+      scroller: sheet.body,
+      flyTo: (a, s) => {
+        sheet.setDetent('peek');
+        const kmScale = Math.max(
+          1200,
+          Math.min(400e3, (s.camera?.height || 200e3) * 0.15),
+        );
+        globe.flyTo({
+          lon: a.lon,
+          lat: a.lat,
+          height: kmScale,
+          pitch: -45,
+          duration: 1.8,
+        });
+      },
+      scrub: (t) => getChrome()?.ribbon?.scrubTo?.(t),
+    });
+  });
+  dock.addEventListener('click', async (e) => {
+    await roomView.onClick(e, {
+      scroller: sheet.body,
+      flyTo: () => {},
+      scrub: () => {},
+    });
+  });
+  rooms.on('post', (p) => {
+    if (current && String(current.id) === p.room) updateRoomCounts(current);
+  });
 
   sheet.root.addEventListener('click', async (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
@@ -286,14 +428,9 @@ export function createWorld({
         duration: 2.4,
       });
     } else if (act === 'eye') {
-      const cams = globe
-        .contactsNear(s.lon, s.lat, 80)
-        .filter((c) => /cam|cctv|eye/i.test(c.kind));
-      if (cams.length) {
-        globe.select(cams[0].id);
-        globe.flyTo({ lon: cams[0].lon, lat: cams[0].lat, height: 3000 });
-        toast(`Nearest eye: ${cams[0].title}`);
-      } else toast('No public camera within 80 km', { icon: icon('video') });
+      await getChrome()?.nearestEye(s.lon, s.lat, s.title, 80);
+    } else if (act === 'reply') {
+      onCapture(s, {});
     } else if (act === 'thread') {
       onThread?.(s);
     } else if (act === 'share') {
@@ -364,15 +501,21 @@ export function createWorld({
     `inset(${C.top - T.top}px ${T.right - C.right}px ${T.bottom - C.bottom}px ${C.left - T.left}px round ${r}px)`;
 
   /* ---------- open ---------- */
-  async function open(s, card = null) {
+  async function open(s, card = null, opts = {}) {
     if (busy) return;
-    if (current && current.id === s.id) return;
+    if (current && current.id === s.id) {
+      if (opts.tab && opts.tab !== tab) {
+        await setTab(opts.tab, opts);
+      }
+      return;
+    }
     busy = true;
     const reduce = reducedMotion();
     const wasOpen = !!current;
     current = s;
+    tab = opts.tab || 'brief';
     ev.emit('open', s);
-    render(s);
+    render(s, opts);
     globe.resume();
     const focusing = globe.focus(s);
     originCard?.classList.remove('hero-source');
@@ -380,10 +523,11 @@ export function createWorld({
 
     const media = card?.querySelector('.card-media');
     const T = targetRect();
+    const detent = tab === 'room' ? 'large' : 'medium';
     if (wasOpen || !media) {
       app.classList.add('is-world');
-      sheet.open('medium');
-      busy = false;
+      sheet.open(detent);
+      settle();
       haptic('light');
       return;
     }
@@ -410,19 +554,56 @@ export function createWorld({
       });
       await wait(170);
       app.classList.add('is-world');
-      sheet.open('medium');
+      sheet.open(detent);
       await el.animate([{ opacity: 1 }, { opacity: 0 }], {
         duration: 260,
         fill: 'forwards',
       }).finished;
       el.remove();
-      busy = false;
+      settle();
       return;
     }
 
     const dur = 620;
     const scrim = h('<div class="hero-scrim" aria-hidden="true"></div>');
     document.body.insertBefore(scrim, el);
+    // Sensor framing travels with the picture and locks onto the stage.
+    const lock = h(
+      `<div class="hero-lock" data-band="${bandOf(s)}" aria-hidden="true">${frame()}<span class="hl-tele tele">ACQUIRING · ${esc(llShort(s.lat, s.lon, 2))} · ${esc(telemetryOf(s))}</span></div>`,
+    );
+    Object.assign(lock.style, {
+      left: `${C.left}px`,
+      top: `${C.top}px`,
+      width: `${C.width}px`,
+      height: `${C.height}px`,
+    });
+    document.body.appendChild(lock);
+    lock.animate(
+      [
+        {
+          left: `${C.left}px`,
+          top: `${C.top}px`,
+          width: `${C.width}px`,
+          height: `${C.height}px`,
+        },
+        {
+          left: `${T.left + 14}px`,
+          top: `${T.top + safeInsets().top + 64}px`,
+          width: `${T.width - 28}px`,
+          height: `${T.height * 0.5 - safeInsets().top - 64}px`,
+        },
+      ],
+      { duration: dur, easing: SPRING_SOFT, fill: 'forwards' },
+    );
+    setTimeout(() => {
+      lock
+        .animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 700,
+          easing: EASE_OUT,
+          fill: 'forwards',
+        })
+        .finished.then(() => lock.remove());
+    }, dur + 250);
     scrim.animate([{ opacity: 0 }, { opacity: 1 }], {
       duration: dur * 0.7,
       easing: EASE_OUT,
@@ -448,7 +629,7 @@ export function createWorld({
     // The world is behind the photo now: reveal it.
     app.classList.add('is-world');
     scrim.remove();
-    sheet.open('medium');
+    sheet.open(detent);
     await Promise.race([focusing, wait(250)]);
     const fade = el.animate(
       [
@@ -459,12 +640,26 @@ export function createWorld({
     );
     await fade.finished;
     el.remove();
-    busy = false;
+    settle();
   }
+
+  /** End a transition; run a back gesture that arrived during it. */
+  function settle() {
+    busy = false;
+    if (pendingClose) {
+      pendingClose = false;
+      close();
+    }
+  }
+  let pendingClose = false;
 
   /* ---------- close ---------- */
   async function close({ fromSheet = false } = {}) {
-    if (!current || busy) return;
+    if (!current) return;
+    if (busy) {
+      pendingClose = true;
+      return;
+    }
     busy = true;
     const s = current;
     const reduce = reducedMotion();
@@ -472,6 +667,8 @@ export function createWorld({
     if (!fromSheet) sheet.close();
     closingFromCode = false;
     globe.select(null);
+    roomView.close();
+    dock.innerHTML = '';
     let card =
       originCard && document.contains(originCard) ? originCard : getCard(s.id);
     const T = targetRect();
@@ -551,6 +748,15 @@ export function createWorld({
     on: ev.on,
     refresh() {
       if (current) render(current);
+    },
+    setTab,
+    composer,
+    watchLive: (w) => onWatchLive?.(w),
+    get tab() {
+      return tab;
+    },
+    get busy() {
+      return busy;
     },
   };
 }

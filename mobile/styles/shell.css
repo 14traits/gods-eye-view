@@ -540,7 +540,11 @@
 }
 
 .tb-tab[aria-selected='true'] {
-  color: var(--tint);
+  color: var(--ink);
+}
+
+.tb-tab[data-tab='capture'][aria-selected='true'] {
+  color: var(--b-inside);
 }
 
 .tb-tab[aria-selected='true'] .i .f {
@@ -765,12 +769,13 @@
   width: 30px;
   height: 30px;
   flex: none;
-  border-radius: 8px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   font-size: 1.05rem;
-  color: #05070b;
-  background: var(--fam, var(--tint));
+  color: var(--fam, var(--ink));
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
 }
 
 .row-main {

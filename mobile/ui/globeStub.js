@@ -8,7 +8,12 @@
  * pick from this engine says so.
  */
 
-import { esriThumb } from './dom.js';
+import {
+  buildStubSituations,
+  STUB_CAMS,
+  camFrameUrl,
+} from './stubSituations.js';
+import { stubThumbnail } from './stubCompositor.js';
 
 const R_EARTH = 6371008.8;
 const D2R = Math.PI / 180;
@@ -399,415 +404,6 @@ function propagate(c, t0, t) {
 /* Situations                                                          */
 /* ------------------------------------------------------------------ */
 
-function buildSituations(now) {
-  const min = 60e3;
-  const S = (o) => ({
-    live: true,
-    source: SIM,
-    updatedAt: now - (o.age ?? 2) * min,
-    time: o.time ?? { start: now - 6 * 3600e3, end: now + 24 * 3600e3 },
-    camera: o.camera ?? {
-      lon: o.lon,
-      lat: o.lat,
-      height: o.height ?? 400e3,
-      heading: 0,
-      pitch: -90,
-    },
-    thumbnail: esriThumb(o.lon, o.lat, o.span ?? 1, 480, o.th ?? 600),
-    ...o,
-  });
-  return [
-    S({
-      id: 'cyclone-wpac',
-      kind: 'cyclone',
-      family: 'hazards',
-      title: 'Typhoon tracking toward Luzon',
-      subtitle: 'Category 4 · eyewall replacement under way',
-      place: 'Philippine Sea',
-      lon: 126.5,
-      lat: 15.4,
-      span: 9,
-      th: 640,
-      height: 2200e3,
-      layers: ['hazards.tropical-cyclones', 'weather.clouds', 'weather.wind'],
-      metrics: [
-        { label: 'Wind', value: 185, unit: 'km/h' },
-        { label: 'Pressure', value: 935, unit: 'hPa' },
-        { label: 'Moving', value: 'WNW 18', unit: 'km/h' },
-      ],
-      series: [120, 130, 140, 150, 165, 175, 185, 185, 180, 185],
-      age: 2,
-      time: { start: now - 72 * 3600e3, end: now + 120 * 3600e3 },
-      events: [{ at: now + 30 * 3600e3, label: 'Landfall (fcst)' }],
-    }),
-    S({
-      id: 'quake-24h',
-      kind: 'quake',
-      family: 'hazards',
-      title: 'M6.4 · largest quake in 24 h',
-      subtitle: 'Shallow thrust event, aftershocks continuing',
-      place: 'Off Hokkaido, Japan',
-      lon: 144.2,
-      lat: 42.1,
-      span: 3.5,
-      th: 480,
-      height: 900e3,
-      layers: ['hazards.earthquakes'],
-      metrics: [
-        { label: 'Magnitude', value: 6.4, unit: 'Mw' },
-        { label: 'Depth', value: 38, unit: 'km' },
-        { label: 'Aftershocks', value: 27, unit: '' },
-      ],
-      series: [0, 0, 6.4, 4.1, 3.8, 4.4, 3.2, 3.9, 3.1, 3.3],
-      age: 11,
-      events: [{ at: now - 14 * 3600e3, label: 'M6.4' }],
-    }),
-    S({
-      id: 'fires-sierra',
-      kind: 'fires',
-      family: 'hazards',
-      title: 'Fire cluster in the Sierra foothills',
-      subtitle: 'FIRMS hotspots doubling since dawn',
-      place: 'Nevada County, California',
-      lon: -120.9,
-      lat: 39.05,
-      span: 1.6,
-      th: 560,
-      height: 260e3,
-      layers: [
-        'hazards.active-fires',
-        'hazards.fire-perimeters',
-        'weather.wind',
-      ],
-      metrics: [
-        { label: 'Hotspots', value: 214, unit: '' },
-        { label: 'FRP', value: 1840, unit: 'MW' },
-        { label: 'Wind', value: 32, unit: 'km/h' },
-      ],
-      series: [12, 18, 30, 44, 61, 88, 120, 160, 190, 214],
-      age: 4,
-    }),
-    S({
-      id: 'iss-pass',
-      kind: 'pass',
-      family: 'orbit',
-      title: 'ISS passes over you tonight',
-      subtitle: 'Bright pass · max elevation 71°',
-      place: 'Low Earth orbit',
-      lon: -40,
-      lat: 30,
-      span: 30,
-      th: 520,
-      height: 9000e3,
-      layers: ['orbit.iss-crewed', 'orbit.ground-tracks'],
-      metrics: [
-        { label: 'Altitude', value: 418, unit: 'km' },
-        { label: 'Speed', value: 27600, unit: 'km/h' },
-        { label: 'Next pass', value: '21:42', unit: '' },
-      ],
-      age: 1,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'atl-rush',
-      kind: 'airport',
-      family: 'sky',
-      title: 'Busiest airport right now',
-      subtitle: 'Hartsfield–Jackson arrival bank',
-      place: 'Atlanta, Georgia',
-      lon: -84.428,
-      lat: 33.6407,
-      span: 0.09,
-      th: 600,
-      height: 18e3,
-      layers: [
-        'sky.commercial-flights',
-        'sky.holding-patterns',
-        'sky.airport-boards',
-      ],
-      metrics: [
-        { label: 'Movements', value: 182, unit: '/h' },
-        { label: 'Holding', value: 6, unit: '' },
-        { label: 'Delay', value: 14, unit: 'min' },
-      ],
-      series: [120, 140, 166, 170, 182, 176, 181, 182],
-      age: 1,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'novosel',
-      kind: 'heliport',
-      family: 'sky',
-      title: 'Helicopter school circuits',
-      subtitle: 'Rotor training pattern over Wiregrass',
-      place: 'Fort Novosel, Alabama',
-      lon: -85.72,
-      lat: 31.36,
-      span: 0.22,
-      th: 420,
-      height: 40e3,
-      layers: ['sky.helicopters'],
-      metrics: [
-        { label: 'Airborne', value: 23, unit: 'rotorcraft' },
-        { label: 'Pattern alt', value: 700, unit: 'ft' },
-      ],
-      series: [4, 9, 14, 18, 23, 21, 23],
-      age: 3,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'bhote-koshi-2026',
-      kind: 'reconstruction',
-      family: 'hazards',
-      title: 'Bhote Koshi outburst flood',
-      subtitle: '16 sourced observations · 3 open hypotheses',
-      place: 'Rasuwa, Nepal ↔ Gyirong, Tibet',
-      lon: 85.33,
-      lat: 28.15,
-      span: 0.3,
-      th: 640,
-      height: 30e3,
-      camera: {
-        lon: 85.3548,
-        lat: 28.207,
-        height: 14e3,
-        heading: 344,
-        pitch: -39,
-      },
-      layers: [
-        'hazards.floods',
-        'infra.recent-imagery',
-        'eyes.signed-captures',
-      ],
-      metrics: [
-        { label: 'Observations', value: 16, unit: '' },
-        { label: 'Corridor', value: 145, unit: 'pts' },
-        { label: 'Hypotheses', value: 3, unit: '' },
-      ],
-      live: false,
-      age: 60 * 24 * 7,
-      source: 'GeoPera reconstruction · Vantor Open Data (CC BY-NC 4.0)',
-      time: { start: Date.UTC(2026, 7, 26, 0), end: Date.UTC(2026, 7, 27, 12) },
-      thread: 'bhote-koshi-2026',
-      thumbnail: '/events/bhote-koshi-2026/post.webp',
-    }),
-    S({
-      id: 'starbase',
-      kind: 'launch',
-      family: 'orbit',
-      title: 'Launch countdown · Starbase',
-      subtitle: 'Window opens 06:00 local · trajectory east',
-      place: 'Boca Chica, Texas',
-      lon: -97.157,
-      lat: 25.997,
-      span: 0.06,
-      th: 380,
-      height: 12e3,
-      layers: ['orbit.launches', 'orbit.ground-tracks'],
-      metrics: [
-        { label: 'T−', value: '06:12:00', unit: '' },
-        { label: 'Weather go', value: 80, unit: '%' },
-      ],
-      age: 6,
-      events: [{ at: now + 6.2 * 3600e3, label: 'T-0' }],
-    }),
-    S({
-      id: 'suez-queue',
-      kind: 'queue',
-      family: 'sea',
-      title: 'Ships queuing at Suez',
-      subtitle: 'Southbound convoy holding in the anchorage',
-      place: 'Gulf of Suez, Egypt',
-      lon: 32.55,
-      lat: 29.88,
-      span: 0.35,
-      th: 560,
-      height: 60e3,
-      layers: ['sea.ais-vessels', 'sea.tankers-cargo'],
-      metrics: [
-        { label: 'Waiting', value: 41, unit: 'vessels' },
-        { label: 'Median wait', value: 19, unit: 'h' },
-      ],
-      series: [28, 30, 33, 35, 39, 41],
-      age: 5,
-    }),
-    S({
-      id: 'gnss-baltic',
-      kind: 'gnss',
-      family: 'infra',
-      title: 'GNSS interference over the Baltic',
-      subtitle: 'Aircraft reporting degraded NIC',
-      place: 'Baltic Sea',
-      lon: 21.0,
-      lat: 56.5,
-      span: 6,
-      th: 480,
-      height: 1500e3,
-      layers: ['infra.gnss-interference', 'sky.commercial-flights'],
-      metrics: [
-        { label: 'Affected', value: 312, unit: 'aircraft' },
-        { label: 'Area', value: 84, unit: 'k km²' },
-      ],
-      series: [120, 180, 240, 260, 300, 312],
-      age: 9,
-    }),
-    S({
-      id: 'singapore',
-      kind: 'strait',
-      family: 'sea',
-      title: 'Singapore Strait traffic',
-      subtitle: 'Eastbound lane at capacity',
-      place: 'Singapore Strait',
-      lon: 103.85,
-      lat: 1.22,
-      span: 0.4,
-      th: 420,
-      height: 70e3,
-      layers: ['sea.ais-vessels'],
-      metrics: [
-        { label: 'Transits', value: 22, unit: '/h' },
-        { label: 'At anchor', value: 318, unit: '' },
-      ],
-      age: 3,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'tokyo-rush',
-      kind: 'transit',
-      family: 'ground',
-      title: 'Rush hour · Tokyo rail',
-      subtitle: 'Yamanote line headways at 2 min 30 s',
-      place: 'Shinjuku, Tokyo',
-      lon: 139.7,
-      lat: 35.69,
-      span: 0.05,
-      th: 600,
-      height: 9e3,
-      layers: ['ground.transit-vehicles', 'ground.rail'],
-      metrics: [
-        { label: 'Trains moving', value: 1840, unit: '' },
-        { label: 'On time', value: 98.6, unit: '%' },
-      ],
-      age: 2,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'rotterdam',
-      kind: 'port',
-      family: 'sea',
-      title: 'Port of Rotterdam',
-      subtitle: 'Europe’s busiest port, always on',
-      place: 'Maasvlakte, Netherlands',
-      lon: 4.03,
-      lat: 51.96,
-      span: 0.12,
-      th: 380,
-      height: 30e3,
-      layers: ['sea.ais-vessels', 'sea.ports'],
-      metrics: [
-        { label: 'Berthed', value: 96, unit: '' },
-        { label: 'Arriving 6 h', value: 34, unit: '' },
-      ],
-      age: 4,
-      alwaysOn: true,
-    }),
-    S({
-      id: 'north-sea-mil',
-      kind: 'military',
-      family: 'sky',
-      title: 'Military air activity · North Sea',
-      subtitle: 'Tanker tracks and fighter CAPs',
-      place: 'North Sea',
-      lon: 3.5,
-      lat: 55.5,
-      span: 5,
-      th: 520,
-      height: 900e3,
-      layers: ['sky.military-aircraft'],
-      metrics: [
-        { label: 'Aircraft', value: 14, unit: '' },
-        { label: 'Tankers', value: 3, unit: '' },
-      ],
-      age: 7,
-    }),
-    S({
-      id: 'aurora',
-      kind: 'aurora',
-      family: 'weather',
-      title: 'Aurora nowcast · Tromsø',
-      subtitle: 'Kp 6 storm, clear skies after 22:00',
-      place: 'Tromsø, Norway',
-      lon: 18.95,
-      lat: 69.65,
-      span: 0.5,
-      th: 600,
-      height: 300e3,
-      layers: ['weather.clouds'],
-      metrics: [
-        { label: 'Kp', value: 6, unit: '' },
-        { label: 'Cloud', value: 20, unit: '%' },
-      ],
-      series: [2, 3, 3, 4, 5, 6, 6],
-      age: 15,
-    }),
-    S({
-      id: 'sfo-arrivals',
-      kind: 'airport',
-      family: 'sky',
-      title: 'SFO arrivals on 28L/R',
-      subtitle: 'Paired approaches over the bay',
-      place: 'San Francisco, California',
-      lon: -122.379,
-      lat: 37.6213,
-      span: 0.12,
-      th: 480,
-      height: 25e3,
-      layers: ['sky.commercial-flights', 'sky.airport-boards'],
-      metrics: [
-        { label: 'Arrivals', value: 44, unit: '/h' },
-        { label: 'Delay', value: 9, unit: 'min' },
-      ],
-      age: 2,
-    }),
-    S({
-      id: 'etna',
-      kind: 'volcano',
-      family: 'eyes',
-      title: 'Etna webcam vs ash advisory',
-      subtitle: 'Strombolian activity at the SE crater',
-      place: 'Sicily, Italy',
-      lon: 14.995,
-      lat: 37.751,
-      span: 0.2,
-      th: 420,
-      height: 30e3,
-      layers: ['hazards.volcanoes', 'eyes.public-cctv'],
-      metrics: [
-        { label: 'Cameras', value: 4, unit: 'live' },
-        { label: 'Ash FL', value: 120, unit: '' },
-      ],
-      age: 13,
-    }),
-    S({
-      id: 'dxb',
-      kind: 'airport',
-      family: 'sky',
-      title: 'Dubai International night bank',
-      subtitle: 'Long-haul departures to Europe',
-      place: 'Dubai, UAE',
-      lon: 55.3657,
-      lat: 25.2532,
-      span: 0.1,
-      th: 560,
-      height: 25e3,
-      layers: ['sky.commercial-flights'],
-      metrics: [{ label: 'Departures', value: 61, unit: '/h' }],
-      age: 1,
-      alwaysOn: true,
-    }),
-  ];
-}
-
 /* ------------------------------------------------------------------ */
 /* WebGL planet                                                        */
 /* ------------------------------------------------------------------ */
@@ -985,6 +581,7 @@ export async function createGlobe(container, options = {}) {
   }
   layerById.get('ground.alpr-cameras').status = 'off';
   let situations = null;
+  let viewer = null;
 
   /* ---------- GL ---------- */
   let prog = null;
@@ -1442,6 +1039,172 @@ export async function createGlobe(container, options = {}) {
         drawn.push({ s, x: p.x, y: p.y });
       }
     }
+    drawWeather(ts);
+    drawPins(ts);
+  }
+
+  /* ---------- weather (simulated look of the engine's weather family) ---------- */
+  const wx = (() => {
+    const rr = rng(7);
+    const cells = Array.from({ length: 40 }, () => ({
+      lon: -105 + rr() * 30,
+      lat: 25 + rr() * 22,
+      r: 40e3 + rr() * 160e3,
+      v: rr(),
+    }));
+    const strikes = Array.from({ length: 160 }, () => ({
+      lon: -97 + rr() * 14,
+      lat: 23 + rr() * 9,
+      p: rr(),
+    }));
+    const streaks = Array.from({ length: 220 }, () => ({
+      lon: -180 + rr() * 360,
+      lat: -60 + rr() * 130,
+      p: rr(),
+    }));
+    return { cells, strikes, streaks };
+  })();
+  function drawWeather(ts) {
+    const on = (id) => layerById.get(id)?.on;
+    const R = radiusPx();
+    if (on('weather.radar')) {
+      for (const c of wx.cells) {
+        const p = project(c.lon, c.lat);
+        if (!p) continue;
+        const rad = (c.r / R_EARTH) * R;
+        for (const [f, col] of [
+          [1, 'rgba(40,200,90,0.28)'],
+          [0.6, 'rgba(240,220,40,0.34)'],
+          [0.3, c.v > 0.6 ? 'rgba(255,70,40,0.5)' : 'rgba(240,220,40,0.2)'],
+        ]) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(1, rad * f), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    if (on('weather.lightning')) {
+      for (const st of wx.strikes) {
+        const p = project(st.lon, st.lat);
+        if (!p) continue;
+        const flick = Math.sin(ts / 90 + st.p * 50) > 0.6;
+        ctx.fillStyle = flick ? '#fff' : 'rgba(200,180,255,0.6)';
+        ctx.fillRect(p.x - 1, p.y - 1, flick ? 2.6 : 1.6, flick ? 2.6 : 1.6);
+      }
+      dirty = true;
+    }
+    if (on('weather.wind')) {
+      ctx.strokeStyle = 'rgba(230,240,255,0.35)';
+      ctx.lineWidth = 1;
+      for (const st of wx.streaks) {
+        const ph = ((ts / 4000 + st.p) % 1) * 6;
+        const lon = st.lon + ph;
+        const lat = st.lat + Math.sin((st.lon + ph) / 12) * 2;
+        const a = project(lon, lat);
+        const b = project(lon + 2.2, lat + Math.cos(lon / 12) * 0.5);
+        if (!a || !b) continue;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+      dirty = true;
+    }
+    if (on('weather.clouds')) {
+      ctx.fillStyle = 'rgba(235,240,250,0.07)';
+      for (const st of wx.streaks.slice(0, 90)) {
+        const p = project(st.lon, st.lat);
+        if (!p) continue;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 26, 12, st.p * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /* ---------- pins (API.md: post / witness / eye / live / hologram) ---------- */
+  const pins = new Map();
+  const PIN_COLOR = {
+    post: '#f4f7fb',
+    witness: '#ebc777',
+    hologram: '#ebc777',
+    live: '#ebc777',
+    eye: '#ffb547',
+  };
+  function drawPins(ts) {
+    for (const pin of pins.values()) {
+      const p = project(pin.lon, pin.lat, pin.altM || 0);
+      if (!p) continue;
+      const col = pin.color || PIN_COLOR[pin.kind] || '#fff';
+      if (pin.kind === 'live' || pin.kind === 'eye') {
+        const hd =
+          (((pin.headingDeg ?? 0) - (cam.heading || 0)) * Math.PI) / 180;
+        const fov = ((pin.fovDeg ?? 60) * Math.PI) / 180;
+        const len = 46;
+        const g = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, len);
+        g.addColorStop(0, `${col}aa`);
+        g.addColorStop(1, `${col}00`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(
+          p.x,
+          p.y,
+          len,
+          hd - Math.PI / 2 - fov / 2,
+          hd - Math.PI / 2 + fov / 2,
+        );
+        ctx.closePath();
+        ctx.fill();
+        if (pin.kind === 'live') {
+          const ph = (ts / 1400) % 1;
+          ctx.strokeStyle = col;
+          ctx.globalAlpha = 1 - ph;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5 + ph * 14, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          dirty = true;
+        }
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (pin.kind === 'post') {
+        ctx.fillStyle = 'rgba(10,11,13,0.9)';
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 4, p.y - 6);
+        ctx.lineTo(p.x - 9, p.y - 6);
+        ctx.arcTo(p.x - 12, p.y - 6, p.x - 12, p.y - 9, 3);
+        ctx.lineTo(p.x - 12, p.y - 17);
+        ctx.arcTo(p.x - 12, p.y - 20, p.x - 9, p.y - 20, 3);
+        ctx.lineTo(p.x + 9, p.y - 20);
+        ctx.arcTo(p.x + 12, p.y - 20, p.x + 12, p.y - 17, 3);
+        ctx.lineTo(p.x + 12, p.y - 9);
+        ctx.arcTo(p.x + 12, p.y - 6, p.x + 9, p.y - 6, 3);
+        ctx.lineTo(p.x + 4, p.y - 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = col;
+        for (const dx of [-5, 0, 5]) ctx.fillRect(p.x + dx - 1, p.y - 14, 2, 2);
+      } else {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = col;
+        ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.strokeStyle = 'rgba(5,6,7,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-4.5, -4.5, 9, 9);
+        ctx.restore();
+      }
+      drawn.push({ pin, x: p.x, y: p.y - (pin.kind === 'post' ? 12 : 0) });
+    }
   }
 
   /* ---------- flights ---------- */
@@ -1604,6 +1367,20 @@ export async function createGlobe(container, options = {}) {
     if (!best) {
       select(null);
       emit('pick', null);
+      return;
+    }
+    if (best.pin) {
+      const pn = best.pin;
+      emit('pick', {
+        kind: 'pin',
+        pinKind: pn.kind,
+        id: pn.id,
+        title: pn.label || pn.kind,
+        subtitle: pn.kind,
+        lon: pn.lon,
+        lat: pn.lat,
+        meta: { headingDeg: pn.headingDeg, fovDeg: pn.fovDeg, label: pn.label },
+      });
       return;
     }
     if (best.s) {
@@ -1810,7 +1587,7 @@ export async function createGlobe(container, options = {}) {
       return out;
     },
     async situations() {
-      if (!situations) situations = buildSituations(Date.now());
+      if (!situations) situations = buildStubSituations(Date.now());
       kick();
       return situations;
     },
@@ -1833,6 +1610,54 @@ export async function createGlobe(container, options = {}) {
       ];
     },
     camera: () => ({ ...cam }),
+    /* ---- round two (mobile/globe/API.md) ---- */
+    setViewer(v) {
+      viewer = v && Number.isFinite(v.lat) ? { lon: v.lon, lat: v.lat } : null;
+    },
+    viewer: () => viewer,
+    thumbnail: (s, o) => stubThumbnail(s, o),
+    addPin(p) {
+      const id = p.id || `pin-${Math.random().toString(36).slice(2, 9)}`;
+      pins.set(id, { fovDeg: 60, headingDeg: 0, ...p, id });
+      dirty = true;
+      kick();
+      return id;
+    },
+    removePin(id) {
+      const ok = pins.delete(id);
+      dirty = true;
+      kick();
+      return ok;
+    },
+    pins: () => [...pins.values()].map((p) => ({ ...p })),
+    async nearestEye(lon, lat, km = 50) {
+      let best = null;
+      for (const c of STUB_CAMS) {
+        const d = haversine(lon, lat, c.lon, c.lat) / 1000;
+        if (d <= km && (!best || d < best.distanceKm))
+          best = { ...c, distanceKm: d, imageUrl: camFrameUrl(c.id) };
+      }
+      return best;
+    },
+    eyeFrameUrl: (id) => camFrameUrl(id),
+    labels(max = 40) {
+      const out = [];
+      for (const pin of pins.values()) {
+        if (!pin.label) continue;
+        const p = project(pin.lon, pin.lat, pin.altM || 0);
+        if (!p) continue;
+        out.push({
+          id: pin.id,
+          kind: pin.kind,
+          layer: 'pins',
+          title: pin.label,
+          x: p.x,
+          y: p.y,
+        });
+        if (out.length >= max) break;
+      }
+      return out;
+    },
     destroy() {
       api.pause();
       ro.disconnect();

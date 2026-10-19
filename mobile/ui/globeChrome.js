@@ -18,6 +18,21 @@ import {
 } from './dom.js';
 import { createSheet } from './sheet.js';
 import { createTimeRibbon } from './timeRibbon.js';
+import { createEyeViewer } from './eyeViewer.js';
+import { BAND_NAME, llShort, mgrs } from './bands.js';
+
+/** Altitude → band: where the virtual sensor is. */
+const bandAt = (h) => (h > 100e3 ? 'orbit' : h > 2500 ? 'sky' : 'ground');
+const ALT_MAX = 36000e3;
+const ALT_MIN = 100;
+const altFrac = (h) =>
+  Math.min(
+    1,
+    Math.max(
+      0,
+      Math.log(Math.max(ALT_MIN, h) / ALT_MIN) / Math.log(ALT_MAX / ALT_MIN),
+    ),
+  );
 
 const LENSES = [
   {
@@ -63,16 +78,82 @@ export function createGlobeChrome({
   onThread,
   getSituations,
   isTwoPane,
+  onPin,
 }) {
+  const eyeViewer = createEyeViewer({
+    globe,
+    onFly: (e) => {
+      globe.flyTo({
+        lon: e.lon,
+        lat: e.lat,
+        height: 900,
+        heading: e.headingDeg || 0,
+        pitch: -30,
+        duration: 2,
+      });
+      const id = globe.addPin({
+        id: `eye:${e.id}`,
+        kind: 'eye',
+        lon: e.lon,
+        lat: e.lat,
+        headingDeg: e.headingDeg || 0,
+        fovDeg: 50,
+        label: e.title,
+      });
+      if (id) setTimeout(() => globe.removePin(id), 60000);
+    },
+  });
+
+  /** Nearest public camera to a point, opened live. */
+  async function nearestEye(lon, lat, from, km = 60) {
+    const eye = await globe.nearestEye(lon, lat, km);
+    if (eye) eyeViewer.open(eye, { from });
+    else toast(`No public camera within ${km} km`, { icon: icon('video') });
+    return eye;
+  }
+
   /* ---------- top chrome ---------- */
   const top = h(`<div class="gc-top">
-      <div class="gc-readout glass-strong liquid"><span class="num gc-alt">—</span><span class="mono gc-ll">—</span></div>
+      <div class="gc-readout"><span class="tele gc-alt">—</span><span class="tele gc-ll">—</span></div>
       <div class="gc-buttons">
         <button class="icon-btn glass-strong liquid" type="button" data-act="lens" aria-label="Visual lens" aria-haspopup="true">${icon('lens')}</button>
         <button class="icon-btn glass-strong liquid gc-compass" type="button" data-act="home" aria-label="Reset view to the whole planet"><span class="compass-n">${icon('north')}</span></button>
         <button class="icon-btn glass-strong liquid" type="button" data-act="credits" aria-label="Map data attribution">${icon('info')}</button>
       </div>
     </div>`);
+  // The altimeter: orbit → sky → ground, tap a band to descend or climb.
+  const alt = h(`<div class="alt-rail" role="group" aria-label="Altitude band">
+      ${[
+        ['orbit', 'ORBIT', 9000e3, 1],
+        ['sky', 'SKY', 60e3, 0.5],
+        ['ground', 'GROUND', 1500, 0.2],
+      ]
+        .map(
+          ([b, l, hgt, top]) =>
+            `<button type="button" data-alt="${b}" data-h="${hgt}" data-band="${b}" style="--y:${(1 - altFrac(hgt)) * 100}%" aria-label="Go to ${BAND_NAME[b]} altitude"><span class="tele">${l}</span></button>`,
+        )
+        .join('')}
+      <span class="alt-ticks" aria-hidden="true">${[36000e3, 400e3, 15e3, 1e3]
+        .map((x) => `<i style="--y:${(1 - altFrac(x)) * 100}%"></i>`)
+        .join('')}</span>
+      <span class="alt-mark" aria-hidden="true"><i></i></span>
+    </div>`);
+  alt.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-alt]');
+    if (!b) return;
+    haptic('tick');
+    const c = lastCam || { lon: 0, lat: 20 };
+    const hgt = Number(b.dataset.h);
+    globe.flyTo({
+      lon: c.lon,
+      lat: c.lat,
+      height: hgt,
+      pitch:
+        b.dataset.alt === 'ground' ? -35 : b.dataset.alt === 'sky' ? -60 : -90,
+      duration: 2,
+    });
+  });
+  let lastCam = null;
   const attribution = h(
     '<button class="gc-attr" type="button" data-act="credits" aria-label="Attribution">Esri · Maxar · Earthstar · NASA</button>',
   );
@@ -88,7 +169,7 @@ export function createGlobeChrome({
     `<div class="pick-card glass-strong" role="dialog" aria-label="Selected contact" hidden></div>`,
   );
   const bottom = h('<div class="gc-bottom"></div>');
-  chrome.append(top, attribution, lensPop, pick, bottom);
+  chrome.append(top, attribution, alt, lensPop, pick, bottom);
   bottom.append(dock);
 
   const ribbon = createTimeRibbon(bottom, {
@@ -115,6 +196,11 @@ export function createGlobeChrome({
     cyclone: 'hazards',
     camera: 'eyes',
     cctv: 'eyes',
+    post: 'inside',
+    witness: 'inside',
+    hologram: 'inside',
+    live: 'inside',
+    eye: 'ground',
   };
   function drawLabels() {
     labelRaf = 0;
@@ -126,7 +212,8 @@ export function createGlobeChrome({
       .map((l) => {
         const flip = l.x > W - 9 * Math.min(24, l.title.length) - 40;
         const tf = `translate(${Math.round(l.x)}px,${Math.round(l.y)}px)${flip ? ' translateX(calc(-100% - 16px))' : ''}`;
-        return `<span data-family="${KIND_FAM_L[l.kind] || 'infra'}" style="transform:${tf}"><i></i>${esc(l.title)}</span>`;
+        const pin = l.layer === 'pins';
+        return `<span ${pin ? `class="lb-pin" data-band="${KIND_FAM_L[l.kind] || 'inside'}"` : ''} data-family="${KIND_FAM_L[l.kind] || 'infra'}" style="transform:${tf}"><i></i>${esc(l.title)}</span>`;
       })
       .join('');
     if (labelLayer.innerHTML !== html) labelLayer.innerHTML = html;
@@ -161,13 +248,22 @@ export function createGlobeChrome({
   /* ---------- camera readout ---------- */
   globe.on('camera', (c) => {
     if (!c) return;
-    const alt =
+    lastCam = c;
+    const altTxt =
       c.height > 10000
-        ? `${fmtNum(Math.round(c.height / 1000))} km`
-        : `${fmtNum(Math.round(c.height))} m`;
-    $('.gc-alt', top).textContent = alt;
+        ? `${fmtNum(Math.round(c.height / 1000))} KM`
+        : `${fmtNum(Math.round(c.height))} M`;
+    const band = bandAt(c.height);
+    const ro = $('.gc-readout', top);
+    ro.dataset.band = band;
+    alt.dataset.band = band;
+    alt.style.setProperty('--h', `${(1 - altFrac(c.height)) * 100}%`);
+    $('.gc-alt', top).innerHTML =
+      `<i></i>${BAND_NAME[band].toUpperCase()} · ${altTxt}`;
     $('.gc-ll', top).textContent =
-      `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'N' : 'S'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'E' : 'W'}`;
+      c.height < 300e3
+        ? `${llShort(c.lat, c.lon, 3)} · ${mgrs(c.lat, c.lon, 3)}`
+        : llShort(c.lat, c.lon, 2);
     if (Number.isFinite(c.heading))
       $('.compass-n', top).style.transform = `rotate(${-c.heading}deg)`;
   });
@@ -485,6 +581,10 @@ export function createGlobeChrome({
   }
   async function showPick(p) {
     if (!p) return hidePick();
+    if (p.kind === 'pin') {
+      if (onPin?.(p)) return;
+      if (p.pinKind === 'eye') return nearestEye(p.lon, p.lat, p.title, 1);
+    }
     if (p.kind === 'situation') {
       const s = (await getSituations()).find(
         (x) => String(x.id) === String(p.id),
@@ -559,13 +659,7 @@ export function createGlobeChrome({
           icon: icon('ride'),
         });
     } else if (a === 'eye') {
-      const cams = globe
-        .contactsNear(p.lon, p.lat, 60)
-        .filter((c) => /cam|cctv/i.test(c.kind));
-      if (cams.length) {
-        globe.flyTo({ lon: cams[0].lon, lat: cams[0].lat, height: 2500 });
-        toast(`Nearest eye: ${cams[0].title}`);
-      } else toast('No public camera within 60 km', { icon: icon('video') });
+      await nearestEye(p.lon, p.lat, p.title);
     } else if (a === 'thread')
       onThread?.({
         id: `contact:${p.id}`,
@@ -619,6 +713,8 @@ export function createGlobeChrome({
   });
 
   refreshDock();
+  let basePips = [];
+  let extraPips = [];
 
   return {
     ribbon,
@@ -628,6 +724,16 @@ export function createGlobeChrome({
     showPick,
     openGrid,
     openCredits,
-    setPips: (p) => ribbon.setPips(p),
+    setPips(p) {
+      basePips = p || [];
+      ribbon.setPips([...basePips, ...extraPips]);
+    },
+    /** Room posts anchored in time (cleared with []). */
+    setExtraPips(p) {
+      extraPips = p || [];
+      ribbon.setPips([...basePips, ...extraPips]);
+    },
+    showEye: (...a) => eyeViewer.open(...a),
+    nearestEye,
   };
 }

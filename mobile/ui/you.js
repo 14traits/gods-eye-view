@@ -1,13 +1,28 @@
-/** You: captures and their seals, followed situations, holograms, settings. */
+/**
+ * You: your sealed captures and live bundles, unverified uploads, your room
+ * posts and holograms, followed situations, home area, and settings.
+ */
 
 import { icon, FAMILY_ICON } from './icons.js';
 import { $, $$, esc, ago, haptic, store, applyMotionPref } from './dom.js';
 import { all, get } from '../capture/db.js';
 import { deviceKey } from '../capture/provenance.js';
+import { KIND, badgesFor } from './rooms.js';
+import { llShort } from './bands.js';
 
 export function createYou(
   view,
-  { bindScroll, getSituations, onOpenSituation, onVerify, onCredits },
+  {
+    bindScroll,
+    getSituations,
+    onOpenSituation,
+    onVerify,
+    onCredits,
+    rooms,
+    rt,
+    onOpenRoom,
+    onLocate,
+  },
 ) {
   let urls = [];
   view.addEventListener(
@@ -20,11 +35,24 @@ export function createYou(
   async function render() {
     urls.forEach((u) => URL.revokeObjectURL(u));
     urls = [];
-    const [captures, key, sits] = await Promise.all([
+    const [captures, key, sits, uploads, posts] = await Promise.all([
       all('captures').catch(() => []),
       deviceKey().catch(() => null),
       getSituations().catch(() => []),
+      all('uploads').catch(() => []),
+      rooms.myPosts().catch(() => []),
     ]);
+    uploads.sort((a, b) => b.addedAt - a.addedAt);
+    posts.sort((a, b) => b.at - a.at);
+    const sitOf = (id) => sits.find((x) => String(x.id) === id);
+    const upThumbs = uploads.slice(0, 12).map((u) => {
+      if (!u.blob) return '';
+      const url = URL.createObjectURL(u.blob);
+      urls.push(url);
+      return url;
+    });
+    const holos = posts.filter((p) => p.hologram);
+    const home = rt.me.home;
     captures.sort((a, b) => b.seq - a.seq);
     const followed = store.get('followed') || [];
     const fol = followed
@@ -46,9 +74,9 @@ export function createYou(
     view.innerHTML = `
       <header class="navbar"><span class="nav-title">You</span></header>
       <h1 class="large-title">You</h1>
-      <div class="you-id"><span class="avatar">${icon('you')}</span><div><b>This device</b>
+      <div class="you-id"><span class="avatar">${icon('you')}</span><div><b>${esc(rt.me.handle)} · this device</b>
         <span>${key ? `Signing key <span class="mono">${esc(key.keyId)}</span> · P-256 · ${key.extractable ? 'extractable' : 'non-extractable'}` : 'Signing key unavailable (needs a secure context)'}</span>
-        <span>${captures.length} sealed capture${captures.length === 1 ? '' : 's'} · ${followed.length} followed</span></div></div>
+        <span>${captures.length} sealed capture${captures.length === 1 ? '' : 's'} · ${uploads.length} upload${uploads.length === 1 ? '' : 's'} · ${posts.length} post${posts.length === 1 ? '' : 's'} · ${followed.length} followed</span></div></div>
 
       <div class="section-h">Captures <small>tap to verify</small></div>
       ${
@@ -57,10 +85,37 @@ export function createYou(
               .slice(0, 30)
               .map(
                 (c, i) =>
-                  `<button class="capture-tile" type="button" data-cap="${esc(c.id)}" aria-label="Capture ${c.seq}, ${esc(ago(c.sealedAt))}">${thumbs[i] ? (/video/.test(c.media.type) ? `<video src="${thumbs[i]}" muted playsinline preload="metadata"></video>` : `<img src="${thumbs[i]}" alt="" loading="lazy" decoding="async"/>`) : ''}<span class="ct-n num">#${c.seq}</span><span class="ct-seal">${icon('sealFill')}</span></button>`,
+                  `<button class="capture-tile" type="button" data-cap="${esc(c.id)}" aria-label="Capture ${c.seq}, ${esc(ago(c.sealedAt))}">${thumbs[i] ? (/video/.test(c.media.type) ? `<video src="${thumbs[i]}#t=0.1" muted playsinline preload="metadata"></video>` : `<img src="${thumbs[i]}" alt="" loading="lazy" decoding="async"/>`) : ''}<span class="ct-n num">#${c.seq}</span>${c.session?.mode === 'live' ? `<span class="ct-live tele">LIVE · ${c.session.segments?.length || 0} SEG</span>` : ''}<span class="ct-seal">${icon('sealFill')}</span></button>`,
               )
               .join('')}</div>`
           : `<div class="empty">${icon('seal')}<div>No sealed captures yet.</div><div>Open Capture → Witness and tap the shutter.</div></div>`
+      }
+
+      ${
+        uploads.length
+          ? `<div class="section-h">Uploads <small>unverified · no capture-time seal</small></div><div class="captures">${uploads
+              .slice(0, 12)
+              .map(
+                (u, i) =>
+                  `<div class="capture-tile is-unverified" aria-label="Upload ${esc(u.name)}">${upThumbs[i] ? (/video/.test(u.type) ? `<video src="${upThumbs[i]}#t=0.1" muted playsinline preload="metadata"></video>` : `<img src="${upThumbs[i]}" alt="" loading="lazy" decoding="async"/>`) : ''}<span class="ct-live tele">UNVERIFIED</span></div>`,
+              )
+              .join('')}</div>`
+          : ''
+      }
+
+      <div class="section-h">Your posts <small>${posts.length ? 'tap to open the room' : ''}</small></div>
+      ${
+        posts.length
+          ? `<div class="group">${posts
+              .slice(0, 20)
+              .map((p) => {
+                const st = sitOf(p.room);
+                const k = KIND[p.kind] || KIND.context;
+                const b = st ? badgesFor(p, st, rt.me) : [];
+                return `<button class="row" type="button" data-post-room="${esc(p.room)}" data-post="${esc(p.id)}"><span class="row-icon" style="--fam:var(--b-inside)">${icon(k.icon)}</span><span class="row-main"><span class="row-title">${esc(p.text)}</span><span class="row-sub">${esc(k.name)} · ${esc(st?.title || p.room)} · ${esc(ago(p.at))}${b.length ? ` · ${b.map((x) => esc(x.label)).join(' · ')}` : ''}</span></span>${icon('chevronRight', { cls: 'chev' })}</button>`;
+              })
+              .join('')}</div>`
+          : '<div class="empty">Nothing posted yet. Every situation has a room: open one and reply with evidence.</div>'
       }
 
       <div class="section-h">Following</div>
@@ -77,8 +132,15 @@ export function createYou(
           : '<div class="empty">Follow a situation from its brief and it appears here and in the tab-bar accessory.</div>'
       }
 
-      <div class="section-h">Holograms <small><span class="badge-example">Concept</span></small></div>
-      <div class="holo">${icon('cube')}<div><b>Leave something in a place</b>Pin a 3D note to a spot on Earth for people who visit with Look. Concept placeholder in this prototype.</div></div>
+      <div class="section-h">Holograms <small>${holos.length ? `${holos.length} left in places` : ''}</small></div>
+      ${
+        holos.length
+          ? `<div class="group">${holos.map((p) => `<button class="row" type="button" data-post-room="${esc(p.room)}" data-post="${esc(p.id)}"><span class="row-icon" style="--fam:var(--b-inside)">${icon('cube')}</span><span class="row-main"><span class="row-title">${esc(p.text)}</span><span class="row-sub mono">${esc(llShort(p.anchor?.lat, p.anchor?.lon, 4))} · ${esc(ago(p.at))}</span></span>${icon('chevronRight', { cls: 'chev' })}</button>`).join('')}</div>`
+          : `<div class="holo">${icon('cube')}<div><b>Leave something in a place</b>When you post a capture, turn on “Leave as a hologram here”: it stays pinned on the globe at that spot for people who visit with Look.</div></div>`
+      }
+
+      <div class="section-h">Home area</div>
+      <div class="group"><button class="row" type="button" data-act="home"><span class="row-icon" style="--fam:var(--b-ground)">${icon('home')}</span><span class="row-main"><span class="row-title">${home ? `Set near ${esc(llShort(home.lat, home.lon, 1))}` : 'Set your home area'}</span><span class="row-sub">Earns the Local badge on posts within 50 km. Stored on this device at 10 km precision.</span></span>${icon('chevronRight', { cls: 'chev' })}</button></div>
 
       <div class="section-h">Settings</div>
       <div class="group">
@@ -144,6 +206,25 @@ export function createYou(
       return;
     }
     if (e.target.closest('[data-act="credits"]')) onCredits();
+    const pr = e.target.closest('[data-post-room]');
+    if (pr) {
+      const s = (await getSituations()).find(
+        (x) => String(x.id) === pr.dataset.postRoom,
+      );
+      if (s) onOpenRoom(s, pr.dataset.post);
+      return;
+    }
+    if (e.target.closest('[data-act="home"]')) {
+      const loc = await onLocate();
+      if (loc) {
+        rt.setHome({
+          lat: Math.round(loc.lat * 10) / 10,
+          lon: Math.round(loc.lon * 10) / 10,
+        });
+        haptic('success');
+        render();
+      }
+    }
   });
   view.addEventListener('input', (e) => {
     if (!e.target.matches('.slider')) return;
