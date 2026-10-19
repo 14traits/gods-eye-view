@@ -43,6 +43,7 @@ const shotKeys = [
   'holdSec',
   'dataPackIds',
   'interactions',
+  'lens',
 ];
 const json = (value) => JSON.stringify(value, null, 2);
 const mimeFor = (file) =>

@@ -736,6 +736,7 @@ function makeDirector(options = {}) {
   const dataManager = fakeDataManager(options.data);
   const director = new SceneDirector(viewer, styleManager, dataManager, {
     isMapStackAvailable: options.isMapStackAvailable,
+    lens: options.lens,
   });
   // Telemetry is only accumulated during a run; observable-failure assertions
   // need the accumulator without driving a whole run.
@@ -1522,7 +1523,7 @@ test('unsupported stored documents cannot be overwritten by fallback edits', asy
     assert.equal(localStorage.getItem('godsEyeView.sceneProject.v2'), saved);
     await director.importProjectFile({ name: 'valid.json', text: async () => JSON.stringify(PROJECT_FIXTURE) });
     assert.equal(director._storageReadError, null);
-    assert.equal(JSON.parse(localStorage.getItem('godsEyeView.sceneProject.v2')).version, 6);
+    assert.equal(JSON.parse(localStorage.getItem('godsEyeView.sceneProject.v2')).version, 7);
   } finally { restore(); }
 });
 
@@ -1657,4 +1658,49 @@ test('a caught run failure resolves as run-failed, not success (#971)', async ()
       { started: false, reason: 'run-failed' },
     );
   } finally { console.warn = warn; await director.destroy(); restore(); }
+});
+
+test('a recorded take becomes a validated track shot that replays its samples and lens', async () => {
+  const applied = [];
+  const lens = {
+    state: { focalMm: 85 },
+    getState() { return this.state; },
+    apply(value) { applied.push(['apply', value]); },
+    setFocalLength(mm) { applied.push(['focal', mm]); },
+  };
+  const { director, viewer, restore } = makeDirector({ lens });
+  try {
+    const samples = [
+      [0, -97.74, 30.26, 900, 10, -30, 0, 24],
+      [1.5, -97.73, 30.27, 950, 20, -25, 0, 50],
+    ];
+    const result = director.addRecordedShot({ samples, title: 'Take A', lens: { dof: { enabled: true, focusM: 300, fStop: 2, scale: 100 } } });
+    assert.equal(result.saved, true);
+    const scene = director._project.scenes.find(({ id }) => id === result.sceneId);
+    const shot = scene.shots.find(({ id }) => id === result.shotId);
+    assert.equal(shot.durationSec, 1.5);
+    assert.equal(shot.holdSec, 0);
+    assert.deepEqual(shot.move.track.samples, samples);
+    assert.notEqual(shot.move.track.samples[0], samples[0], 'the take owns copies of its rows');
+    assert.deepEqual(shot.camera, { lat: 30.27, lon: -97.73, alt: 950, heading: 20, pitch: -25, roll: 0, altitudeReference: 'ellipsoid' });
+    const stored = JSON.parse(localStorage.getItem('godsEyeView.sceneProject.v2'));
+    assert.equal(stored.version, 7);
+    assert.ok(stored.scenes.some((item) => item.shots.some(({ id }) => id === result.shotId)));
+
+    const views = [];
+    viewer.camera.setView = (options) => views.push(options);
+    scene.shots = [shot];
+    applied.length = 0;
+    await director.seekScene(result.sceneId, 0.5);
+    assert.deepEqual(applied[0], ['apply', shot.lens], 'the shot lens is applied after its visual state');
+    assert.deepEqual(applied.at(-1), ['focal', 37], 'seeking samples the recorded focal length');
+    assert.equal(views.length, 1);
+
+    director.captureShot();
+    assert.deepEqual(scene.shots.at(-1).lens, { focalMm: 85 }, 'capture keeps a changed lens');
+    lens.state = null;
+    director.captureShot();
+    assert.equal(Object.hasOwn(scene.shots.at(-1), 'lens'), false, 'a default lens adds nothing');
+    assert.equal(director.addRecordedShot({ samples: [samples[0]] }), null, 'one sample is not a take');
+  } finally { await director.destroy(); restore(); }
 });

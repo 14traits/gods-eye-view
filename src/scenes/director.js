@@ -90,6 +90,7 @@ export class SceneDirector {
       isMapStackAvailable = () => false,
       scenePacks = createDefaultScenePacks(),
       dataPacks = {},
+      lens = null,
     } = {},
   ) {
     this._destroyed = false;
@@ -99,6 +100,8 @@ export class SceneDirector {
     this.dataManager = dataManager;
     this._isMapStackAvailable = isMapStackAvailable;
     this._scenePacks = scenePacks;
+    /** Focal length and depth of field; shots without a lens restore the default view. */
+    this._lens = lens;
     this._bundleAssets = createBundleAssets();
     this._dataPacks = createSceneDataPacks(viewer, {
       ...dataPacks,
@@ -982,6 +985,7 @@ export class SceneDirector {
         camera,
         visual: this.styleManager.getVisualState(),
         layers: this._captureLayerStates(),
+        ...this._capturedLens(),
       },
       scene.shots.length,
     );
@@ -998,6 +1002,82 @@ export class SceneDirector {
         }),
       );
     }
+  }
+
+  /** The live lens as a shot field; an unchanged lens adds nothing. */
+  _capturedLens() {
+    const lens = this._lens?.getState();
+    return lens ? { lens } : {};
+  }
+
+  /** Apply a shot's lens after its visual state; shots without one restore the default. */
+  _applyShotLens(shot) {
+    this._lens?.apply(shot?.lens ?? null);
+  }
+
+  /**
+   * Append a recorded camera take as an explicit track shot. `samples` are
+   * compact `[t, lon, lat, alt, heading, pitch, roll, focalMm?]` rows at
+   * ellipsoidal heights, the first at 0 seconds. The take keeps the live
+   * visual and layer state so it replays over the same map it was shot on.
+   *
+   * @param {object} take
+   * @param {Array<number[]>} take.samples
+   * @param {string} [take.title]
+   * @param {string} [take.sceneId] - Defaults to the selected scene.
+   * @param {object|null} [take.lens] - Depth of field at the end of the take.
+   * @returns {{ sceneId: string, shotId: string, saved: boolean }|null}
+   */
+  addRecordedShot({ samples, title, sceneId, lens = null } = {}) {
+    if (this._destroyed) return null;
+    const scene = sceneId
+      ? this._project.scenes.find((item) => item.id === sceneId)
+      : this._getSelectedScene();
+    if (!scene || !Array.isArray(samples) || samples.length < 2) return null;
+    const last = samples.at(-1);
+    const shot = normalizeShot(
+      {
+        id: uid('shot'),
+        // i18n-ignore: stored English; displayShotTitle translates it when shown.
+        title: title || `Take ${scene.shots.length + 1}`,
+        durationSec: Math.max(0.2, last[0]),
+        holdSec: 0,
+        camera: {
+          lon: last[1],
+          lat: last[2],
+          alt: last[3],
+          heading: last[4],
+          pitch: last[5],
+          roll: last[6],
+          altitudeReference: 'ellipsoid',
+        },
+        move: {
+          track: {
+            altitudeReference: 'ellipsoid',
+            samples: samples.map((row) => [...row]),
+          },
+        },
+        visual: this.styleManager.getVisualState(),
+        layers: this._captureLayerStates(),
+        ...(lens ? { lens } : {}),
+      },
+      scene.shots.length,
+    );
+    scene.shots.push(shot);
+    this._selectedSceneId = scene.id;
+    this._selectedShotId = shot.id;
+    // An unsaved take stays in the session like an unsaved capture; the
+    // storage toast tells the person to export it.
+    const saved = this._saveProject();
+    this._shotOutcome('shot-captured', scene, shot);
+    if (saved)
+      this._updateStatus(
+        t('Recorded: {scene} / {shot}', {
+          scene: displaySceneTitle(scene),
+          shot: displayShotTitle(shot.title, shot, scene),
+        }),
+      );
+    return { sceneId: scene.id, shotId: shot.id, saved };
   }
 
   /**
@@ -1022,6 +1102,8 @@ export class SceneDirector {
       : camera;
     shot.visual = this.styleManager.getVisualState();
     shot.layers = this._captureLayerStates();
+    delete shot.lens;
+    Object.assign(shot, this._capturedLens());
 
     const saved = this._saveProject();
     this._shotOutcome('shot-updated', scene, shot);
@@ -1157,6 +1239,7 @@ export class SceneDirector {
       isCurrent: () => !token.cancelled,
     });
     if (token.cancelled) return;
+    this._applyShotLens(shot);
     const seekState =
       sceneSeek && typeof sceneSeek === 'object' ? sceneSeek : null;
     // Previous-scene disable revokes media ownership. Grant the target only
@@ -1665,6 +1748,8 @@ export class SceneDirector {
         roll: Cesium.Math.toRadians(cameraState.roll || 0),
       },
     });
+    if (Number.isFinite(cameraState.focalMm))
+      this._lens?.setFocalLength(cameraState.focalMm, { silent: true });
     return true;
   }
 

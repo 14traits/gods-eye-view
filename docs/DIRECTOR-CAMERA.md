@@ -108,3 +108,63 @@ Version-1/2/3 projects migrate to version 4 without converting their ordinary
 shots into explicit moves. IDs, positions, durations, visual settings, packs and
 source attribution survive. The bloom scale remains independent of the document
 version; version-3 bloom is never interpreted as the older inverted scale.
+
+## Recorded tracks
+
+Version 7 adds a second kind of explicit move: a recorded track, which is what
+[VCAM](VCAM.md) takes write. Instead of `from` and `easing`, `move.track` holds
+timed samples:
+
+```json
+{
+  "id": "take-1",
+  "title": "Take 1",
+  "durationSec": 6.4,
+  "holdSec": 0,
+  "camera": { "lat": 30.27, "lon": -97.74, "alt": 950, "heading": 20,
+    "pitch": -25, "roll": 0, "altitudeReference": "ellipsoid" },
+  "move": {
+    "track": {
+      "altitudeReference": "ellipsoid",
+      "samples": [
+        [0, -97.7431, 30.2672, 900, 10, -30, 0, 24],
+        [6.4, -97.7400, 30.2700, 950, 20, -25, 0, 50]
+      ]
+    }
+  },
+  "lens": { "focalMm": 50, "dof": { "enabled": true, "focusM": 300, "fStop": 2, "scale": 100 } }
+}
+```
+
+Each sample is `[t, lon, lat, alt, heading, pitch, roll, focalMm?]`: seconds from
+the start of the take, then the same coordinate, height and orientation
+conventions as a pose, then an optional 35 mm-equivalent focal length (4 to
+2,000 mm). The first sample is at 0 seconds and times strictly increase. A track
+has 2 to 10,000 samples and requires the ellipsoid altitude reference. The shot
+`camera` stays the destination: the final sample, which Load, Capture and the
+ordinary flight from the previous shot use.
+
+Playback stretches the recorded time to `durationSec`, so changing the duration
+retimes the take without touching its samples. Between samples, latitude, height,
+pitch and focal length interpolate linearly; longitude, heading and roll take
+the short arc. A time that lands on a sample returns that sample exactly,
+including both ends. Playback, Load, Replay and seek all use
+`sampleCameraMove`, which dispatches to `sampleCameraTrack` for tracks.
+
+## Lens
+
+Version 7 shots may carry an optional `lens`:
+
+- `focalMm`: 35 mm-equivalent focal length across the frame's longer side
+  (4 to 2,000 mm), applied to the camera's field of view. Cesium's default
+  60-degree view is about 31 mm.
+- `dof`: depth of field, with `enabled`, `focusM` (focus distance in metres,
+  0.1 to 10⁸), `fStop` (0.5 to 64) and `scale` (0.001 to 10⁷). The blur is a
+  thin-lens circle of confusion computed after dividing distances by `scale`,
+  so a scale of 1,000 renders the scene as a 1:1000 miniature.
+
+A shot's lens is applied after its visual state. A shot without one restores
+the application's field of view and turns depth of field off, so older shots
+look as they always did. Capture and Update Shot store the live lens only when
+it differs from the default. A track's per-sample focal length overrides
+`focalMm` while the track plays.

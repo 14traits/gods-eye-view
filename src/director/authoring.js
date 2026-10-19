@@ -24,6 +24,7 @@ export function editSceneDetails(
         'holdSec',
         'dataPackIds',
         'interactions',
+        'lens',
       ].includes(key)
     )
       throw new Error('Unsupported shot detail');
@@ -38,6 +39,7 @@ export function editSceneDetails(
     'holdSec',
     'dataPackIds',
     'interactions',
+    'lens',
   ]) {
     delete shot[key];
     if (Object.hasOwn(shotDetails, key)) shot[key] = shotDetails[key];

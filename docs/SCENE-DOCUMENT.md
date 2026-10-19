@@ -103,3 +103,8 @@ change with this document boundary.
 Version 5 additionally accepts scene `dataPacks` and shot `dataPackIds`, as
 defined in [data packs](DIRECTOR-DATA-PACKS.md). Version-4 camera documents
 continue to import without adding any packs.
+
+Version 7 is the write format. It additionally accepts recorded camera tracks
+(`move.track`) and an optional shot `lens` (focal length and depth of field), as
+defined in [camera directions](DIRECTOR-CAMERA.md#recorded-tracks). Versions 1
+to 6 import unchanged; their shots receive no lens and keep the default view.

@@ -261,6 +261,7 @@ export function normalizeShot(
       : {}),
     ...(rawShot?.dataPackIds ? { dataPackIds: [...rawShot.dataPackIds] } : {}),
     ...(rawShot?.move ? { move: deepClone(rawShot.move) } : {}),
+    ...(rawShot?.lens ? { lens: deepClone(rawShot.lens) } : {}),
     visual: {
       style: visual.style || 'normal',
       bloom: normalizeBloomState(bloom, {

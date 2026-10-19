@@ -31,11 +31,14 @@ export function createScenePlaybackAdapter(director, defaultShotDurationSec) {
         index,
       });
     },
-    applyVisual({ shot, token }) {
-      return director.styleManager.applyVisualState(
+    async applyVisual({ shot, token }) {
+      const isCurrent = () => !token.cancelled && !token.signal?.aborted;
+      const result = await director.styleManager.applyVisualState(
         director._visualStateForShot(shot),
-        { isCurrent: () => !token.cancelled && !token.signal?.aborted },
+        { isCurrent },
       );
+      if (isCurrent()) director._applyShotLens(shot);
+      return result;
     },
     async applyLayers({ scene, shot, token }) {
       director._setSceneMediaPlayback(scene, shot, token);

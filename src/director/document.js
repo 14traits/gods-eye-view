@@ -13,10 +13,10 @@ import {
   jsonTree,
 } from './documentFields.js';
 import { validateSceneDataPacks } from './packs/manifest.js';
-import { validateSceneCameras } from './cameraDocument.js';
+import { validateSceneCameras, validateShotLens } from './cameraDocument.js';
 export { SCENE_DOCUMENT_LIMITS, SceneDocumentError } from './documentFields.js';
 import { validateSceneInteractions } from './interactions/document.js';
-export const SCENE_DOCUMENT_VERSION = 6;
+export const SCENE_DOCUMENT_VERSION = 7;
 
 function visual(value, path, legacy) {
   fields(value, path, [
@@ -67,7 +67,7 @@ export function validateSceneDocument(project) {
     'scenes',
   ]);
   const version = Object.hasOwn(project, 'version') ? project.version : 1;
-  if (![1, 2, 3, 4, 5, 6].includes(version))
+  if (![1, 2, 3, 4, 5, 6, 7].includes(version))
     fail('$.version', 'unsupported scene project version');
   const legacy = version < 3;
   for (const key of ['createdAt', 'updatedAt'])
@@ -128,6 +128,7 @@ export function validateSceneDocument(project) {
         ...(version >= 4 ? ['move'] : []),
         ...(version >= 5 ? ['dataPackIds'] : []),
         ...(version >= 6 ? ['interactions'] : []),
+        ...(version >= 7 ? ['lens'] : []),
       ]);
       uniqueId(shot, at, shotIds);
       optional(shot, 'title', at, (v, p) => string(v, p, 4096));
@@ -140,6 +141,7 @@ export function validateSceneDocument(project) {
       );
       optional(shot, 'holdSec', at, (v, p) => number(v, p, 0, 86400, legacy));
       optional(shot, 'visual', at, (v, p) => visual(v, p, legacy));
+      optional(shot, 'lens', at, validateShotLens);
       optional(shot, 'layers', at, (layers, field) => {
         object(layers, field);
         for (const [id, entry] of Object.entries(layers)) {
