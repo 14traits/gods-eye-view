@@ -10,3 +10,13 @@ data/*.txt
 audio/*.wav
 tools/imagery/cache/
 __pycache__/
+
+# fetch caches
+tools/*/cache/
+# city snapshots (Esri imagery, live feeds) and review/model artefacts
+/city/
+tools/flurry/review/
+tools/flurry/*.jpg
+tools/live/models/
+tools/live/*.jpg
+tools/*/check*.png

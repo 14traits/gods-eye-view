@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as satellite from 'satellite.js';
-import { T, FPS, FEEDS, captureTimes, clamp, lerp, ramp, smooth, win, easeInOut, expoOut, mulberry32 } from './timeline.js';
+import { T, FPS, FEEDS, CITIES, DURATION, captureTimes, clamp, lerp, ramp, smooth, win, easeInOut, expoOut, mulberry32 } from './timeline.js';
+import { loadCity, buildCity, loopPath } from './city.js';
 import { llToVec, subsolar, angDist, D2R, R2D, EARTH_KM } from './geo.js';
 import { createGlobe } from './globe.js';
 import { createCoastline, createBorders, createMycelium, createCables, createArcs, createLattice } from './lines.js';
@@ -282,7 +283,60 @@ async function init() {
   };
 
   const capT = captureTimes(heroes.length);
-  const hud = createHUD({ W, H, PORTRAIT, heroes, cams, counts, rapidList, pick, capT, snapT, sunLL });
+  // v2 assets: the capture flurry, street cameras, detections
+  const flurryIdx = (await json('imagery/flurry/index.json')) || [];
+  const flurry = [];
+  for (const f of flurryIdx) {
+    const im = await img(`imagery/flurry/${f.file}`);
+    if (im) flurry.push({ ...f, img: im });
+  }
+  const detections = (await json('cctv/detections.json')) || {};
+  const nycIdx = (await json('cctv/nyc/index.json')) || [];
+  const nycCams = [];
+  for (const c of nycIdx) {
+    const im = await img(`cctv/nyc/${c.file}`);
+    if (im) nycCams.push({ ...c, img: im, det: detections[`nyc/${c.file}`] || detections[`cctv/nyc/${c.file}`] || [] });
+  }
+  for (const c of cams) c.det = detections[c.file] || detections[`cctv/${c.file}`] || [];
+  status(`v2 assets: ${flurry.length} flurry, ${nycCams.length} nyc cams, ${Object.keys(detections).length} detection sets`);
+
+  // ---------------------------------------------------------------- cities
+  const cityCam = new THREE.PerspectiveCamera(PORTRAIT ? 60 : 36, W / H, 0.05, 600);
+  const cityScenes = [];
+  for (const c of CITIES) {
+    const d = await loadCity(c.slug);
+    if (!d.meta) {
+      console.warn('city missing', c.slug);
+      continue;
+    }
+    const built = buildCity(d, { modeled: modeledFor(c.slug, d) });
+    cityScenes.push({ ...c, d, built });
+    status(`city ${c.slug}: ${JSON.stringify(built.stats)}`);
+  }
+  window.__cities = cityScenes;
+  const CITY_CAMS = {
+    everest: [[[17, 26, 22], [0, 4.5, 0]], [[7, 16, 17], [0, 6, -1]], [[-9, 12.5, 13], [0, 6.5, 0]]],
+    nyc: [[[0.2, 7.5, 2.2], [0, 0, -0.3]], [[1.7, 2.7, 2.5], [0, 0.1, -0.4]], [[2.7, 1.15, 0.5], [0.1, 0.15, -0.6]]],
+    boston: [[[-0.4, 5.6, 3.4], [0, 0, 0]], [[1.3, 2.5, 2.7], [0, 0, -0.2]], [[2.5, 1.35, 1.0], [0.1, 0.05, -0.3]]],
+    lax: [[[-4.2, 2.8, 3.6], [0, 0, 0]], [[-1.0, 1.5, 3.0], [0.3, 0, 0]], [[1.9, 0.95, 2.3], [0.6, 0, -0.2]]],
+    bragg: [[[0, 9, 8], [0, 0, 0]], [[-3.2, 4.8, 5.2], [0.3, 0, 0]], [[-5.2, 2.8, 2.1], [0.5, 0, 0]]],
+  };
+  const camCurves = {};
+  for (const [k, keys] of Object.entries(CITY_CAMS)) {
+    const s = PORTRAIT ? 1.18 : 1;
+    camCurves[k] = {
+      pos: new THREE.CatmullRomCurve3(keys.map(([p, q]) => new THREE.Vector3(q[0] + (p[0] - q[0]) * s, q[1] + (p[1] - q[1]) * s, q[2] + (p[2] - q[2]) * s))),
+      tgt: new THREE.CatmullRomCurve3(keys.map(([, q]) => new THREE.Vector3(...q))),
+    };
+  }
+  const KMV = 0.001;
+  const cv = new THREE.Vector3();
+  function projectCity(x, y, z = 0) {
+    cv.set(x * KMV, z * KMV, -y * KMV).project(cityCam);
+    return { x: (cv.x * 0.5 + 0.5) * W, y: (-cv.y * 0.5 + 0.5) * H, vis: cv.z < 1 && cv.z > -1 };
+  }
+
+  const hud = createHUD({ W, H, PORTRAIT, heroes, cams, counts, rapidList, pick, capT, snapT, sunLL, flurry, nycCams });
 
   // ---------------------------------------------------------------- camera director
   // Keys: [t, lon, lat, g (globe radius / half the short side), shiftX, shiftY, roll]
@@ -293,23 +347,53 @@ async function init() {
     [8.7, 0, 0, 0.6, 0, 0, 0],
     [16.6, -1.5, 1.5, 0.62, 0, 0, 0],
     [19.5, 4, 6, 0.7, 0, 0, -0.01],
-    [24.5, 18, 16, 0.75, 0, 0, -0.02],
-    [30.0, 24, 36, 0.98, sx * 0.5, sy * 0.5, -0.02],
-    [32.5, 14, 58, 1.85, sx, sy, -0.03],
-    [33.7, 8, 59, 1.9, sx, sy, -0.03],
-    [35.9, -55, 43, 1.0, sx, sy, -0.01],
-    [37.2, -82, 38, 0.92, sx, sy, 0.0],
-    [40.0, -110, 26, 0.42, sx, sy, 0.02],
-    [42.6, -150, 18, 0.62, sx, sy, 0.02],
-    [44.4, -190, 2, 0.7, sx, sy, 0.01],
-    [46.4, -215, 4, 0.78, sx, sy, 0.0],
-    [49.0, -228, 14, 0.85, sx, sy, 0.0],
-    [52.4, -236, 20, 0.85, sx * 0.4, sy * 0.4, 0.0],
-    [56.0, -258, 24, 0.5, 0, 0, 0.0],
-    [60.5, -288, 22, 0.16, 0, 0, 0.0],
+    [22.6, 14, 12, 0.74, 0, 0, -0.02],
+    // the flurry: the planet whips a full turn, accelerating then braking
+    [23.6, 20, 12, 0.74, 0, 0, -0.02],
+    [25.0, 50, 14, 0.74, 0, 0, -0.03],
+    [26.2, 120, 16, 0.72, 0, 0, -0.04],
+    [27.2, 230, 18, 0.72, 0, 0, -0.04],
+    [28.2, 330, 24, 0.78, 0, 0, -0.03],
+    [29.2, 375, 30, 0.9, sx * 0.3, sy * 0.3, -0.02],
+    [30.0, 384, 36, 0.98, sx * 0.5, sy * 0.5, -0.02],
+    [31.8, 374, 58, 1.85, sx, sy, -0.03],
+    [32.8, 368, 59, 1.9, sx, sy, -0.03],
+    [34.4, 305, 43, 1.0, sx, sy, -0.01],
+    [35.6, 268, 30, 0.5, sx, sy, 0.0],
+    [37.6, 225, 20, 0.62, sx, sy, 0.02],
+    [39.4, 175, 2, 0.7, sx, sy, 0.01],
+    [41.0, 150, 6, 0.78, sx, sy, 0.0],
+    // descent: swing to the Himalaya and fall in
+    [42.4, 100, 22, 1.1, sx * 0.4, sy * 0.4, 0.0],
+    [43.2, 88, 27.5, 3.5, 0, 0, 0.0],
+    [43.7, 87, 28, 9.0, 0, 0, 0.0],
+    // behind the camera wall, and back out for saturation
+    [71.0, 205, 16, 0.9, 0, 0, 0.0],
+    [76.4, 200, 18, 0.9, 0, 0, 0.0],
+    [80.0, 178, 24, 0.5, 0, 0, 0.0],
+    [84.4, 148, 22, 0.16, 0, 0, 0.0],
   ];
   // Title framing: the planet becomes the iris of the logo.
   const eye = hud.eyeLayout;
+
+  // Each flurry capture fires as its real location rotates into view on the
+  // leading (east) side of the disc during the spin (18° east of centre).
+  {
+    const samples = [];
+    for (let i = 0; i <= 600; i++) {
+      const tt = T.flurry + (i / 600) * (T.flurryEnd - T.flurry);
+      samples.push([tt, camAt(tt).lon]);
+    }
+    const lo = samples[0][1];
+    const hi = samples[samples.length - 1][1];
+    for (const f of flurry) {
+      let L = f.lon - 18;
+      while (L < lo) L += 360;
+      if (L > hi) continue;
+      const s = samples.find((q) => q[1] >= L);
+      if (s) f.t = s[0] + (hash01(f.lat * 13.3) - 0.5) * 0.08;
+    }
+  }
 
   function camAt(t) {
     if (t >= T.title - 0.05) {
@@ -439,6 +523,7 @@ async function init() {
   function renderFrame(frame) {
     const t = frame / FPS;
     const cam = placeCamera(t);
+    const cityNow = cityScenes.find((c) => t >= c.t0 && t < c.t1);
     const G = globe.uniforms;
     const front = frontAngle(t);
     const titleOn = t >= T.title - 0.05;
@@ -574,6 +659,30 @@ async function init() {
     S.camPos = camera.position;
     S.latticeR = latticePx(t, cam.dist);
     S.ringR = ringR0;
+    let renderScene = scene;
+    let renderCam = camera;
+    if (cityNow) {
+      const lt = t - cityNow.t0;
+      const k = (t - cityNow.t0) / (cityNow.t1 - cityNow.t0);
+      const u = 1 - Math.pow(1 - k, 2.2);
+      const cc = camCurves[cityNow.slug];
+      cityCam.position.copy(cc.pos.getPoint(u));
+      const tg = cc.tgt.getPoint(u);
+      // a hair of handheld drift
+      cityCam.position.x += Math.sin(t * 0.7) * 0.01;
+      cityCam.position.y += Math.sin(t * 0.53) * 0.008;
+      cityCam.lookAt(tg);
+      const sh = impulse(t, 9) * 0.003;
+      cityCam.rotateZ(Math.sin(t * 91) * sh);
+      cityCam.updateMatrixWorld();
+      cityNow.built.update(lt, k, pxScale);
+      // Boston is the transit showcase: let the GTFS lines lead
+      if (cityNow.slug === 'boston' && cityNow.built.roads) cityNow.built.roads.mesh.material.uniforms.uAlpha.value = 0.45;
+      renderScene = cityNow.built.scene;
+      renderCam = cityCam;
+      S.city = { ...cityNow, lt, k, project: projectCity, built: cityNow.built };
+      S.cam = { ...S.cam, lat: cityNow.lat, lon: cityNow.lon, dist: 1 + cityCam.position.y / 6371 };
+    }
     hud.draw(S);
 
     // ---- post
@@ -585,7 +694,9 @@ async function init() {
       win(t, T.cctvOut - 0.05, T.cctvOut + 0.3, 0.02, 0.25) * 0.8 +
       win(t, T.dishBreak - 0.02, T.dishBreak + 0.4, 0.02, 0.3) * 1.0 +
       win(t, T.cut - 0.25, T.cut, 0.1, 0.01) * 1.0 +
-      win(t, T.eyeOpen - 0.02, T.eyeOpen + 0.2, 0.02, 0.15) * 0.4;
+      win(t, T.eyeOpen - 0.02, T.eyeOpen + 0.2, 0.02, 0.15) * 0.4 +
+      win(t, T.terrain - 0.35, T.terrain + 0.25, 0.25, 0.2) * 1.0 +
+      CITIES.slice(1).reduce((s, c) => s + win(t, c.t0 - 0.06, c.t0 + 0.22, 0.04, 0.16) * 0.8, 0);
     const flash =
       Math.exp(-Math.max(0, t - T.substrate) * 12) * 0.035 * (t >= T.substrate ? 1 : 0) +
       Math.exp(-Math.max(0, t - T.indexed) * 12) * 0.05 * (t >= T.indexed ? 1 : 0) +
@@ -594,7 +705,7 @@ async function init() {
     let fade = smooth(t, 0, 0.6);
     if (t >= T.cut && t < T.title) fade = 0;
     fade *= 1 - smooth(t, T.fadeOut, DURATION_END);
-    post.render(scene, camera, {
+    post.render(renderScene, renderCam, {
       time: t,
       frame,
       bloom: t < T.seed ? 0.7 : lerp(0.85, 1.15, smooth(t, T.saturate, T.cut)),
@@ -646,7 +757,39 @@ async function init() {
   if (qs.has('play')) startPlayback(renderFrame);
 }
 
-const DURATION_END = 72;
+const DURATION_END = DURATION;
+const hash01 = (n) => {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
+
+// Modelled actors (always labelled MODELED in the HUD) where real feeds are thin.
+function modeledFor(slug, d) {
+  const out = [];
+  if (slug === 'nyc') {
+    const realHelis = (d.air?.a || []).filter((p) => p[8] === 'A7').length;
+    if (realHelis < 3) {
+      // Hudson and East River corridors, and a hover orbit over Midtown
+      out.push({ name: 'HUDSON CORRIDOR', path: [[-1750, -3300, 300], [-1950, -1000, 330], [-1800, 1500, 350], [-1450, 3300, 320], [-1250, 1500, 300], [-1400, -1000, 290]], speed: 0.09, phase: 0.1, color: '#7dffd6' });
+      out.push({ name: 'EAST RIVER', path: [[1650, -3200, 260], [1900, -800, 280], [2150, 1800, 300], [1750, 2600, 300], [1450, 800, 270], [1350, -1500, 250]], speed: 0.08, phase: 0.55, color: '#7dffd6' });
+      out.push({ name: 'MIDTOWN ORBIT', path: loopPath(-150, 900, 420, 380, 450, 0.3, 40), speed: 0.16, phase: 0.2, color: '#7dffd6' });
+    }
+  }
+  if (slug === 'bragg') {
+    const rw = d.military?.runways?.[0];
+    let cx = 0, cy = 0, rot = 0;
+    if (rw) {
+      const x1 = rw[2], y1 = rw[3], x2 = rw[rw.length - 2], y2 = rw[rw.length - 1];
+      cx = (x1 + x2) / 2;
+      cy = (y1 + y2) / 2;
+      rot = Math.atan2(y2 - y1, x2 - x1);
+    }
+    out.push({ name: 'PATTERN', path: loopPath(cx, cy, 2600, 1100, 330, rot, 48), speed: 0.07, phase: 0.0, color: '#ffb547' });
+    out.push({ name: 'PATTERN', path: loopPath(cx, cy, 2600, 1100, 330, rot, 48), speed: 0.07, phase: 0.5, color: '#ffb547' });
+    out.push({ name: 'ROTARY', path: loopPath(cx - 3000, cy + 2500, 900, 700, 180, 0.4, 32), speed: 0.11, phase: 0.3, color: '#ffb547' });
+  }
+  return out;
+}
 
 // Real-time mode (?play): the same deterministic frames, driven by the audio
 // clock, for use as a live loading sequence on a GPU. Browsers block audio

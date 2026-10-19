@@ -1,4 +1,4 @@
-import { T, FEEDS, CAPTURE_SLOW, clamp, lerp, ramp, smooth, win, easeInOut, easeOut, easeIn, expoOut, count, hash1, mulberry32 } from './timeline.js';
+import { T, FEEDS, CAPTURE_SLOW, DURATION, clamp, lerp, ramp, smooth, win, easeInOut, easeOut, easeIn, expoOut, count, hash1, mulberry32 } from './timeline.js';
 import { angDist, fmtLat, fmtLon, llToVec, EARTH_KM, D2R } from './geo.js';
 
 // Everything typographic and 2D: boot console, the dish, captures, the feed
@@ -26,7 +26,7 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const pad = (n, k) => String(n).padStart(k, '0');
 
 export function createHUD(opts) {
-  const { W, H, PORTRAIT, heroes, cams, counts, rapidList, pick, capT, snapT, sunLL } = opts;
+  const { W, H, PORTRAIT, heroes, cams, counts, rapidList, pick, capT, snapT, sunLL, flurry = [], nycCams = [] } = opts;
   const u = Math.min(W, H) / 1080;
   const M = Math.round((PORTRAIT ? 52 : 58) * u);
   const canvas = document.createElement('canvas');
@@ -77,7 +77,7 @@ export function createHUD(opts) {
   }
 
   // graded CCTV stills: slight desaturation, crushed blacks, scanlines baked in
-  const camTiles = cams.map((c) => {
+  const camTiles = cams.concat(nycCams).map((c) => {
     const cw = 320;
     const ch = 180;
     const cv = document.createElement('canvas');
@@ -93,6 +93,15 @@ export function createHUD(opts) {
     for (let y = 0; y < ch; y += 3) x.fillRect(0, y, cw, 1);
     return { ...c, tile: cv };
   });
+
+  // detection totals across every still we hold (YOLOv8n, run once offline)
+  const detTotals = { all: 0, person: 0, vehicle: 0 };
+  for (const c of cams.concat(nycCams))
+    for (const b of c.det || []) {
+      detTotals.all++;
+      if (b[5] === 'person') detTotals.person++;
+      if (['car', 'truck', 'bus', 'motorcycle'].includes(b[5])) detTotals.vehicle++;
+    }
 
   // ---------------------------------------------------------- primitives
   function text(s, x, y, { font = mono(14), color = WH, align = 'left', alpha = 1, spacing = 0, baseline = 'alphabetic' } = {}) {
@@ -593,13 +602,13 @@ export function createHUD(opts) {
   function drawIndexing(S) {
     const t = S.t;
     if (t < T.indexStart || t > T.indexed + 1.6) return;
-    const a = win(t, T.indexStart, T.capFull + 0.3, 0.3, 0.3);
+    const a = win(t, T.indexStart, T.indexed, 0.3, 0.3);
     const x = M + 6 * u;
     const y = PORTRAIT ? H * 0.1 + 40 * u : H * 0.2;
     if (a > 0) {
       text(scramble('INDEXING SURFACE', t, T.indexStart, 0.6), x, y, { font: sans(30, 300), color: WH, alpha: a, spacing: 9 * u });
       text(scramble('ESRI WORLD IMAGERY · WEB MERCATOR QUADTREE', t, T.indexStart + 0.3, 0.7, 2), x, y + 28 * u, { font: mono(12), color: DIM, alpha: a, spacing: 1.5 * u });
-      const zk = ramp(t, T.indexStart + 0.4, T.capFull);
+      const zk = ramp(t, T.indexStart + 0.4, T.flurryEnd);
       const z = Math.round(lerp(3, 19, Math.pow(zk, 0.8)));
       const tiles = (Math.pow(4, z + 1) - 1) / 3;
       const gsd = 156543.03 / 2 ** z;
@@ -645,11 +654,11 @@ export function createHUD(opts) {
   function drawCaptures(S) {
     const t = S.t;
     if (!heroes.length || t < T.capStart - 0.4) return;
-    const sheetA = smooth(t, T.capStart - 0.4, T.capStart + 0.2) * (1 - smooth(t, T.capFull + 2.6, T.capFull + 3.0));
+    const sheetA = smooth(t, T.capStart - 0.4, T.capStart + 0.2) * (1 - smooth(t, T.flurryEnd - 0.2, T.indexed));
     // empty slots
     if (sheetA > 0) {
       sheet.slots.forEach((s, i) => {
-        const filled = t >= capT[i] + (i < CAPTURE_SLOW ? 1.75 : 0);
+        const filled = t >= capT[i] + (i < CAPTURE_SLOW ? 1.5 : 0);
         ctx.save();
         ctx.globalAlpha = sheetA * (filled ? 0 : 0.45);
         ctx.strokeStyle = FAINT;
@@ -657,7 +666,7 @@ export function createHUD(opts) {
         ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
         ctx.restore();
       });
-      const done = capT.filter((c, i) => t >= c + (i < CAPTURE_SLOW ? 1.75 : 0.0)).length;
+      const done = capT.filter((c, i) => t >= c + (i < CAPTURE_SLOW ? 1.5 : 0.0)).length;
       const ly = sheet.y0 - 14 * u;
       text('SYNTHETIC CAPTURES', sheet.x0, ly, { font: mono(12, 500), color: CY, alpha: sheetA, spacing: 2 * u });
       text(`${pad(done, 2)}/${pad(heroes.length, 2)}`, sheet.x0 + sheet.sw, ly, { font: mono(12), color: WH, alpha: sheetA, align: 'right', spacing: 2 * u });
@@ -669,7 +678,7 @@ export function createHUD(opts) {
       const s = sheet.slots[i];
       const t0 = capT[i];
       const slow = i < CAPTURE_SLOW;
-      const landT = slow ? t0 + 1.75 : t0;
+      const landT = slow ? t0 + 1.5 : t0;
       if (t < landT) return;
       if (i === fullIdx && t >= T.capFull && t < T.capFull + 3.0) return;
       const k = t - landT;
@@ -699,7 +708,7 @@ export function createHUD(opts) {
     for (let i = 0; i < Math.min(CAPTURE_SLOW, heroes.length); i++) {
       const t0 = capT[i];
       const k = t - t0;
-      if (k < 0 || k > 1.75) continue;
+      if (k < 0 || k > 1.5) continue;
       const h = heroes[i];
       const lab = capLabel(h, i);
       const p = S.project(h.lon, h.lat, 1.0);
@@ -710,7 +719,7 @@ export function createHUD(opts) {
       }
       // card rect: appear → hold → fly to slot
       const s = sheet.slots[i];
-      const fly = easeInOut(ramp(k, 1.4, 1.75));
+      const fly = easeInOut(ramp(k, 1.2, 1.5));
       const open = easeOut(ramp(k, 0.05, 0.3));
       const R = {
         x: lerp(bigCard.x, s.x, fly),
@@ -872,7 +881,8 @@ export function createHUD(opts) {
     const t = S.t;
     if (t < T.air - 0.6 || t > T.cut) return;
     const wallDim = 1 - win(t, T.cctvWall - 0.1, T.cctvOut + 0.3, 0.2, 0.3);
-    const a = smooth(t, T.air - 0.6, T.air) * (1 - smooth(t, T.saturate - 0.1, T.saturate + 0.7)) * wallDim;
+    const a = smooth(t, T.air - 0.6, T.air) * (1 - smooth(t, T.descend, T.descend + 0.5)) * wallDim;
+    if (t > T.descend + 0.6) return;
     // a soft dark gutter keeps the stack legible over the planet
     if (a > 0) {
       ctx.save();
@@ -1063,6 +1073,7 @@ export function createHUD(opts) {
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fillRect(x, y + band, w, h * 0.08);
     ctx.restore();
+    if (c.det && w > 60 * u && h > 30 * u) detBoxes(c.det, x, y, w, h, alpha * 0.9, t, w > 150 * u);
     if (w > 90 * u) {
       const fs = Math.max(7, Math.min(10, w / 26 / u));
       text((c.name || '').toUpperCase().slice(0, Math.floor(w / (fs * 0.62 * u)) - 2), x + 5 * u, y + 12 * u, { font: mono(fs, 500), color: WH, alpha: alpha * 0.9, spacing: 0.5 * u });
@@ -1091,7 +1102,7 @@ export function createHUD(opts) {
     const t = S.t;
     if (!camTiles.length || t < T.cctv || t > T.cctvOut + 0.8) return;
     // tethered feeds pinned to the globe
-    if (t < T.cctvWall + 0.3) {
+    if (t < T.cctvWall + 0.3 && T.cctv < T.cctvWall) {
       const a = 1 - smooth(t, T.cctvWall - 0.1, T.cctvWall + 0.25);
       const vis = [];
       for (const c of camTiles) {
@@ -1183,7 +1194,7 @@ export function createHUD(opts) {
         const cy = H / 2;
         const shown = count(t, T.cctvWall + 0.5, T.cctvOut - 0.6, cams.length, counts.cctv, expoOut);
         const bw = (PORTRAIT ? 620 : 700) * u;
-        const bh = 150 * u;
+        const bh = 184 * u;
         ctx.save();
         ctx.globalAlpha = pa * 0.88;
         ctx.fillStyle = '#000';
@@ -1192,7 +1203,16 @@ export function createHUD(opts) {
         brackets(W / 2 - bw / 2, cy - bh / 2, bw, bh, 14 * u, CY, pa, 1.5);
         text('OPTICAL NETWORK', W / 2, cy - 30 * u, { font: mono(13, 500), color: CY, align: 'center', alpha: pa, spacing: 6 * u });
         text(fmt(shown), W / 2, cy + 26 * u, { font: sans(56, 200), color: WH, align: 'center', alpha: pa, spacing: 4 * u });
+        text(`OBJECTS IN FRAME ${fmt(detTotals.all)} · PEOPLE ${fmt(detTotals.person)} · VEHICLES ${fmt(detTotals.vehicle)}`, W / 2, cy + 76 * u, { font: mono(10, 500), color: CY, align: 'center', alpha: pa, spacing: 1.5 * u });
         text(`PUBLIC CAMERAS · ${counts.cctvSources} AGENCIES · ${counts.cctvCountries} COUNTRIES`, W / 2, cy + 56 * u, { font: mono(11), color: DIM, align: 'center', alpha: pa, spacing: 2 * u });
+        // the heartbeat of the cities, from what the cameras see
+        const pyb = H - 64 * u;
+        ctx.save();
+        ctx.globalAlpha = pa * 0.85;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, pyb - 26 * u, W, 64 * u);
+        ctx.restore();
+        cityPulse(M, pyb - 6 * u, W - 2 * M, 40 * u, pa, t, camTiles, 'CITY PULSE · OBJECTS DETECTED PER CAMERA · YOLOV8N');
       }
     }
   }
@@ -1217,11 +1237,11 @@ export function createHUD(opts) {
 
     // status lines
     const lines = [
-      [53.4, 'FEEDS', `${pad(FEEDS.length + rapidList.length, 2)}/${pad(FEEDS.length + rapidList.length, 2)} LIVE`],
-      [54.5, 'COVERAGE', '510,072,000 KM²'],
-      [55.6, 'TWIN', 'SYNCHRONISED'],
-      [56.7, 'LATENCY', `${212 - Math.floor(ramp(t, 56.7, 58) * 170)} MS`],
-      [57.7, 'MODEL', 'EXCEEDS SUBSTRATE'],
+      [77.4, 'HUMAN ACTIVITY', 'INGESTED'],
+      [78.5, 'NON-HUMAN ACTIVITY', 'INGESTED'],
+      [79.6, 'COVERAGE', '510,072,000 KM²'],
+      [80.7, 'LATENCY', `${212 - Math.floor(ramp(t, 80.7, 82) * 170)} MS`],
+      [81.7, 'TWIN', 'EXCEEDS SUBSTRATE'],
     ];
     const font = mono(13);
     const lx = PORTRAIT ? W / 2 - 230 * u : W - M - 446 * u;
@@ -1251,8 +1271,8 @@ export function createHUD(opts) {
     const oa = smooth(t, T.omni, T.omni + 0.12) * (1 - smooth(t, T.cut - 0.1, T.cut));
     if (oa > 0) {
       const y = PORTRAIT ? H * 0.8 : H * 0.78;
-      text('OBSERVER STATE', W / 2, y - 46 * u, { font: mono(12, 500), color: CY, align: 'center', alpha: oa, spacing: 6 * u });
-      plate(scramble('OMNIPRESENT', t, T.omni, 0.35), W / 2, y + 4 * u, { font: sans(PORTRAIT ? 34 : 38, 500), align: 'center', alpha: oa, spacing: 14, padX: 26, padY: 14 });
+      text('TWIN STATE', W / 2, y - 46 * u, { font: mono(12, 500), color: CY, align: 'center', alpha: oa, spacing: 6 * u });
+      plate(scramble('ALIVE', t, T.omni, 0.35), W / 2, y + 4 * u, { font: sans(PORTRAIT ? 34 : 38, 500), align: 'center', alpha: oa, spacing: 14, padX: 26, padY: 14 });
     }
   }
 
@@ -1261,7 +1281,7 @@ export function createHUD(opts) {
     const t = S.t;
     if (t < T.title) return;
     const { cx, cy, s } = eyeLayout;
-    const fadeEnd = 1 - smooth(t, T.fadeOut, 72);
+    const fadeEnd = 1 - smooth(t, T.fadeOut, DURATION);
     ctx.save();
     ctx.translate(cx - EYE_C.x * s, cy - EYE_C.y * s);
     ctx.scale(s, s);
@@ -1303,7 +1323,7 @@ export function createHUD(opts) {
     const wsize = PORTRAIT ? 64 : 70;
     text(scramble("GOD'S EYE VIEW", t, T.wordmark, 0.9, 4), W / 2 + 10 * u, wy, { font: sans(wsize, 200), color: WH, align: 'center', alpha: wa, spacing: (PORTRAIT ? 18 : 26) * u });
     const ta = smooth(t, T.tagline, T.tagline + 0.2) * fadeEnd;
-    text(typed('NO PLACE LEFT BEHIND.', t, T.tagline, 22), W / 2, wy + 52 * u, { font: mono(17), color: DIM, align: 'center', alpha: ta, spacing: 7 * u });
+    text(scramble('OMNISCIENCE', t, T.tagline, 0.9, 8), W / 2, wy + 58 * u, { font: mono(20, 500), color: CY, align: 'center', alpha: ta, spacing: 16 * u });
     const oa = smooth(t, T.online, T.online + 0.15) * fadeEnd;
     if (oa > 0) {
       const y = wy + (PORTRAIT ? 130 : 112) * u;
@@ -1321,7 +1341,7 @@ export function createHUD(opts) {
       text('PUBLIC SIGNALS · OPEN SOURCE · RUNS IN YOUR BROWSER', W / 2, y + 30 * u, { font: mono(10), color: FAINT, align: 'center', alpha: oa * smooth(t, T.online + 0.6, T.online + 1.2), spacing: 2.5 * u });
     }
     // sources, as the feeds came in
-    const ca = smooth(t, T.online + 0.8, T.online + 1.6) * fadeEnd;
+    const ca = smooth(t, T.tagline + 1.6, T.tagline + 2.4) * fadeEnd;
     if (ca > 0) {
       const credits = [
         'IMAGERY ESRI WORLD IMAGERY (ESRI, MAXAR, EARTHSTAR GEOGRAPHICS) · NASA GIBS BLACK MARBLE · VIIRS',
@@ -1335,6 +1355,449 @@ export function createHUD(opts) {
     }
   }
 
+  // ---------------------------------------------------------- v2: the eye opens
+  const SENSORS = ['VIS', 'NIR', 'SWIR', 'MWIR', 'LWIR', 'SAR-X', 'SAR-C', 'RF', 'ADS-B', 'AIS', 'SEISMIC', 'GNSS-R', 'LIDAR', 'OPTICAL·CCTV'];
+  function drawAwakening(S) {
+    const t = S.t;
+    if (t < T.seed || t > T.indexStart + 1.2) return;
+    const fade = 1 - smooth(t, T.substrate + 0.2, T.indexStart + 1.0);
+    const cx = S.center.x;
+    const cy = S.center.y;
+    const R = S.limbR;
+    // iris aperture: seven blades retract from the seed to the limb
+    const ak = easeInOut(ramp(t, T.aperture, T.growStart + 1.4));
+    if (t < T.growStart + 2.2) {
+      const ri = lerp(6 * u, R * 1.02, ak);
+      const ro = R + 10 * u;
+      const a = smooth(t, T.seed + 0.3, T.aperture) * (1 - smooth(t, T.growStart + 1.2, T.growStart + 2.2));
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.globalAlpha = a * 0.75;
+      ctx.strokeStyle = CY;
+      ctx.lineWidth = 1 * u;
+      const rot = ak * 1.4 + t * 0.05;
+      const N = 7;
+      for (let i = 0; i < N; i++) {
+        const a0 = rot + (i / N) * Math.PI * 2;
+        const a1 = a0 + (Math.PI * 2) / N;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a0) * ri, Math.sin(a0) * ri);
+        ctx.lineTo(Math.cos(a1) * ri, Math.sin(a1) * ri);
+        // blade edge sweeping out to the ring
+        ctx.moveTo(Math.cos(a0) * ri, Math.sin(a0) * ri);
+        ctx.quadraticCurveTo(Math.cos(a0 + 0.5) * (ri + ro) * 0.55, Math.sin(a0 + 0.5) * (ri + ro) * 0.55, Math.cos(a0 + 0.9) * ro, Math.sin(a0 + 0.9) * ro);
+        ctx.stroke();
+      }
+      // closed blades read as a dark iris
+      ctx.globalAlpha = a * 0.5 * (1 - ak);
+      ctx.fillStyle = 'rgba(0,30,40,0.6)';
+      ctx.beginPath();
+      ctx.arc(0, 0, ro, 0, Math.PI * 2);
+      ctx.arc(0, 0, ri, 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      ctx.restore();
+      const fnum = lerp(22, 1.4, ak);
+      text(`APERTURE f/${fnum < 2 ? fnum.toFixed(1) : Math.round(fnum)}`, cx, cy + R + 64 * u, { font: mono(11, 500), color: CY, align: 'center', alpha: a, spacing: 4 * u });
+    }
+    // radar sweep across the disc while the culture grows
+    const sw = win(t, T.growStart, T.substrate + 0.8, 0.5, 0.8) * fade;
+    if (sw > 0) {
+      const ang = (t - T.growStart) * 2.4;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.clip();
+      for (let i = 0; i < 24; i++) {
+        const a0 = ang - i * 0.02;
+        ctx.globalAlpha = sw * 0.12 * (1 - i / 24);
+        ctx.fillStyle = CY;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, R, a0 - 0.02, a0);
+        ctx.fill();
+      }
+      ctx.globalAlpha = sw * 0.7;
+      ctx.strokeStyle = '#bff8ff';
+      ctx.lineWidth = 1.2 * u;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ang) * R, Math.sin(ang) * R);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // orbiting coordinate text ring
+    const ta = win(t, T.dishDone - 0.2, T.indexStart + 1.0, 0.6, 0.6);
+    if (ta > 0) {
+      const str = ' 00°00′00″N 000°00′00″E · OBSERVER-1 · SUBSTRATE · CULTURE 001 · SENSORS ONLINE ·'.repeat(3);
+      const rr = R + 52 * u;
+      const n = Math.floor((Math.PI * 2 * rr) / (8.2 * u));
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.font = mono(9);
+      ctx.fillStyle = CY;
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = ta * 0.55;
+      const rot = -t * 0.06;
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / n) * Math.PI * 2;
+        ctx.save();
+        ctx.rotate(a);
+        ctx.translate(0, -rr);
+        ctx.fillText(str[i % str.length], 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    // sensors waking, one band at a time
+    const sa = win(t, T.growStart + 0.2, T.indexStart + 1.0, 0.3, 0.6);
+    if (sa > 0) {
+      const x0 = PORTRAIT ? M + 6 * u : W - M - 250 * u;
+      const y0 = PORTRAIT ? H - M - 330 * u : H * 0.24;
+      text('SENSOR ARRAY', x0, y0, { font: mono(11, 500), color: CY, alpha: sa, spacing: 3 * u });
+      line(x0, y0 + 8 * u, x0 + 240 * u, y0 + 8 * u, CY, sa * 0.5);
+      SENSORS.forEach((name, i) => {
+        const st = T.growStart + 0.3 + i * ((T.growEnd - T.growStart - 0.6) / SENSORS.length);
+        const k = t - st;
+        if (k < 0) return;
+        const y = y0 + (26 + i * 18) * u;
+        const ra = sa * Math.min(1, k * 6);
+        text(name, x0, y, { font: mono(10), color: WH, alpha: ra, spacing: 1.2 * u });
+        const lvl = clamp(k / 0.8) * (0.55 + 0.45 * hash1(i * 7.3));
+        ctx.save();
+        ctx.globalAlpha = ra;
+        ctx.fillStyle = 'rgba(0,246,255,0.18)';
+        ctx.fillRect(x0 + 96 * u, y - 7 * u, 90 * u, 5 * u);
+        ctx.fillStyle = CY;
+        ctx.fillRect(x0 + 96 * u, y - 7 * u, 90 * u * lvl, 5 * u);
+        ctx.restore();
+        text(k < 0.8 ? 'SYNC' : 'LIVE', x0 + 240 * u, y, { font: mono(9, 500), color: k < 0.8 ? AMB : CY, alpha: ra, align: 'right', spacing: 1 * u });
+      });
+    }
+    // optics calibration, converging
+    const ca = win(t, T.seed + 0.6, T.indexStart + 1.0, 0.4, 0.6);
+    if (ca > 0 && !PORTRAIT) {
+      const x0 = M + 6 * u;
+      const y0 = H * 0.24;
+      text('CALIBRATING OPTICS', x0, y0, { font: mono(11, 500), color: CY, alpha: ca, spacing: 3 * u });
+      line(x0, y0 + 8 * u, x0 + 240 * u, y0 + 8 * u, CY, ca * 0.5);
+      const focus = 1 - Math.exp(-(t - T.seed) * 0.45);
+      const rows = [['FOCUS', focus.toFixed(3)], ['EXPOSURE', `${(-6 + focus * 6.3).toFixed(2)} EV`], ['NOISE FLOOR', `${(-12 - focus * 30).toFixed(1)} dB`], ['DYNAMIC RANGE', `${(4 + focus * 16).toFixed(1)} STOPS`]];
+      rows.forEach(([k, v], i) => {
+        const y = y0 + (28 + i * 20) * u;
+        text(k, x0, y, { font: mono(10), color: DIM, alpha: ca, spacing: 1.2 * u });
+        text(v, x0 + 240 * u, y, { font: mono(10, 500), color: WH, alpha: ca, align: 'right', spacing: 1.2 * u });
+      });
+      // histogram settling
+      const hy = y0 + 130 * u;
+      ctx.save();
+      ctx.globalAlpha = ca * 0.85;
+      for (let i = 0; i < 48; i++) {
+        const xx = i / 47;
+        const target = Math.exp(-Math.pow((xx - 0.32) / 0.14, 2)) + 0.5 * Math.exp(-Math.pow((xx - 0.8) / 0.06, 2));
+        const noise = hash1(i * 3.1 + Math.floor(t * 12)) * (1 - focus);
+        const v = target * focus + noise * 0.8;
+        ctx.fillStyle = i % 8 === 0 ? WH : CY;
+        ctx.fillRect(x0 + i * 5 * u, hy - v * 46 * u, 3.2 * u, v * 46 * u);
+      }
+      ctx.restore();
+      line(x0, hy + 2 * u, x0 + 240 * u, hy + 2 * u, CY, ca * 0.4);
+    }
+  }
+
+  // ---------------------------------------------------------- v2: the flurry
+  function drawFlurry(S) {
+    const t = S.t;
+    if (!flurry.length || t < T.flurry - 0.2 || t > T.indexed + 0.4) return;
+    const fa = 1 - smooth(t, T.flurryEnd, T.indexed + 0.2);
+    let shown = 0;
+    const sz0 = (PORTRAIT ? 92 : 78) * u;
+    for (const f of flurry) {
+      if (f.t === undefined) continue;
+      const k = t - f.t;
+      if (k >= 0) shown++;
+      const life = 0.42;
+      if (k < 0 || k > life) continue;
+      const p = S.project(f.lon, f.lat, 1.0);
+      if (!p.vis || p.facing < 0.12) continue;
+      const pop = easeOut(Math.min(1, k / 0.1));
+      const a = fa * (1 - smooth(k, life * 0.6, life));
+      const sz = sz0 * (0.55 + 0.45 * pop) * (0.6 + 0.4 * p.facing);
+      const x = p.x - sz / 2;
+      const y = p.y - sz - 10 * u;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.drawImage(f.img, x, y, sz, sz);
+      const fl = Math.exp(-k * 18);
+      if (fl > 0.02) {
+        ctx.fillStyle = `rgba(230,255,255,${fl * 0.9})`;
+        ctx.fillRect(x, y, sz, sz);
+      }
+      ctx.restore();
+      brackets(x - 2 * u, y - 2 * u, sz + 4 * u, sz + 4 * u, 6 * u, CY, a * 0.9, 1);
+      line(p.x, p.y, p.x, y + sz, CY, a * 0.5, 0.8);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = WH;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2 * u, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      if (sz > 56 * u && hash1(f.lat * 3.7) > 0.55) text((f.name || '').toUpperCase().slice(0, 18), x, y - 5 * u, { font: mono(8, 500), color: WH, alpha: a * 0.85, spacing: 0.8 * u });
+    }
+    // sweep readout
+    const ra = win(t, T.flurry, T.indexed + 0.3, 0.2, 0.3);
+    if (ra > 0) {
+      const x = M + 6 * u;
+      const y = (PORTRAIT ? H * 0.1 + 40 * u : H * 0.2) + 160 * u;
+      const rate = Math.round(lerp(6, 64, ramp(t, T.flurry, T.flurryEnd - 1)));
+      text('GLOBAL SWEEP', x, y, { font: mono(12, 500), color: CY, alpha: ra, spacing: 3 * u });
+      text(`CAPTURES  ${fmt(heroes.length + shown)}`, x, y + 22 * u, { font: mono(13, 500), color: WH, alpha: ra, spacing: 1.5 * u });
+      text(`RATE      ${rate} / S`, x, y + 42 * u, { font: mono(13), color: WH, alpha: ra, spacing: 1.5 * u });
+    }
+  }
+
+  // ---------------------------------------------------------- v2: cities
+  const CLS_COL = { person: '#ffd24a', car: CY, truck: '#ff8a3d', bus: '#ff8a3d', bicycle: '#7dffd6', motorcycle: '#7dffd6', 'traffic light': '#bfa8ff', 'stop sign': '#ff5b5b' };
+  function detBoxes(det, x, y, w, h, alpha, t, labels = true) {
+    if (!det || !det.length || alpha <= 0) return 0;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = Math.max(1, 1.1 * u);
+    let n = 0;
+    for (const b of det) {
+      const [x0, y0, x1, y1, conf, cls] = b;
+      const col = CLS_COL[cls] || WH;
+      const j = Math.sin(t * 9 + x0 * 40) * 0.6 * u;
+      const bx = x + x0 * w + j;
+      const by = y + y0 * h;
+      const bw = (x1 - x0) * w;
+      const bh = (y1 - y0) * h;
+      if (bw < 2 || bh < 2) continue;
+      ctx.strokeStyle = col;
+      const c = Math.min(bw, bh) * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(bx, by + c); ctx.lineTo(bx, by); ctx.lineTo(bx + c, by);
+      ctx.moveTo(bx + bw - c, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + c);
+      ctx.moveTo(bx + bw, by + bh - c); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw - c, by + bh);
+      ctx.moveTo(bx + c, by + bh); ctx.lineTo(bx, by + bh); ctx.lineTo(bx, by + bh - c);
+      ctx.stroke();
+      ctx.globalAlpha = alpha * 0.12;
+      ctx.fillStyle = col;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.globalAlpha = alpha;
+      if (labels && bw > 18 * u) {
+        ctx.font = mono(7, 500);
+        ctx.fillStyle = col;
+        ctx.fillText(`${cls.toUpperCase()} ${Math.round(conf * 100)}`, bx, by - 2 * u);
+      }
+      n++;
+    }
+    ctx.restore();
+    return n;
+  }
+
+  function drawCity(S) {
+    const C = S.city;
+    if (!C) return;
+    const t = S.t;
+    const lt = C.lt;
+    const dur = C.t1 - C.t0;
+    const a = smooth(lt, 0.15, 0.6) * (1 - smooth(lt, dur - 0.25, dur));
+    const B = C.built;
+    const st = B.stats || {};
+    // dark gutter behind the readouts
+    ctx.save();
+    ctx.globalAlpha = a * 0.8;
+    const gg = PORTRAIT ? ctx.createLinearGradient(0, 0, 0, H * 0.42) : ctx.createLinearGradient(0, 0, W * 0.36, 0);
+    gg.addColorStop(0, 'rgba(0,3,6,0.85)');
+    gg.addColorStop(0.6, 'rgba(0,3,6,0.45)');
+    gg.addColorStop(1, 'rgba(0,3,6,0)');
+    ctx.fillStyle = gg;
+    if (PORTRAIT) ctx.fillRect(0, 0, W, H * 0.42);
+    else ctx.fillRect(0, 0, W * 0.36, H);
+    ctx.restore();
+    // acquisition plate on the cut
+    const pa = win(lt, 0.0, 0.9, 0.05, 0.3);
+    if (pa > 0) plate(`ACQUIRING ▸ ${C.name}`, W / 2, H * 0.5, { font: mono(15, 500), align: 'center', alpha: pa, spacing: 3, padX: 16, padY: 10 });
+    // title block
+    const x = M + 6 * u;
+    const y = PORTRAIT ? M + 110 * u : H * 0.2;
+    text(scramble(C.name, t, C.t0 + 0.2, 0.5, 3), x, y, { font: sans(PORTRAIT ? 40 : 34, 300), color: WH, alpha: a, spacing: 10 * u });
+    text(C.sub, x, y + 28 * u, { font: mono(12), color: CY, alpha: a, spacing: 2 * u });
+    text(`${fmtLat(C.lat, 4)} ${fmtLon(C.lon, 4)}`, x, y + 48 * u, { font: mono(11), color: DIM, alpha: a, spacing: 1.5 * u });
+    const rows = [];
+    if (st.buildings) rows.push(['BUILDINGS', fmt(st.buildings), 'OSM']);
+    if (st.roads) rows.push(['ROAD SEGMENTS', fmt(st.roads), 'OSM']);
+    if (st.roads) rows.push(['TRAFFIC', 'MODELED', 'OSM GRAPH']);
+    if (st.cameras) rows.push(['STREET CAMERAS', fmt(st.cameras), 'NYC DOT']);
+    if (st.aircraft) rows.push(['AIRCRAFT', fmt(st.aircraft), 'ADS-B']);
+    if (st.helis) rows.push(['ROTORCRAFT', fmt(st.helis), 'ADS-B']);
+    if (B.modeled?.length && C.slug === 'nyc') rows.push(['HELI CORRIDORS', fmt(B.modeled.length), 'MODELED']);
+    if (st.routes) rows.push(['TRANSIT ROUTES', fmt(st.routes), 'MBTA GTFS']);
+    if (st.vehicles) rows.push(['TRANSIT VEHICLES', fmt(st.vehicles), 'GTFS-RT']);
+    if (B.runways) rows.push(['RUNWAYS', fmt(B.d.aeroway?.runways?.length || B.d.military?.runways?.length || 0), 'OSM']);
+    if (B.milPolys) rows.push(['RESTRICTED AREAS', fmt(B.milPolys.length), 'OSM']);
+    if (C.slug === 'bragg') rows.push(['AIRFIELD PATTERN', '3', 'MODELED']);
+    if (B.d.peaks?.length) rows.push(['PEAKS', fmt(B.d.peaks.length), 'OSM']);
+    if (B.d.elev) rows.push(['ELEVATION', `${fmt(B.d.elevMeta?.max || 8848)} M`, 'AWS TERRAIN']);
+    rows.forEach(([k, v, src], i) => {
+      const ry = y + (78 + i * 19) * u;
+      const ra = a * smooth(lt, 0.35 + i * 0.12, 0.6 + i * 0.12);
+      text(k, x, ry, { font: mono(10), color: DIM, alpha: ra, spacing: 1.2 * u });
+      text(v, x + 170 * u, ry, { font: mono(11, 500), color: v === 'MODELED' ? AMB : WH, alpha: ra, spacing: 1.2 * u });
+      text(src, x + 262 * u, ry, { font: mono(8), color: FAINT, alpha: ra, spacing: 1 * u });
+    });
+    // congestion legend
+    if (st.roads && C.slug !== 'everest') {
+      const lx = PORTRAIT ? M + 6 * u : M + 6 * u;
+      const ly = H - M - 70 * u;
+      const lw = 200 * u;
+      ctx.save();
+      ctx.globalAlpha = a;
+      const g = ctx.createLinearGradient(lx, 0, lx + lw, 0);
+      g.addColorStop(0, '#1aff73');
+      g.addColorStop(0.5, '#ffcc1a');
+      g.addColorStop(1, '#ff2a1f');
+      ctx.fillStyle = g;
+      ctx.fillRect(lx, ly, lw, 4 * u);
+      ctx.restore();
+      text('FREE FLOW', lx, ly - 7 * u, { font: mono(9), color: DIM, alpha: a, spacing: 1 * u });
+      text('CONGESTED', lx + lw, ly - 7 * u, { font: mono(9), color: DIM, alpha: a, align: 'right', spacing: 1 * u });
+      text('TRAFFIC · MODELED ON OSM ROAD GRAPH', lx, ly + 18 * u, { font: mono(8), color: FAINT, alpha: a, spacing: 1 * u });
+    }
+    // world-space labels
+    const la = a * smooth(lt, 0.9, 1.4);
+    if (la > 0) {
+      if (B.d.peaks) {
+        let n = 0;
+        for (const pk of B.d.peaks.slice().sort((p, q) => q[2] - p[2])) {
+          if (n >= 6) break;
+          const z = B.elevAt ? B.elevAt(pk[0], pk[1]) : pk[2];
+          const p = C.project(pk[0], pk[1], z + 60);
+          if (!p.vis || p.x < M || p.x > W - M || p.y < M || p.y > H - M) continue;
+          drawCallout(p.x, p.y, (pk[3] || '').toUpperCase(), `${fmt(pk[2])} M`, n % 2 ? -1 : 1, la);
+          n++;
+        }
+      }
+      if (B.d.air?.a) {
+        let n = 0;
+        for (const p of B.d.air.a.slice().sort((p, q) => Math.hypot(p[0], p[1]) - Math.hypot(q[0], q[1]))) {
+          if (n >= 4 || !p.now) break;
+          const s = C.project(p.now[0], p.now[1], p.now[2]);
+          if (!s.vis || s.x < M || s.x > W - M || s.y < M * 2 || s.y > H - M * 2) continue;
+          const alt = Math.round((p[2] || 0) * 3.2808);
+          drawCallout(s.x, s.y, `${(p[6] || 'UNKNOWN').trim()}${p[7] ? ' · ' + p[7] : ''}`, `${alt ? fmt(alt) + ' FT' : 'GROUND'} · ${Math.round((p[4] || 0) * 1.944)} KT`, n % 2 ? -1 : 1, la, p.heli ? '#7dffd6' : WH);
+          n++;
+        }
+      }
+      if (B.modeled?.length) {
+        B.modeled.slice(0, 2).forEach((m, i) => {
+          if (!m.now) return;
+          const s = C.project(m.now[0], m.now[1], m.now[2]);
+          if (!s.vis) return;
+          drawCallout(s.x, s.y, m.name, `MODELED · ${fmt(m.now[2] * 3.28)} FT`, i % 2 ? 1 : -1, la * 0.9, m.color || '#7dffd6');
+        });
+      }
+      if (B.milPolys) {
+        const big = B.milPolys.slice().sort((p, q) => q.pts.length - p.pts.length)[0];
+        if (big) {
+          let cx = 0, cy = 0;
+          big.pts.forEach((q) => { cx += q[0]; cy += q[1]; });
+          const s = C.project(cx / big.pts.length, cy / big.pts.length, 400);
+          if (s.vis) plate(`RESTRICTED · ${(big.name || 'MILITARY').toUpperCase().slice(0, 28)}`, s.x, s.y, { font: mono(10, 500), align: 'center', alpha: la * 0.9, spacing: 2, inverse: false, padX: 8, padY: 5 });
+        }
+      }
+      if (B.labels?.length && C.slug === 'lax') {
+        B.labels.filter((l) => l.kind === 'runway').slice(0, 4).forEach((l) => {
+          const s = C.project(l.x, l.y, 5);
+          if (s.vis) text(l.text, s.x, s.y - 6 * u, { font: mono(9, 500), color: WH, align: 'center', alpha: la * 0.8, spacing: 1.5 * u });
+        });
+      }
+    }
+    // NYC: street cameras opening onto real frames with detections
+    if (C.slug === 'nyc' && nycCams.length) {
+      const pw = (PORTRAIT ? 230 : 210) * u;
+      const ph = pw * 9 / 16;
+      const slots = PORTRAIT
+        ? [[W - M - pw, H * 0.22], [W - M - pw, H * 0.22 + ph + 14 * u], [W - M - pw, H * 0.22 + 2 * (ph + 14 * u)]]
+        : [[W - M - pw, H * 0.18], [W - M - pw, H * 0.18 + ph + 16 * u], [W - M - pw, H * 0.18 + 2 * (ph + 16 * u)], [W - M - pw, H * 0.18 + 3 * (ph + 16 * u)]];
+      let total = 0;
+      slots.forEach(([sx, sy], i) => {
+        const c = nycCams[(i + Math.floor(lt / 2.2) * slots.length) % nycCams.length];
+        const st0 = 2.2 + i * 0.35 + Math.floor(lt / 2.2) * 0;
+        const k = lt - st0;
+        if (k < 0) return;
+        const { open, glow } = tvOn(k);
+        const ca = a * Math.min(1, k * 5);
+        const hh = ph * open;
+        const yy = sy + (ph - hh) / 2;
+        ctx.save();
+        ctx.globalAlpha = ca;
+        ctx.beginPath();
+        ctx.rect(sx, yy, pw, Math.max(1, hh));
+        ctx.clip();
+        ctx.filter = 'saturate(0.6) contrast(1.15) brightness(0.9)';
+        drawCover(c.img, sx, yy, pw, Math.max(1, hh));
+        ctx.filter = 'none';
+        ctx.restore();
+        if (open > 0.95) total += detBoxes(c.det, sx, sy, pw, ph, ca * smooth(k, 0.35, 0.6), t);
+        if (glow > 0.02) {
+          ctx.save();
+          ctx.globalAlpha = ca * glow;
+          ctx.fillStyle = '#e8ffff';
+          ctx.fillRect(sx, yy, pw, Math.max(2 * u, hh));
+          ctx.restore();
+        }
+        brackets(sx - 3 * u, sy - 3 * u, pw + 6 * u, ph + 6 * u, 8 * u, CY, ca * 0.8, 1);
+        text((c.name || '').toUpperCase().slice(0, 30), sx + 5 * u, sy + 12 * u, { font: mono(8, 500), color: WH, alpha: ca, spacing: 0.5 * u });
+        text(`DOT ${c.id || ''} · ${new Date(snapT.getTime() + t * 1000).toISOString().slice(11, 19)}`, sx + 5 * u, sy + ph - 6 * u, { font: mono(7), color: WH, alpha: ca * 0.8 });
+        // tether to the camera's beam on the street
+        if (c.x !== undefined) {
+          const p = C.project(c.x, c.y, 90);
+          if (p.vis) line(p.x, p.y, sx, sy + ph / 2, CY, ca * 0.35, 0.8);
+        }
+      });
+      // street pulse: detections per frame across the cameras
+      const pa2 = a * smooth(lt, 2.8, 3.4);
+      if (pa2 > 0) {
+        const gx = PORTRAIT ? M + 6 * u : W - M - pw;
+        const gy = PORTRAIT ? H - M - 150 * u : H * 0.18 + 4 * (ph + 16 * u) + 16 * u;
+        const gw = PORTRAIT ? W - 2 * M - 12 * u : pw;
+        cityPulse(gx, gy, gw, 34 * u, pa2, t, nycCams, 'STREET PULSE · OBJECTS / FRAME');
+      }
+    }
+  }
+
+  // an ECG-style trace built from real per-camera detection counts
+  function cityPulse(x, y, w, h, alpha, t, pool, label) {
+    const vals = pool.map((c) => (c.det ? c.det.length : 0));
+    if (!vals.length) return;
+    const N = 90;
+    const scroll = t * 14;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = CY;
+    ctx.lineWidth = 1.3 * u;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const s = i + scroll;
+      const idx = Math.floor(s / 6) % vals.length;
+      const v = vals[idx] / Math.max(1, Math.max(...vals));
+      const ph = (s % 6) / 6;
+      // a heartbeat-shaped spike per camera, height = its object count
+      const spike = ph < 0.12 ? -0.25 * Math.sin((ph / 0.12) * Math.PI) : ph < 0.28 ? Math.sin(((ph - 0.12) / 0.16) * Math.PI) * v : ph < 0.4 ? -0.2 * Math.sin(((ph - 0.28) / 0.12) * Math.PI) * v : 0;
+      const px = x + (i / N) * w;
+      const py = y + h * 0.65 - spike * h * 0.8;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+    line(x, y + h * 0.65, x + w, y + h * 0.65, CY, alpha * 0.2, 0.8);
+    text(label, x, y - 4 * u, { font: mono(8, 500), color: CY, alpha, spacing: 1.2 * u });
+  }
+
   // ---------------------------------------------------------- frame
   function draw(S) {
     ctx = S.ctx;
@@ -1343,9 +1806,12 @@ export function createHUD(opts) {
     ctx.globalAlpha = 1;
     drawBoot(S);
     drawSeed(S);
+    drawAwakening(S);
     drawDish(S);
     drawGrowth(S);
     drawIndexing(S);
+    drawFlurry(S);
+    drawCity(S);
     drawFeeds(S);
     drawCCTV(S);
     drawSaturation(S);

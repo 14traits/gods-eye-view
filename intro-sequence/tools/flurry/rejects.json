@@ -1,0 +1,32 @@
+[
+ {
+  "name": "Venice",
+  "country": "Italy",
+  "reason": "visual: blurry low-res imagery"
+ },
+ {
+  "name": "Chengdu",
+  "country": "China",
+  "reason": "visual: smog haze"
+ },
+ {
+  "name": "Xian",
+  "country": "China",
+  "reason": "visual: washed-out industrial lot"
+ },
+ {
+  "name": "Maracaibo",
+  "country": "Venezuela",
+  "reason": "visual: farmland / scrub"
+ },
+ {
+  "name": "Barquisimeto",
+  "country": "Venezuela",
+  "reason": "visual: dry riverbed, no city"
+ },
+ {
+  "name": "Conakry",
+  "country": "Guinea",
+  "reason": "visual: heavy haze"
+ }
+]

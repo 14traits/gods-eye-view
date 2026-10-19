@@ -1,6 +1,6 @@
 // Export the film clock for the score: every visual event the audio locks to.
 import fs from 'node:fs';
-import { T, FEEDS, DURATION, captureTimes, CAPTURE_SLOW } from '../src/timeline.js';
+import { T, FEEDS, CITIES, DURATION, captureTimes, CAPTURE_SLOW } from '../src/timeline.js';
 import { angDist } from '../src/geo.js';
 
 const heroes = JSON.parse(fs.readFileSync('imagery/hero/index.json', 'utf8'));
@@ -34,7 +34,7 @@ const boot = [];
   }
 });
 
-const status = [53.4, 54.5, 55.6, 56.7, 57.7];
+const status = [77.4, 78.5, 79.6, 80.7, 81.7];
 const rapid = Array.from({ length: 7 }, (_, i) => T.rapid + i * 0.22);
-fs.writeFileSync('audio/cues.json', JSON.stringify({ T, DURATION, feeds: FEEDS.map((x) => ({ key: x.key, t: x.t })), caps, tiles, boot, status, rapid }, null, 1));
+fs.writeFileSync('audio/cues.json', JSON.stringify({ T, DURATION, feeds: FEEDS.map((x) => ({ key: x.key, t: x.t })), cities: CITIES.map((c) => ({ slug: c.slug, t0: c.t0, t1: c.t1 })), caps, tiles, boot, status, rapid }, null, 1));
 console.log('cues:', caps.length, 'captures,', tiles.length, 'tiles,', boot.length, 'keystrokes');
