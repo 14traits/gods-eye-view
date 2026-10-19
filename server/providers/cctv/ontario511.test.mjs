@@ -127,3 +127,43 @@ for (const status of [429, 500, 503]) {
     assert.doesNotMatch(lines[0], /secret-key-value/);
   });
 }
+
+for (const failure of ['transport', 'invalid-json']) {
+  test(`Ontario ${failure} failures cannot log reflected keys or request URLs`, async (t) => {
+    const lines = captureConsole(t);
+    const key = 'synthetic secret&/=%value';
+    t.mock.method(globalThis, 'fetch', async (url) => {
+      if (failure === 'transport')
+        throw new Error(`request failed: ${url} ${key}`);
+      return new Response(`not JSON: ${url} ${key}`);
+    });
+    assert.deepEqual(
+      await loadOntarioSourcesFromOpenData({}, { ONTARIO_511_API_KEY: key }),
+      [],
+    );
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /Ontario 511 camera download error/);
+    assert.equal(lines[0].includes(key), false);
+    assert.equal(lines[0].includes('synthetic'), false);
+    assert.equal(lines[0].includes('https://'), false);
+  });
+}
+
+test('Ontario encodes reserved key characters and refuses credential-bearing redirects', async (t) => {
+  const lines = captureConsole(t);
+  const key = 'synthetic &/=% value';
+  let request;
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    request = { url: new URL(url), init };
+    return Response.json([ROW]);
+  });
+  const cameras = await loadOntarioSourcesFromOpenData(
+    {},
+    { ONTARIO_511_API_KEY: key },
+  );
+  assert.equal(request.url.searchParams.get('key'), key);
+  assert.equal(request.init.redirect, 'error');
+  assert.equal(cameras.length, 1);
+  assert.equal(JSON.stringify(cameras).includes('synthetic'), false);
+  assert.equal(lines.join(' ').includes('synthetic'), false);
+});

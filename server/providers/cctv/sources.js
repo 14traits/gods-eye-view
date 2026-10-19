@@ -563,6 +563,7 @@ export async function loadOntarioSourcesFromOpenData(
     url.searchParams.set('key', key);
     const resp = await fetch(url, {
       headers: { Accept: 'application/json' },
+      redirect: 'error',
       signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
     });
     if (!resp.ok) {
@@ -646,10 +647,11 @@ export async function loadOntarioSourcesFromOpenData(
       `[CCTV] Loaded Ontario 511 camera sources: ${unique.length} enabled (using nearest ${prioritized.length})`,
     );
     return prioritized;
-  } catch (error) {
+  } catch {
+    // Transport and JSON errors may reflect the credential-bearing request.
+    // Do not log upstream exception text, response bodies or URLs.
     console.warn(
-      '[CCTV] Ontario 511 camera download error:',
-      error?.message || error,
+      '[CCTV] Ontario 511 camera download error (network or invalid response)',
     );
     return [];
   }
@@ -1246,66 +1248,50 @@ export function parseTarkteeDatexImages(xml) {
  * @returns {Promise<Array<object>>} Normalized camera source objects.
  */
 export async function loadTarkteeSourcesFromDatex() {
+  // Own both transports before either can reject. A response that arrives
+  // after cleanup must also be discarded instead of escaping Promise.all.
+  const abort = new AbortController();
+  const signal = AbortSignal.any([
+    abort.signal,
+    AbortSignal.timeout(TARKTEE_FETCH_TIMEOUT_MS),
+  ]);
+  const responses = [];
+  const discardBoth = async () => {
+    abort.abort();
+    await Promise.allSettled(
+      responses.map((response) => response.body?.cancel()),
+    );
+    return [];
+  };
+  const fetchXml = async (url) => {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/xml,text/xml,*/*' },
+      redirect: 'manual',
+      signal,
+    });
+    if (signal.aborted) {
+      await Promise.allSettled([response.body?.cancel()]);
+      signal.throwIfAborted();
+    }
+    responses.push(response);
+    if (!response.ok) {
+      throw new Error(
+        response.status >= 300 && response.status < 400
+          ? 'catalog redirected; redirects are not followed'
+          : `catalog HTTP ${response.status}`,
+      );
+    }
+    return response;
+  };
   try {
     const [locResp, imgResp] = await Promise.all([
-      fetch(TARKTEE_LOCATIONS_URL, {
-        headers: { Accept: 'application/xml,text/xml,*/*' },
-        redirect: 'manual',
-        signal: AbortSignal.timeout(TARKTEE_FETCH_TIMEOUT_MS),
-      }),
-      fetch(TARKTEE_IMAGES_URL, {
-        headers: { Accept: 'application/xml,text/xml,*/*' },
-        redirect: 'manual',
-        signal: AbortSignal.timeout(TARKTEE_FETCH_TIMEOUT_MS),
-      }),
+      fetchXml(TARKTEE_LOCATIONS_URL),
+      fetchXml(TARKTEE_IMAGES_URL),
     ]);
-    // Both responses are fetched in parallel; if either is rejected or overflows
-    // its byte cap, both bodies must be released so neither transport leaks.
-    const discardBoth = async () => {
-      await Promise.allSettled([
-        locResp?.body?.cancel(),
-        imgResp?.body?.cancel(),
-      ]);
-      return [];
-    };
-    if (
-      (locResp.status >= 300 && locResp.status < 400) ||
-      (imgResp.status >= 300 && imgResp.status < 400)
-    ) {
-      console.warn(
-        '[CCTV] Tarktee DATEX catalog redirected; redirects are not followed',
-      );
-      return discardBoth();
-    }
-    if (!locResp.ok) {
-      console.warn('[CCTV] Tarktee locations download failed:', locResp.status);
-      return discardBoth();
-    }
-    if (!imgResp.ok) {
-      console.warn('[CCTV] Tarktee images download failed:', imgResp.status);
-      return discardBoth();
-    }
-    let locXml;
-    let imgXml;
-    const readAbort = new AbortController();
-    try {
-      [locXml, imgXml] = await Promise.all([
-        readResponseTextCapped(
-          locResp,
-          TARKTEE_MAX_CATALOG_BYTES,
-          readAbort.signal,
-        ),
-        readResponseTextCapped(
-          imgResp,
-          TARKTEE_MAX_CATALOG_BYTES,
-          readAbort.signal,
-        ),
-      ]);
-    } catch (error) {
-      readAbort.abort();
-      await discardBoth();
-      throw error;
-    }
+    const [locXml, imgXml] = await Promise.all([
+      readResponseTextCapped(locResp, TARKTEE_MAX_CATALOG_BYTES, signal),
+      readResponseTextCapped(imgResp, TARKTEE_MAX_CATALOG_BYTES, signal),
+    ]);
     const locations = parseTarkteeDatexLocations(locXml);
     const images = parseTarkteeDatexImages(imgXml);
     if (!locations.size || !images.size) {
@@ -1366,6 +1352,7 @@ export async function loadTarkteeSourcesFromDatex() {
     );
     return prioritized;
   } catch (error) {
+    await discardBoth();
     console.warn(
       '[CCTV] Tarktee DATEX download error:',
       error?.message || error,
