@@ -658,24 +658,39 @@ async function main() {
     // (existence, not just ceiling). The wait below tolerates the update-tick
     // latency of the completion pass (update interval is 10s).
     // -----------------------------------------------------------------------
-    console.log('Waiting for tiles + the one-shot completion pass...');
-    const tilesSeenLoaded = await waitForTilesLoaded(page, 45000);
-    let sampleFloorOk = false;
-    if (tilesSeenLoaded) {
-      sampleFloorOk = await waitForPredicate(
-        page,
-        (base) => window.__qaCounters.sampleHeight - base >= 1,
-        { timeoutMs: 30000, args: [c0.sampleHeight] },
+    // Globe terrain uses the cached DEM/prior and intentionally never calls
+    // scene.sampleHeight. Only the photoreal regime owns a one-shot mesh snap.
+    // Keep the mesh completion floor strict when that regime is active.
+    const photorealRegime = await page.evaluate(
+      () => window.__godsEyeView.viewer.scene.globe?.show === false,
+    );
+    if (photorealRegime) {
+      console.log('Waiting for tiles + the one-shot completion pass...');
+      const tilesSeenLoaded = await waitForTilesLoaded(page, 45000);
+      let sampleFloorOk = false;
+      if (tilesSeenLoaded) {
+        sampleFloorOk = await waitForPredicate(
+          page,
+          (base) => window.__qaCounters.sampleHeight - base >= 1,
+          { timeoutMs: 30000, args: [c0.sampleHeight] },
+        );
+      }
+      const cFloor = await readCounters();
+      record(
+        '>=1 real ground sample once tilesLoaded observed (one-shot snap completed)',
+        tilesSeenLoaded ? sampleFloorOk : null,
+        tilesSeenLoaded
+          ? `total real samples since enable=${cFloor.sampleHeight - c0.sampleHeight}`
+          : 'tilesLoaded never observed within 45s — floor not assessable this run',
+      );
+    } else {
+      const cFloor = await readCounters();
+      record(
+        'terrain-globe uses its DEM/prior without photoreal mesh sampling',
+        cFloor.sampleHeight === c0.sampleHeight,
+        `mesh samples since enable=${cFloor.sampleHeight - c0.sampleHeight}`,
       );
     }
-    const cFloor = await readCounters();
-    record(
-      '>=1 real ground sample once tilesLoaded observed (one-shot snap completed)',
-      tilesSeenLoaded ? sampleFloorOk : null,
-      tilesSeenLoaded
-        ? `total real samples since enable=${cFloor.sampleHeight - c0.sampleHeight}`
-        : 'tilesLoaded never observed within 45s — floor not assessable this run',
-    );
 
     // Let the completion pass finish before the steady-state window: require
     // the sampleHeight counter quiet for 12s (> the 10s update interval, so
@@ -1731,6 +1746,34 @@ async function main() {
       gizmoStates.every((s) => s === 'shown'),
       gizmoStates.map((s, i) => `${GIZMO_PARTS[i]}=${s}`).join(' '),
     );
+
+    // Frame the actual gizmo for the drag fixture. Default autofocus can leave
+    // its shaft below the 10px interaction threshold; that distant view is not
+    // the drag-usability scenario this regression exercises.
+    const dragFraming = await page.evaluate(async () => {
+      const viewer = window.__godsEyeView.viewer;
+      const e = viewer.entities.getById('cctv-gizmo-move-east');
+      if (!e) return null;
+      const pts = e.polyline.positions.getValue(viewer.clock.currentTime);
+      const target = pts?.[0];
+      if (!target) return null;
+      const measure = () => {
+        const a = viewer.scene.cartesianToCanvasCoordinates(pts[0]);
+        const b = viewer.scene.cartesianToCanvasCoordinates(pts[pts.length - 1]);
+        return {
+          shaftPx: a && b ? Math.hypot(b.x - a.x, b.y - a.y) : null,
+          rangeM: target.constructor.distance(viewer.camera.positionWC, target),
+        };
+      };
+      const before = measure();
+      viewer.camera.cancelFlight();
+      viewer.camera.lookAt(target, new target.constructor(0, -200, 180));
+      viewer.camera.lookAtTransform(viewer.camera.transform.constructor.IDENTITY);
+      viewer.scene.requestRender();
+      const frames = await window.__qaRenderFrames(3, 10000);
+      return { before, after: measure(), frames };
+    });
+    console.log('Drag fixture framing:', JSON.stringify(dragFraming));
 
     // Synthetic CDP drag on the EAST arrow — the owner's field-test
     // regression. Sample effective elevation after every mouse move: it must
