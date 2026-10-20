@@ -1,8 +1,10 @@
-- Local ADS-B no longer draws an aircraft at an altitude it cannot have
-  reached. A corrupt frame can still pass CRC, and one reached the globe as a
-  DC-9 at 108,800 ft. Each altitude report must now be reachable from the last
-  accepted one at a plausible vertical rate, whether it came from the browser
-  SDR or a decoder feed. A refused report keeps the previous altitude for the
-  marker, the card and the 3D model alike. Three refusals in a row start over
-  from the new value, and a surface report is never compared with the last
-  airborne altitude. The layer stats count refusals as `rejectedAltitudes` (Pedro Lobato, #801).
+- Local ADS-B filters implausible altitude changes and holds the accepted
+  value consistently for markers, cards and models. Browser refusals count
+  actual altitude frames rather than unrelated aircraft messages. Decoder
+  feeds use a conservative five-second recovery with three advancing
+  snapshots and aircraft message activity, explicitly marked as inferred.
+  Held values retain their altitude source and measurement time through
+  context and analyst results; feeds report an unknown measurement time.
+  Cached snapshots and transport jitter cannot recount refusals. Ground
+  reports reset the airborne reference, and no absolute altitude ceiling is
+  imposed (Pedro Lobato's original filter, #801, with maintainer corrections).
