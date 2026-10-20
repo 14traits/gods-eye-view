@@ -3931,3 +3931,16 @@ test('analyst-only lookup distinguishes duplicate names and uses canonical aircr
   assert.equal(plane.ok, true);
   assert.equal(plane.latitude, 36, 'canonical ID resolves the current position, not old coordinates');
 });
+
+
+test('analyst item display strings are single-line and bounded for voice', async () => {
+  globalThis.window = globalThis.window || { clearTimeout, setTimeout, requestIdleCallback: null };
+  const rows = [{ id: 'stable-id', name: 'Şehir\n' + 'x'.repeat(3000), label: 'Town\tStation', operator: 'City\nPD', lat: 30, lon: -97 }];
+  const { runner } = manifestRunner({ bikeshare: { getStats: () => ({ count: 1, lastUpdate: Date.now() }), getAnalystRecords: () => rows } });
+  const result = await runner('analyst_query', { layers: ['bikeshare'], scope: { kind: 'anywhere' }, limit: 1 });
+  assert.equal(result.ok, true);
+  assert.equal(result.items[0].name.length, 180);
+  assert.equal(result.items[0].label, 'Town Station');
+  assert.equal(result.items[0].id, 'stable-id');
+  for (const value of Object.values(result.items[0])) if (typeof value === 'string') assert.doesNotMatch(value, /[\r\n\t]/);
+});

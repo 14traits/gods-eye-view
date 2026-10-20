@@ -1,3 +1,4 @@
+import { normalizeDisplayText } from '../data/displayText.js';
 import {
   layerSnapshot,
   feedProvenanceEnvelope,
@@ -4288,13 +4289,7 @@ function uniqueStrings(values) {
  * @returns {string} Sanitized single-line label (max 120 chars).
  */
 function sanitizeLabel(value) {
-  const text = String(value || '');
-  let out = '';
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    out += code < 0x20 || code === 0x7f ? ' ' : ch; // drop control chars incl. newlines
-  }
-  return out.replace(/\s+/g, ' ').trim().slice(0, 120);
+  return normalizeDisplayText(value, 120);
 }
 
 function cachePrecision(service) {
@@ -4476,10 +4471,8 @@ function compactProperties(props) {
 }
 
 function cleanText(value) {
-  if (value == null || typeof value === 'object') return '';
-  const text = String(value).trim();
-  if (!text || text === 'undefined' || text === 'null') return '';
-  return text.length > 180 ? `${text.slice(0, 177)}...` : text;
+  const text = normalizeDisplayText(value);
+  return text === 'undefined' || text === 'null' ? '' : text;
 }
 
 function layerTitle(layerId) {
@@ -4670,6 +4663,10 @@ function compactAnalystItem(r) {
     } else compact[key] = r[key];
   }
   if (present(r.ageHours)) compact.ageHours = r.ageHours;
+  for (const key of Object.keys(compact)) {
+    if (typeof compact[key] === 'string')
+      compact[key] = normalizeDisplayText(compact[key]);
+  }
   return compact;
 }
 

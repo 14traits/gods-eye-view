@@ -1,5 +1,12 @@
 # God's Eye View Current State
 
+External ALPR tags, surveillance-tool display fields, voice context text and
+compact analyst strings collapse controls and whitespace before a final
+180-character cap (scene labels retain their 120-character cap). Empty ALPR
+values remain null and Unicode text is preserved without splitting a surrogate
+pair. These fields remain untrusted source data in structured tool output; text
+normalization does not establish trust or eliminate prompt injection.
+
 Shared distance checks use `src/geoDistance.js` with `{ lat, lon }` points and
 the IUGG mean spherical Earth radius, 6371.0088 km. `greatCircleKm` is
 canonical; `greatCircleMeters` is its exact metre conversion. Missing,
