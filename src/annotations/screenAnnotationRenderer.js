@@ -83,6 +83,9 @@ export function createScreenAnnotationRenderer(
   const heightCache = new Map();
   const HEIGHT_CACHE_SOFT = 600; // target size; over this we evict keys not used this frame
   const HEIGHT_CACHE_HARD = 8000; // absolute ceiling (one big ring + others) — never exceeded
+  let cullingVolume = null;
+  const heightBounds = new Cesium.BoundingSphere(new Cesium.Cartesian3(), 9500);
+  let heightBudget = 32;
   let projGen = 0; // bumped each projection frame; entries used this frame are "hot"
   function trimHeightCache() {
     if (heightCache.size <= HEIGHT_CACHE_SOFT) return;
@@ -123,6 +126,13 @@ export function createScreenAnnotationRenderer(
       heightCache.set(key, cached);
       return cached.h;
     }
+    const now = Date.now();
+    if (cached && now < cached.nextAttempt) {
+      cached.gen = projGen;
+      return cached.h;
+    }
+    if (heightBudget <= 0) return cached?.h || 0;
+    heightBudget--;
     try {
       if (
         scene.clampToHeightSupported &&
@@ -144,7 +154,12 @@ export function createScreenAnnotationRenderer(
       /* tiles not ready */
     }
     const fallback = cached ? cached.h : 0;
-    heightCache.set(key, { h: fallback, settled: false, gen: projGen });
+    heightCache.set(key, {
+      h: fallback,
+      settled: false,
+      gen: projGen,
+      nextAttempt: now + 1000,
+    });
     trimHeightCache();
     return fallback;
   }
@@ -362,6 +377,24 @@ export function createScreenAnnotationRenderer(
     // Anchor at the real surface height (cached + validated), so marks sit on
     // the ground/building instead of at sea level. The settle-once cache keeps
     // it stable (no per-frame jitter that earlier broke nearby projections).
+    // Cheap conservative endpoint tests precede GPU-backed surface sampling.
+    // Testing the accepted height range avoids culling an elevated roof solely
+    // because its sea-level anchor lies just beyond the horizon.
+    const visibleAt = (height) => {
+      const point = Cesium.Cartesian3.fromDegrees(lon, lat, height);
+      Cesium.Cartesian3.subtract(point, scene.camera.positionWC, scratchDir);
+      return (
+        Cesium.Cartesian3.dot(scratchDir, scene.camera.directionWC) > 0 &&
+        occluder.isPointVisible(point)
+      );
+    };
+    Cesium.Cartesian3.fromDegrees(lon, lat, 0, undefined, heightBounds.center);
+    if (
+      cullingVolume?.computeVisibility(heightBounds) ===
+      Cesium.Intersect.OUTSIDE
+    )
+      return null;
+    if (!visibleAt(0) && !visibleAt(9000)) return null;
     const world = Cesium.Cartesian3.fromDegrees(
       lon,
       lat,
@@ -467,6 +500,13 @@ export function createScreenAnnotationRenderer(
 
   function projectAll() {
     if (!records.size) return;
+    heightBudget = 32;
+    cullingVolume =
+      scene.camera.frustum?.computeCullingVolume?.(
+        scene.camera.positionWC,
+        scene.camera.directionWC,
+        scene.camera.upWC,
+      ) || null;
     projGen += 1; // new frame: entries touched below are "hot" and survive trimming
     const trackedRect = trackedEntityRect();
     occluder.cameraPosition = scene.camera.positionWC;

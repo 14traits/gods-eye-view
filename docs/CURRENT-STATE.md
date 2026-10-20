@@ -1,5 +1,7 @@
 # God's Eye View Current State
 
+Screen annotations reject hidden records and anchors wholly behind the camera or globe horizon before surface sampling. Unresolved visible heights share a 32-sample projection-pass budget, retry at most once per second per anchor on rendered frames, and retain no extra timer or listener. Unsettled points continue retrying as late terrain arrives; behind-camera, horizon and conservative frustum culls run before sampling. Validated heights remain settled in the bounded cache.
+
 Shared distance checks use `src/geoDistance.js` with `{ lat, lon }` points and
 the IUGG mean spherical Earth radius, 6371.0088 km. `greatCircleKm` is
 canonical; `greatCircleMeters` is its exact metre conversion. Missing,

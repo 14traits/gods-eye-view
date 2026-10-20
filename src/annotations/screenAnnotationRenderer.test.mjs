@@ -152,10 +152,17 @@ test('outline upgrade preserves the existing SVG group identity', (t) => {
   });
 
   const camera = {
-    positionWC: Cesium.Cartesian3.ZERO,
-    directionWC: Cesium.Cartesian3.ZERO,
+    positionWC: Cesium.Cartesian3.fromDegrees(-97.5, 31.2, 1000000),
+    directionWC: Cesium.Cartesian3.normalize(
+      Cesium.Cartesian3.negate(
+        Cesium.Cartesian3.fromDegrees(-97.5, 31.2),
+        new Cesium.Cartesian3(),
+      ),
+      new Cesium.Cartesian3(),
+    ),
     positionCartographic: { height: 1000 },
   };
+  t.mock.method(Cesium.SceneTransforms, 'worldToWindowCoordinates', () => ({ x: 100, y: 100 }));
   const sampledAnchors = [];
   const scene = {
     camera,
@@ -325,4 +332,95 @@ test('an add that throws after inserting its group unwinds instead of orphaning 
     'the retry must draw one mark, not stack over an orphan',
   );
   renderer.destroy();
+});
+
+test('hidden and back-facing annotations do not sample; visible unresolved heights have bounded retries', (t) => {
+  const previous = globalThis.document;
+  const previousRaf = globalThis.requestAnimationFrame;
+  globalThis.document = fakeDocument();
+  globalThis.requestAnimationFrame = (fn) => {
+    fn();
+    return 1;
+  };
+  t.after(() => {
+    globalThis.document = previous;
+    globalThis.requestAnimationFrame = previousRaf;
+  });
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  t.mock.method(Cesium.SceneTransforms, 'worldToWindowCoordinates', () => ({
+    x: 100,
+    y: 100,
+  }));
+  const camera = {
+    positionWC: Cesium.Cartesian3.fromDegrees(0, 0, 100000),
+    directionWC: new Cesium.Cartesian3(-1, 0, 0),
+    positionCartographic: { height: 100000 },
+    moveEnd: new Cesium.Event(),
+  };
+  let samples = 0;
+  const postRender = new Cesium.Event();
+  const scene = {
+    camera,
+    canvas: { width: 800, height: 600 },
+    postRender,
+    clampToHeightSupported: true,
+    clampToHeight() {
+      samples++;
+    },
+    requestRender() {},
+  };
+  const renderer = createScreenAnnotationRenderer({ scene, camera });
+  const mark = (id, lon) => ({
+    id,
+    type: 'label',
+    anchor: { lon, lat: 0 },
+    label: id,
+  });
+  renderer.add(mark('far-side', 180));
+  for (let i = 0; i < 100; i++) postRender.raiseEvent();
+  assert.equal(samples, 0);
+  renderer.add(mark('near-side', 0));
+  for (let i = 0; i < 100; i++) postRender.raiseEvent();
+  assert.equal(samples, 1);
+  for (let i = 0; i < 10; i++) {
+    t.mock.timers.tick(1000);
+    postRender.raiseEvent();
+  }
+  assert.equal(samples, 11);
+  camera.moveEnd.raiseEvent();
+  postRender.raiseEvent();
+  assert.equal(samples, 11, 'camera events cannot bypass the retry interval');
+  renderer.update(mark('near-side', 0), { empty: true });
+  t.mock.timers.tick(1000);
+  postRender.raiseEvent();
+  assert.equal(samples, 11, 'hidden records do not sample');
+  camera.directionWC = new Cesium.Cartesian3(1, 0, 0);
+  renderer.update(mark('near-side', 0));
+  postRender.raiseEvent();
+  assert.equal(samples, 11, 'behind-camera anchors do not sample');
+  camera.directionWC = new Cesium.Cartesian3(-1, 0, 0);
+  camera.frustum = {
+    computeCullingVolume: () => ({
+      computeVisibility: () => Cesium.Intersect.OUTSIDE,
+    }),
+  };
+  postRender.raiseEvent();
+  assert.equal(samples, 11, 'outside-frustum anchors do not sample');
+  camera.frustum = null;
+  const before = samples;
+  renderer.add({
+    id: 'large-area',
+    type: 'area',
+    label: 'Area',
+    ring: Array.from({ length: 100 }, (_, i) => [0.001 + i / 10000, 0]),
+    anchor: { lon: 0, lat: 0 },
+  });
+  assert.equal(
+    samples - before,
+    32,
+    'a projection pass caps synchronous surface work',
+  );
+  renderer.destroy();
+  assert.equal(camera.moveEnd.numberOfListeners, 0);
+  assert.equal(postRender.numberOfListeners, 0);
 });
