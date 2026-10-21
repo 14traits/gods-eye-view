@@ -1069,5 +1069,6 @@
   "src/data/gbfsProxyRateLimit.test.mjs",
   "src/terrainHeightsBounds.test.mjs",
   "server/providers/overpass/requestAdmission.test.mjs",
+  "server/providers/common/rateLimitKeys.test.mjs",
   "src/tooling/trackArrivalObservation.test.mjs"
 ]

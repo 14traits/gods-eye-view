@@ -1,11 +1,18 @@
-/** A reveal must beat the one-second idle rotation refresh, regardless of FPS. */
+/**
+ * Wall-clock budget for EACH observed frame, regardless of FPS. Both the settle
+ * frame (measured from the forced moveEnd) and the reveal frame (measured from
+ * the settle frame that hid the contact) must land inside it, so neither can be
+ * repaired by the one-second idle rotation refresh before it is read — while a
+ * ~300 ms software-rendered frame (headless SwiftShader) still fits twice.
+ */
 export const ARRIVAL_OBSERVATION_MS = 500;
 
 /**
  * Observe the first completed moveEnd frame and the first subsequent reveal.
- * The deadline starts when moveEnd is forced, before its rotation baseline, so
- * waiting for either frame cannot let the one-second idle refresh mask a bug.
- * `read` snapshots visibility and rotation error against the current position.
+ * The settle deadline starts when moveEnd is forced, before its rotation
+ * baseline; the reveal deadline restarts at the settle frame, which is where
+ * the contact is hidden. `read` snapshots visibility and rotation error
+ * against the current position.
  */
 export function observeArrivalRotation({
   scene,
@@ -18,6 +25,7 @@ export function observeArrivalRotation({
 }) {
   return new Promise((resolve, reject) => {
     const startedAt = now();
+    let phaseStartedAt = startedAt;
     let moveEnd = null;
     let moveEndMs = null;
     let revealFrames = 0;
@@ -40,11 +48,16 @@ export function observeArrivalRotation({
       moveEndMs,
       flipFrame: -1,
     });
+    const armDeadline = () => {
+      clearTimer(timer);
+      timer = setTimer(() => finish(expired()), ARRIVAL_OBSERVATION_MS);
+    };
     remove = scene.postRender.addEventListener(() => {
       if (done) return;
       try {
-        const elapsedMs = now() - startedAt;
-        if (elapsedMs >= ARRIVAL_OBSERVATION_MS) {
+        const at = now();
+        const elapsedMs = at - startedAt;
+        if (at - phaseStartedAt >= ARRIVAL_OBSERVATION_MS) {
           finish(expired());
           return;
         }
@@ -52,6 +65,8 @@ export function observeArrivalRotation({
         if (moveEnd === null) {
           moveEnd = sample;
           moveEndMs = elapsedMs;
+          phaseStartedAt = at;
+          armDeadline();
           startReveal();
         } else {
           revealFrames++;
@@ -76,7 +91,7 @@ export function observeArrivalRotation({
         reject(error);
       }
     });
-    timer = setTimer(() => finish(expired()), ARRIVAL_OBSERVATION_MS);
+    armDeadline();
     try {
       startMoveEnd();
       scene.requestRender();
@@ -93,7 +108,8 @@ export function arrivalRotationPassed(observation) {
     !!observation &&
     !observation.error &&
     observation.shown === true &&
-    observation.elapsedMs < ARRIVAL_OBSERVATION_MS &&
+    observation.moveEndMs < ARRIVAL_OBSERVATION_MS &&
+    observation.revealMs < ARRIVAL_OBSERVATION_MS &&
     (observation.dMoveEnd * 180) / Math.PI < 10 &&
     (observation.dReveal * 180) / Math.PI < 10
   );

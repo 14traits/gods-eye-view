@@ -2697,9 +2697,11 @@ async function main() {
     // Staged deterministically: park the camera nadir over the synthetic
     // cluster, let rotations settle, TAMPER a billboard's rotation, then
     // trigger each path with the camera idle. The fleet runs every 80 ms,
-    // independently of rendered FPS. Observe the first completed settle and
-    // reveal frames within 500 ms of forcing moveEnd, before the 1 s idle
-    // rotation refresh can repair an incorrect first reveal.
+    // independently of rendered FPS. Observe the first completed settle frame
+    // within 500 ms of forcing moveEnd and the first reveal frame within
+    // 500 ms of that settle frame: each budget sits inside the 1 s idle
+    // rotation refresh that could otherwise repair an incorrect first reveal,
+    // and a ~300 ms headless SwiftShader frame fits inside each of them.
     // ============================================================
     console.log('\nChange 4 — arrival rotation: moveEnd settle pass + horizon-reveal pass');
     const arrival = await evalPage(async () => {
