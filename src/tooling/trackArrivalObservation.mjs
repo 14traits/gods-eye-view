@@ -2,8 +2,11 @@
  * Wall-clock budget for EACH observed frame, regardless of FPS. Both the settle
  * frame (measured from the forced moveEnd) and the reveal frame (measured from
  * the settle frame that hid the contact) must land inside it, so neither can be
- * repaired by the one-second idle rotation refresh before it is read — while a
- * ~300 ms software-rendered frame (headless SwiftShader) still fits twice.
+ * repaired by the one-second idle rotation refresh before it is read. The
+ * refresh clock starts at the fleet tick (preRender) of the frame the budget is
+ * measured from, so the budget must leave room for that frame's own render
+ * time: half the refresh interval tolerates frames up to ~500 ms, and a ~300 ms
+ * software-rendered frame (headless SwiftShader) fits with margin.
  */
 export const ARRIVAL_OBSERVATION_MS = 500;
 
