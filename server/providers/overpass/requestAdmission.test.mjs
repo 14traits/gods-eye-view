@@ -250,7 +250,10 @@ test('IPv6 peers share a /64 admission bucket and IPv4-mapped peers fold to IPv4
     forbidRead: true,
   });
   assert.equal(rotated.statusCode, 429, 'a rotating host stays in one bucket');
-  assert.equal((await call(route, { peer: '2001:db8:1:3::1' })).statusCode, 400);
+  assert.equal(
+    (await call(route, { peer: '2001:db8:1:3::1' })).statusCode,
+    400,
+  );
   for (let i = 0; i < 300; i++) {
     assert.equal(
       (await call(route, { peer: '::ffff:10.1.1.1' })).statusCode,
