@@ -1078,6 +1078,5 @@
   "src/ui/statusBadge.test.mjs",
   "src/ui/cctvBadges.test.mjs",
   "scripts/qa-status-badges.mjs",
-  "server/providers/common/rateLimitKeys.test.mjs",
-  "src/tooling/trackArrivalObservation.test.mjs"
+  "server/providers/common/rateLimitKeys.test.mjs"
 ]
