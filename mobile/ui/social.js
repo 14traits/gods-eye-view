@@ -620,6 +620,7 @@ export function chatOverlay(el, ctx = {}) {
   return mountChatOverlay(c, el, {
     globe: ctx.globe || c.globe,
     moment: ctx.moment,
+    maxLines: ctx.maxLines,
   });
 }
 

@@ -59,8 +59,8 @@ export function createTimeRibbon(
       <div class="rb-track tm-track" role="slider" tabindex="0" aria-label="Scrub time" aria-valuetext="Live">
         <canvas></canvas>
         <div class="rb-head tm-head" aria-hidden="true"><i></i></div>
-        <div class="tm-callout tele" hidden></div>
       </div>
+      <div class="tm-callout tele" hidden></div>
       <div class="tm-cliprow" hidden>
         <span class="tm-cliplen tele"></span>
         <button class="pill-btn plain tm-clipcancel" type="button">Cancel</button>
@@ -82,6 +82,7 @@ export function createTimeRibbon(
 
   let win = getWindow();
   let rec = null; // { start, end }
+  let arch = null; // the bundled recording: { start, end, label }
   let custom = null;
   let pips = [];
   let t = Date.now();
@@ -103,7 +104,11 @@ export function createTimeRibbon(
   const start = () =>
     custom
       ? custom.start
-      : Math.min(win.start.getTime(), rec?.start ?? Infinity);
+      : Math.min(
+          win.start.getTime(),
+          rec?.start ?? Infinity,
+          arch ? arch.start - HOUR : Infinity,
+        );
   const end = () => (custom ? custom.end : win.end.getTime());
   const nowMs = () => (custom ? (custom.now ?? custom.start) : Date.now());
   const x = (ms) => W / 2 + ((ms - t) / HOUR) * pxPerHour;
@@ -114,6 +119,21 @@ export function createTimeRibbon(
       const hst = getHistory?.();
       if (hst && Number.isFinite(+hst.start))
         rec = { start: +hst.start, end: +hst.end || Date.now() };
+      const a = hst?.archive;
+      arch =
+        a && Number.isFinite(+a.start)
+          ? {
+              start: +a.start,
+              end: +a.end,
+              label: `RECORDING · ${new Date(+a.start)
+                .toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  timeZone: 'UTC',
+                })
+                .toUpperCase()}`,
+            }
+          : null;
     } catch {
       rec = null;
     }
@@ -157,22 +177,64 @@ export function createTimeRibbon(
     ctx.fillStyle = 'rgba(255,255,255,0.035)';
     ctx.fillRect(xs, base - 12, xe - xs, 24);
     if (!custom) {
-      // Recorded range: where the app remembers every contact.
+      // Range labels sit inside the band's lower edge. Each is placed only
+      // where it fits inside its own range and clear of the labels already
+      // placed, so they never run into each other ("RECORDEDCAST").
+      ctx.font = '600 8.5px "JetBrains Mono", ui-monospace, monospace';
+      const placed = [];
+      const label = (texts, from, to, color, align = 'left') => {
+        // The longest wording that fits inside its range.
+        const all = [].concat(texts);
+        const text =
+          all.find(
+            (tx) =>
+              ctx.measureText(tx).width + 8 <=
+              Math.min(to, W - 24) - Math.max(from, 24),
+          ) || all[all.length - 1];
+        const w = ctx.measureText(text).width;
+        const lo = Math.max(from, 24);
+        const hi = Math.min(to, W - 24);
+        if (hi - lo < w + 8) return;
+        const x0 = align === 'right' ? hi - 4 - w : lo + 4;
+        if (placed.some(([a, b]) => x0 < b + 8 && x0 + w > a - 8)) return;
+        placed.push([x0, x0 + w]);
+        ctx.fillStyle = color;
+        ctx.textAlign = 'left';
+        ctx.fillText(text, x0, base + 9);
+      };
+      const band = (a, b, top, bottom, edge) => {
+        const g = ctx.createLinearGradient(0, base - 12, 0, base + 12);
+        g.addColorStop(0, top);
+        g.addColorStop(1, bottom);
+        ctx.fillStyle = g;
+        ctx.fillRect(a, base - 12, b - a, 24);
+        ctx.fillStyle = edge;
+        ctx.fillRect(a, base - 12, b - a, 1.2);
+      };
+      // The bundled recording: real positions at their real times.
+      if (arch) {
+        const a = clamp(x(arch.start), -2, W + 2);
+        const b = clamp(x(Math.min(arch.end, n)), -2, W + 2);
+        if (b > a) {
+          band(
+            a,
+            b,
+            'rgba(122,231,199,0.2)',
+            'rgba(122,231,199,0.05)',
+            'rgba(122,231,199,0.8)',
+          );
+        }
+      }
+      // Recorded range: where this device remembers every contact.
       if (rec) {
         const a = clamp(x(rec.start), -2, W + 2);
-        const g = ctx.createLinearGradient(0, base - 12, 0, base + 12);
-        g.addColorStop(0, 'rgba(163,216,255,0.22)');
-        g.addColorStop(1, 'rgba(163,216,255,0.06)');
-        ctx.fillStyle = g;
-        ctx.fillRect(a, base - 12, xn - a, 24);
-        ctx.fillStyle = 'rgba(163,216,255,0.85)';
-        ctx.fillRect(a, base - 12, xn - a, 1.2);
-        if (a > 4 && a < W - 60) {
-          ctx.font = '600 8.5px "JetBrains Mono", ui-monospace, monospace';
-          ctx.fillStyle = 'rgba(163,216,255,0.8)';
-          ctx.textAlign = 'left';
-          ctx.fillText('RECORDED', a + 4, base + 9);
-        }
+        band(
+          a,
+          xn,
+          'rgba(163,216,255,0.22)',
+          'rgba(163,216,255,0.06)',
+          'rgba(163,216,255,0.85)',
+        );
       }
       // Forecast
       if (xn < W) {
@@ -181,13 +243,25 @@ export function createTimeRibbon(
         g.addColorStop(1, 'rgba(179,157,255,0.02)');
         ctx.fillStyle = g;
         ctx.fillRect(xn, base - 12, Math.min(W, xe) - xn, 24);
-        if (xn > -40 && xn < W - 70) {
-          ctx.font = '600 8.5px "JetBrains Mono", ui-monospace, monospace';
-          ctx.fillStyle = 'rgba(199,180,255,0.75)';
-          ctx.textAlign = 'left';
-          ctx.fillText('FORECAST', xn + 6, base + 9);
-        }
       }
+      // Labels: forecast first (anchored at now), then the recordings.
+      if (xn < W)
+        label('FORECAST', xn, Math.min(W, xe), 'rgba(199,180,255,0.75)');
+      if (rec)
+        label(
+          ['RECORDED', 'REC'],
+          x(rec.start),
+          xn,
+          'rgba(163,216,255,0.8)',
+          'right',
+        );
+      if (arch)
+        label(
+          [arch.label, 'RECORDING', 'REC'],
+          x(arch.start),
+          x(Math.min(arch.end, n)),
+          'rgba(122,231,199,0.85)',
+        );
     }
     // Clip range
     if (range) {
@@ -210,6 +284,7 @@ export function createTimeRibbon(
     const t0 = Math.ceil(tAt(-10) / step) * step;
     const t1 = tAt(W + 10);
     ctx.textAlign = 'center';
+    let lastLabelEnd = -Infinity;
     for (let m = t0; m <= t1; m += step) {
       if (m < s - step || m > e + step) continue;
       const px = x(m);
@@ -245,7 +320,17 @@ export function createTimeRibbon(
                 })
                 .toUpperCase()
             : `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-        ctx.fillText(label, px, base - 15);
+        const lw = ctx.measureText(label).width;
+        // Skip a label that would collide with the previous one or be
+        // cut by the edge fades.
+        if (
+          px - lw / 2 > lastLabelEnd + 6 &&
+          px - lw / 2 > 14 &&
+          px + lw / 2 < W - 14
+        ) {
+          ctx.fillText(label, px, base - 15);
+          lastLabelEnd = px + lw / 2;
+        }
       }
     }
     // NOW marker
@@ -300,7 +385,14 @@ export function createTimeRibbon(
       );
       return;
     }
-    const abs = utc(new Date(live ? Date.now() : t));
+    const at = new Date(live ? Date.now() : t);
+    // Another UTC day: say which one, so a recording reads honestly.
+    const otherDay =
+      !live &&
+      at.toISOString().slice(0, 10) !== new Date().toISOString().slice(0, 10);
+    const abs = otherDay
+      ? `${at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase()} · ${utc(at)}`
+      : utc(at);
     readD.textContent = live ? 'LIVE' : fmtDelta(t - Date.now());
     readA.textContent = abs;
     el.dataset.future = String(!live && t > Date.now());
@@ -526,7 +618,7 @@ export function createTimeRibbon(
     }
     if (!custom && Math.abs(target - Date.now()) < (8 / pxPerHour) * HOUR) {
       setLive(true);
-      haptic('tick');
+      snapPulse();
       return animateTo(Date.now(), () => emit(true));
     }
     const q = custom ? 1000 : stepFor() >= HOUR ? 5 * MIN : MIN / 4;
@@ -549,8 +641,18 @@ export function createTimeRibbon(
     raf = requestAnimationFrame(step);
   }
 
+  /** The NOW snap: a haptic tick and a pulse ring, like a detent landing. */
+  function snapPulse() {
+    haptic('medium');
+    el.classList.remove('snap');
+    void el.offsetWidth;
+    el.classList.add('snap');
+    clearTimeout(snapPulse.t);
+    snapPulse.t = setTimeout(() => el.classList.remove('snap'), 900);
+  }
+
   function goLive() {
-    haptic('tick');
+    snapPulse();
     stopPlay();
     if (clipMode) setClipMode(false);
     if (custom) {

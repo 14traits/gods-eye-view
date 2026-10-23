@@ -154,6 +154,8 @@ export function createRecorder({
   windowMs = 6 * 3600_000,
   maxSamples = 1_200_000,
   persist = true,
+  archive = false,
+  maxInterpGapS = MAX_INTERP_GAP_S,
 } = {}) {
   const tracks = new Map();
   let total = 0;
@@ -313,6 +315,8 @@ export function createRecorder({
   }
 
   function compactAll() {
+    // An archive (a bundled recording) is already sparse and never expires.
+    if (archive) return;
     const nowS = Math.floor(Date.now() / 1000);
     let dropBefore = nowS - Math.floor(windowMs / 1000);
     const fineFrom = nowS - FINE_WINDOW_S;
@@ -402,12 +406,14 @@ export function createRecorder({
     return loading;
   }
 
-  const flushTimer = setInterval(() => flush().catch(() => {}), 60_000);
-  const compactTimer = setInterval(compactAll, 5 * 60_000);
+  const flushTimer = archive
+    ? 0
+    : setInterval(() => flush().catch(() => {}), 60_000);
+  const compactTimer = archive ? 0 : setInterval(compactAll, 5 * 60_000);
   const onHide = () => {
     if (document.visibilityState === 'hidden') flush().catch(() => {});
   };
-  document.addEventListener('visibilitychange', onHide);
+  if (!archive) document.addEventListener('visibilitychange', onHide);
 
   /** Interpolated state of one track at `ms`, or null outside its record. */
   function stateAt(tr, ms, { holdMs = 45_000 } = {}) {
@@ -434,7 +440,7 @@ export function createRecorder({
     const a = tr.sample(i - 1);
     const b = tr.sample(i);
     const gap = (b.t - a.t) / 1000;
-    if (gap > MAX_INTERP_GAP_S) return null;
+    if (gap > maxInterpGapS) return null;
     const f = (ms - a.t) / (b.t - a.t || 1);
     return {
       t: ms,

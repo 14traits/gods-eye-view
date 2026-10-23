@@ -4,10 +4,10 @@ _The window through which you see the world, and the eye through which the world
 
 This folder holds two things:
 
-| Path | What it is | Tethered to production? |
-| --- | --- | --- |
-| [`mobile/index.html`](index.html) → `/mobile/` | **Prototype.** A working phone/foldable app that sets the design language on top of the real engine: CesiumJS, Esri cloudless imagery, NASA Black Marble night lights, Google Photorealistic 3D Tiles (when keyed), and the app's own live `/api` feeds (ADS-B, military, AIS, TLEs, quakes, FIRMS fires, cyclones, launches, CCTV) plus the bundled Bhote Koshi event pack. Capture is real: camera, IMU, GPS and a WebCrypto signature. | Yes. Runs on the existing dev server (`npm run dev`, open `http://localhost:4173/mobile/`). |
-| [`mobile/vision/index.html`](vision/index.html) | **Vision.** A single self-contained file with no server, no keys and no production code. It shows where the product goes: the full feed, 4D reconstructions with collaborative hypotheses, the provenance ledger, holograms left in places, a hand-written WebGL globe with a cinematic post chain. | No. Open the file straight from disk in any browser (the dev server's CSP blocks its inline script). Rebuild it with `node mobile/vision/build.mjs`. |
+| Path                                            | What it is                                                                                                                                                                                                                                                                                                                                                                                                                                | Tethered to production?                                                                                                                              |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`mobile/index.html`](index.html) → `/mobile/`  | **Prototype.** A working phone/foldable app that sets the design language on top of the real engine: CesiumJS, Esri cloudless imagery, NASA Black Marble night lights, Google Photorealistic 3D Tiles (when keyed), and the app's own live `/api` feeds (ADS-B, military, AIS, TLEs, quakes, FIRMS fires, cyclones, launches, CCTV) plus the bundled Bhote Koshi event pack. Capture is real: camera, IMU, GPS and a WebCrypto signature. | Yes. Runs on the existing dev server (`npm run dev`, open `http://localhost:4173/mobile/`).                                                          |
+| [`mobile/vision/index.html`](vision/index.html) | **Vision.** A single self-contained file with no server, no keys and no production code. It shows where the product goes: the full feed, 4D reconstructions with collaborative hypotheses, the provenance ledger, holograms left in places, a hand-written WebGL globe with a cinematic post chain.                                                                                                                                       | No. Open the file straight from disk in any browser (the dev server's CSP blocks its inline script). Rebuild it with `node mobile/vision/build.mjs`. |
 
 ---
 
@@ -29,13 +29,13 @@ Five commitments fall out of that sentence:
 
 Five tabs. Capture is a tab, not a floating action, because it is a _mode_ with its own full-screen surface (HIG: tab bars navigate between peer areas; capture is a peer area here, as it is in Camera-first apps).
 
-| Tab | SF-style glyph | Job |
-| --- | --- | --- |
-| **Now** | `dot.radiowaves` | A two-column, RedNote-style masonry feed of live and recent situations. Each card is a living thumbnail: real imagery of the place, live counters, a pulse when it changes. Sections: _Happening now_, _Near you_, _Reconstructions_, _Always on_ (chopper schools, busy airports, ISS, port of Rotterdam…). |
-| **Globe** | `globe.americas` | The window. Full-bleed globe, the lens dock, the time ribbon, search. This is the expert surface. |
-| **Capture** | `viewfinder` | Two modes on one dial: **Look** (AR — the God's-eye view projected around you: aircraft, satellites, ships, quakes as overlays on the camera, aligned by compass + gyro) and **Witness** (your phone becomes an eye for the God's eye: signed photo/video with IMU, GPS, heading, depth when available). |
-| **Threads** | `point.3.connected.trianglepath.dotted` | Reconstructions people are building together: observations, hypotheses, AI refinements, and the ledger. |
-| **You** | `person.crop.circle` | Your captures and their seals, holograms you left in places, situations you follow, alert radius. |
+| Tab         | SF-style glyph                          | Job                                                                                                                                                                                                                                                                                                          |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Now**     | `dot.radiowaves`                        | A two-column, RedNote-style masonry feed of live and recent situations. Each card is a living thumbnail: real imagery of the place, live counters, a pulse when it changes. Sections: _Happening now_, _Near you_, _Reconstructions_, _Always on_ (chopper schools, busy airports, ISS, port of Rotterdam…). |
+| **Globe**   | `globe.americas`                        | The window. Full-bleed globe, the lens dock, the time ribbon, search. This is the expert surface.                                                                                                                                                                                                            |
+| **Capture** | `viewfinder`                            | Two modes on one dial: **Look** (AR — the God's-eye view projected around you: aircraft, satellites, ships, quakes as overlays on the camera, aligned by compass + gyro) and **Witness** (your phone becomes an eye for the God's eye: signed photo/video with IMU, GPS, heading, depth when available).     |
+| **Threads** | `point.3.connected.trianglepath.dotted` | Reconstructions people are building together: observations, hypotheses, AI refinements, and the ledger.                                                                                                                                                                                                      |
+| **You**     | `person.crop.circle`                    | Your captures and their seals, holograms you left in places, situations you follow, alert radius.                                                                                                                                                                                                            |
 
 The iOS 26-era shell: a floating glass tab bar that shrinks to a pill while you scroll the feed and expands when you stop; a **tab-bar accessory** shows the one situation you are following live ("Typhoon · 185 km/h · 2 min ago"), like a now-playing bar for the planet.
 
@@ -60,14 +60,14 @@ The iOS 26-era shell: a floating glass tab bar that shrinks to a pill while you 
 
 ## 5. Rendering budget (phone)
 
-| Item | Target |
-| --- | --- |
-| Frame | 60 fps while interacting, 0 fps (request-render mode) at rest |
-| Resolution scale | `min(devicePixelRatio, 2)`, dropping to 1.5 / 1.25 when frame time > 20 ms for 2 s |
-| Tiles | `maximumScreenSpaceError` 2 → 4 on compact; tile cache 256 MB → 128 MB |
-| Post chain | atmosphere + night-lights blend (built into the globe shader) → FXAA → single-pass bloom (half res) → vignette + grade. Bloom and grain switch off under Low Power / thermal pressure |
-| Labels | no Cesium labels; HTML/canvas overlay in screen space, capped at 40 visible |
-| Data | each layer has an LOD rule (aggregate above 2,000 km altitude, glyphs below) and a visible-count cap |
+| Item             | Target                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frame            | 60 fps while interacting, 0 fps (request-render mode) at rest                                                                                                                         |
+| Resolution scale | `min(devicePixelRatio, 2)`, dropping to 1.5 / 1.25 when frame time > 20 ms for 2 s                                                                                                    |
+| Tiles            | `maximumScreenSpaceError` 2 → 4 on compact; tile cache 256 MB → 128 MB                                                                                                                |
+| Post chain       | atmosphere + night-lights blend (built into the globe shader) → FXAA → single-pass bloom (half res) → vignette + grade. Bloom and grain switch off under Low Power / thermal pressure |
+| Labels           | no Cesium labels; HTML/canvas overlay in screen space, capped at 40 visible                                                                                                           |
+| Data             | each layer has an LOD rule (aggregate above 2,000 km altitude, glyphs below) and a visible-count cap                                                                                  |
 
 ## 6. Capture and provenance
 
@@ -98,16 +98,16 @@ Collaborative AI prompting happens on stratum 2: a participant asks the model to
 
 ## 8. Layer catalog (44)
 
-| Family | Layers |
-| --- | --- |
-| Sky | Commercial flights · Military aircraft · Helicopters · Private/GA · Emergency squawks · Drones (Remote ID) · Airport boards · Holding patterns |
-| Sea | AIS vessels · Ports · Tankers/cargo · Fishing effort · Dark vessels (AIS gaps) · Submarine cables |
-| Orbit | Satellites (TLE) · ISS & crewed · Starlink trains · Launches & trajectories · Debris · Ground tracks & passes |
-| Hazards | Earthquakes · Active fires (FIRMS) · Fire perimeters · Floods · Tropical cyclones · Volcanoes · Air quality |
-| Eyes | Public CCTV · Signed captures · Street-level imagery · Holograms · Live streams |
-| Ground | Transit vehicles · Traffic flow · Bike share · Rail · Events & venues · ALPR cameras |
-| Weather | Radar · Clouds · Lightning · Wind · Forecast models |
-| Infra | Datacenters · Dams · Power plants · Military installations · GNSS interference · Recent satellite imagery |
+| Family  | Layers                                                                                                                                         |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sky     | Commercial flights · Military aircraft · Helicopters · Private/GA · Emergency squawks · Drones (Remote ID) · Airport boards · Holding patterns |
+| Sea     | AIS vessels · Ports · Tankers/cargo · Fishing effort · Dark vessels (AIS gaps) · Submarine cables                                              |
+| Orbit   | Satellites (TLE) · ISS & crewed · Starlink trains · Launches & trajectories · Debris · Ground tracks & passes                                  |
+| Hazards | Earthquakes · Active fires (FIRMS) · Fire perimeters · Floods · Tropical cyclones · Volcanoes · Air quality                                    |
+| Eyes    | Public CCTV · Signed captures · Street-level imagery · Holograms · Live streams                                                                |
+| Ground  | Transit vehicles · Traffic flow · Bike share · Rail · Events & venues · ALPR cameras                                                           |
+| Weather | Radar · Clouds · Lightning · Wind · Forecast models                                                                                            |
+| Infra   | Datacenters · Dams · Power plants · Military installations · GNSS interference · Recent satellite imagery                                      |
 
 ## 9. Situations worth monitoring (the feed's genres)
 
@@ -168,12 +168,12 @@ Review notes on the first build: the feed showed one kind of picture (open ocean
 
 The app's subject is altitude. Every surface tells you **where the sensor is** and **how high it is**, from orbit down to street level and finally inside: a room, a cockpit, a person's own capture. That is the brand, and it replaces the weather-app palette of blue gradients and big temperature-style numbers.
 
-| Altitude band | Sensor | Telemetry burned into the frame |
-| --- | --- | --- |
-| **Orbit** · 400–36,000 km | satellites, ISS, launches, weather satellite IR | `ORBIT · 412 KM · 7.66 KM/S · PASS 21:04` |
-| **Sky** · 0–15 km | ADS-B aircraft, helicopters, military, radar returns, lightning | `SKY · FL350 · 487 KT · SQ 7700` |
-| **Ground** · 0 m | CCTV, traffic, transit, fires, quakes, floods | `GROUND · CAM 0412 · I-5 S · 14:02:11Z` |
-| **Inside** · you | signed captures, live broadcasts, holograms, conversations | `WITNESS · SEALED · ±4 M · 1.2 KM FROM EVENT` |
+| Altitude band             | Sensor                                                          | Telemetry burned into the frame               |
+| ------------------------- | --------------------------------------------------------------- | --------------------------------------------- |
+| **Orbit** · 400–36,000 km | satellites, ISS, launches, weather satellite IR                 | `ORBIT · 412 KM · 7.66 KM/S · PASS 21:04`     |
+| **Sky** · 0–15 km         | ADS-B aircraft, helicopters, military, radar returns, lightning | `SKY · FL350 · 487 KT · SQ 7700`              |
+| **Ground** · 0 m          | CCTV, traffic, transit, fires, quakes, floods                   | `GROUND · CAM 0412 · I-5 S · 14:02:11Z`       |
+| **Inside** · you          | signed captures, live broadcasts, holograms, conversations      | `WITNESS · SEALED · ±4 M · 1.2 KM FROM EVENT` |
 
 Visual rules:
 
@@ -193,7 +193,7 @@ Card archetypes:
 3. **Track card**: one moving thing, such as an aircraft squawking 7700, a helicopter on its 14th circuit at Fort Novosel, or the ISS crossing your night sky. It shows a trail, a big readout, and a "ride along" call to action.
 4. **Number card**: one striking fact with a sparkline. Examples: "4,812 lightning strikes in the last hour over the Gulf", "GNSS jamming over the Baltic, 340 aircraft affected".
 5. **Witness card**: a signed capture or a live broadcast from a person. It shows the seal, the distance from the event, and the reply count.
-6. **Room card**: a conversation that is heating up. It shows the top claim, its status (*Confirmed by 3 signed captures* / *Disputed*), and the participants.
+6. **Room card**: a conversation that is heating up. It shows the top claim, its status (_Confirmed by 3 signed captures_ / _Disputed_), and the participants.
 
 Situation genres to source from keyless layers. Each card must say its source:
 
@@ -222,12 +222,13 @@ People will talk about events anyway, on other platforms and without the evidenc
 - **Structured posts.** Each post is one of: **Witness** (I saw or recorded this), **Context** (background, a link, a map), **Question**, **Correction**, or **Prediction**. The kind is chosen in the composer and drawn as an icon. Questions float to the top until answered.
 - **Anchored.** A post can pin a place (a dot on the globe) and a time (a pip on the time ribbon). Tapping a post flies the globe there and scrubs the ribbon to that moment. Pinned posts appear in 3D as small speech glyphs at their location.
 - **Earned badges, not follower counts.** Badges come from evidence:
-  - *Was there*: a signed capture within N km and M minutes of the event.
-  - *Sealed*: the post has a sealed attachment.
-  - *Local*: the author's home area is set.
-  - *Domain*: pilot, mariner, met, first responder, held as a verified credential.
+  - _Was there_: a signed capture within N km and M minutes of the event.
+  - _Sealed_: the post has a sealed attachment.
+  - _Local_: the author's home area is set.
+  - _Domain_: pilot, mariner, met, first responder, held as a verified credential.
 
   Posts are ordered by evidence first, then recency, never by follower count.
+
 - **Community notes with bridging.** Any claim can get a note. A note becomes visible only when raters who usually disagree both rate it helpful (bridging-based ranking, as Community Notes does), which resists brigading.
 - **AI synthesis, kept honest.** A pinned card at the top of every room is labelled **Known / Disputed / Unknown**. AI writes it from the observations and the posts, and every line cites its sources. It is regenerated as the room changes, with its prompt and inputs recorded in the ledger. It never states anything that has no citation.
 - **Live layer.** While you are in a room, presence shows as small avatars, reactions float up the side, and a "N people watching" count appears. Rooms for live situations sit in the feed as Room cards.
@@ -237,12 +238,12 @@ People will talk about events anyway, on other platforms and without the evidenc
 
 Capture is how a person becomes a sensor. Four modes share one dial:
 
-| Mode | What it makes | Trust tier |
-| --- | --- | --- |
-| **Look** | AR overlay of contacts around you. Nothing is recorded unless you tap. | none |
-| **Witness** | A sealed photo or clip with the IMU, GPS and heading trace (§6). | **Sealed** |
-| **Live** | A broadcast from your camera. It appears on the globe as an *eye*: a frustum cone at your position and heading, with live telemetry, watchable by the room. Every 10 s the stream is sealed as hash-chained segments. | **Sealed live** |
-| **Upload** | A photo or video from your library. EXIF is read if present, then you place it on the map and set the time. | **Unverified**: labelled as such everywhere, and it can never become an observation, only cited by a hypothesis. |
+| Mode        | What it makes                                                                                                                                                                                                         | Trust tier                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Look**    | AR overlay of contacts around you. Nothing is recorded unless you tap.                                                                                                                                                | none                                                                                                             |
+| **Witness** | A sealed photo or clip with the IMU, GPS and heading trace (§6).                                                                                                                                                      | **Sealed**                                                                                                       |
+| **Live**    | A broadcast from your camera. It appears on the globe as an _eye_: a frustum cone at your position and heading, with live telemetry, watchable by the room. Every 10 s the stream is sealed as hash-chained segments. | **Sealed live**                                                                                                  |
+| **Upload**  | A photo or video from your library. EXIF is read if present, then you place it on the map and set the time.                                                                                                           | **Unverified**: labelled as such everywhere, and it can never become an observation, only cited by a hypothesis. |
 
 After the shutter comes the **attach sheet**. It suggests the situation you are probably at, from distance and time ("Typhoon Champi · 4.2 km from track", "Times Square camera · 180 m"). It offers "new place" if none fits, a post kind (Witness by default), an optional note, and whether to drop it as a **hologram** that others can find at this spot later. Posting puts the capture in that situation's room, and a Witness card in the feed when it is notable.
 
@@ -260,14 +261,14 @@ Founder's brief for this round: take what made Palantir Gotham work, fix what Ci
 
 Gotham's power is not the map. It is that **everything is an object, every object has a history and links, and every view (map, timeline, graph, dossier) shows the same objects**. Select something anywhere and every view follows. Analysts build an investigation, share it, and every fact keeps its source.
 
-| Gotham idea | God's Eye version |
-| --- | --- |
-| Ontology of objects and links | **Entities**: aircraft, vessels, satellites, cameras, places, events, captures and contributors (pseudonymous). Each has a **dossier**: identity, live state, track history, events, links and receipts. |
-| Map + timeline + graph, synchronized | Globe, **time machine** and **link graph** share one selection and one clock. |
-| Search to dossier | Universal search ("N46567", "7700", "Piccadilly", "M5.2", "ISS") opens a dossier, not a list of pins. |
-| Watchlists and alerts | **Watch**: follow an entity or a place, and write alert rules in plain chips ("any squawk 7700 within 200 km of Home"). |
-| Investigations with provenance | **Moments**: shareable 4D reconstructions whose every track, capture and claim carries its source and hash. |
-| Audit log | The room ledger: every post, note, AI synthesis and vote is hash-chained and exportable. |
+| Gotham idea                          | God's Eye version                                                                                                                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ontology of objects and links        | **Entities**: aircraft, vessels, satellites, cameras, places, events, captures and contributors (pseudonymous). Each has a **dossier**: identity, live state, track history, events, links and receipts. |
+| Map + timeline + graph, synchronized | Globe, **time machine** and **link graph** share one selection and one clock.                                                                                                                            |
+| Search to dossier                    | Universal search ("N46567", "7700", "Piccadilly", "M5.2", "ISS") opens a dossier, not a list of pins.                                                                                                    |
+| Watchlists and alerts                | **Watch**: follow an entity or a place, and write alert rules in plain chips ("any squawk 7700 within 200 km of Home").                                                                                  |
+| Investigations with provenance       | **Moments**: shareable 4D reconstructions whose every track, capture and claim carries its source and hash.                                                                                              |
+| Audit log                            | The room ledger: every post, note, AI synthesis and vote is hash-chained and exportable.                                                                                                                 |
 
 **The line we don't cross.** Gotham tracks people; we don't. Trackable entities are things that broadcast publicly (transponders, AIS, orbital elements), public infrastructure, and events. Contributors are pseudonymous. There is no face recognition and no person search, and aircraft on owner-privacy lists (LADD/PIA) are never named. This is the product's moral spine and a talking point, not a footnote.
 
@@ -301,7 +302,7 @@ A **Moment** is a 4D reconstruction assembled around an event: tracks, sensor fr
 
 The time ribbon becomes a time machine:
 
-- **It remembers.** The app records every live contact's position each poll (a ring buffer persisted in IndexedDB, about 6 h). Scrubbing back shows where everything actually was, with ghost trails. A selected aircraft's full track comes from the server's track routes.
+- **It remembers.** The app records every live contact's position each poll (a ring buffer persisted in IndexedDB, about 6 h). Scrubbing back shows where everything actually was, with ghost trails. A selected aircraft's full track comes from the server's track routes. The app also ships a **bundled real recording** (`mobile/demo/history/`, a few hours over New York, London and the Gulf of Mexico, captured with `capture-history.mjs`) so a first run already has ghosts to replay; it keeps its true timestamps and the time machine shows it where it happened (`RECORDING · <date>`).
 - **Everything moves together.** Contacts, radar and lightning frames, quakes and fires appearing, cyclone positions, the sun, room posts, and captures all follow the clock.
 - **Play.** Play/pause and 1×, 10×, 60× and 600× speeds; momentum scrubbing; detents at events; a **NOW** snap.
 - **Event pips.** Pips from every layer are colour-coded by altitude band. Tapping one jumps to it.
@@ -311,13 +312,13 @@ The time ribbon becomes a time machine:
 
 Two lanes in every room. This is the delineation that keeps the conversation both fun and true.
 
-| | **Live** (Twitch) | **Record** (Reddit and X) |
-| --- | --- | --- |
-| Pace | Fast, ephemeral, scrolls away | Considered, persistent, threaded |
-| Shape | One-line chat, emotes, @mentions, slow mode, viewer count | Posts with kinds (§11.3), replies, quote-posts, attachments |
-| Reactions | Hearts, 🔥, 👀 and 😮 fly up the screen, **and rise from the reactor's location on the globe**: you see the world watching | Corroborate / Dispute votes weighted by Signal |
-| Badges | Witness glow for people with a sealed capture nearby, plus First eyes | Was there, Sealed, Local, Domain |
-| Becomes the record? | Only if it carries evidence or is promoted by corroboration | Yes, hash-chained in the ledger |
+|                     | **Live** (Twitch)                                                                                                          | **Record** (Reddit and X)                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Pace                | Fast, ephemeral, scrolls away                                                                                              | Considered, persistent, threaded                            |
+| Shape               | One-line chat, emotes, @mentions, slow mode, viewer count                                                                  | Posts with kinds (§11.3), replies, quote-posts, attachments |
+| Reactions           | Hearts, 🔥, 👀 and 😮 fly up the screen, **and rise from the reactor's location on the globe**: you see the world watching | Corroborate / Dispute votes weighted by Signal              |
+| Badges              | Witness glow for people with a sealed capture nearby, plus First eyes                                                      | Was there, Sealed, Local, Domain                            |
+| Becomes the record? | Only if it carries evidence or is promoted by corroboration                                                                | Yes, hash-chained in the ledger                             |
 
 - **The clerk.** Every few minutes, AI summarizes the Live lane into "What chat is saying", with citations to messages, and posts it into the Record as a clearly labelled synthesis.
 - **Crews.** Crews are persistent groups (X communities): "NYC Scanner Nerds", "Fort Novosel Alumni", "Gulf Storm Chasers". A crew has its own feed, members and rooms, and can co-watch a Moment together.

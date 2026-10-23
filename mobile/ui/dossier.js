@@ -247,7 +247,7 @@ export function createDossier({
         <button class="ds-act" type="button" data-ds="room">${icon('rooms')}<span>Open room</span></button>
         <button class="ds-act" type="button" data-ds="time">${icon('clock')}<span>Time machine</span></button>
       </div>
-      ${d.privacy ? `<div class="ds-privacy">${icon('lock')}<span><b>Owner privacy (${esc(String(d.privacy).toUpperCase())})</b> Identity is limited to what the transponder broadcasts. We never name aircraft on privacy lists.</span></div>` : ''}
+      ${d.privacy ? `<div class="ds-privacy">${icon('lock')}<span><b>Owner privacy (${esc(String(d.privacy).toUpperCase())})</b> Identity is limited to what the transponder broadcasts. We never name aircraft on privacy lists.</span></div>` : d.registryMissing ? `<div class="ds-privacy ds-registry">${icon('info')}<span><b>No public registry record found</b> for this airframe.${d.identity?.operator ? ` Operator from the callsign’s airline prefix.` : ''}</span></div>` : ''}
       ${trackHtml(d)}
       ${ident.length ? `<section class="ds-block"><h3 class="ds-h">Identity</h3><dl class="ds-id">${ident.map(([k, v]) => `<dt>${esc(ID_LABEL[k] || cap(k))}</dt><dd class="${/icao|norad|mmsi|registration/.test(k) ? 'mono' : ''}">${esc(v)}</dd>`).join('')}</dl></section>` : ''}
       ${

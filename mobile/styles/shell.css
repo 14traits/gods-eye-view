@@ -1003,3 +1003,52 @@ input[type='range'].slider::-moz-range-thumb {
     opacity: 0;
   }
 }
+
+/* Content scrolls under the floating glass: a soft scrim behind the tab bar
+   (and its accessory) keeps the last rows legible as they pass beneath. */
+.app:is([data-tab='today'], [data-tab='rooms'], [data-tab='you'])
+  .tabbar::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: calc(-12px - var(--safe-l));
+  right: calc(-12px - var(--safe-r));
+  bottom: calc(-1 * var(--tabbar-gap));
+  height: calc(var(--tabbar-h) + var(--tabbar-gap) + 46px);
+  background: linear-gradient(
+    to top,
+    rgba(5, 7, 11, 0.92) 0,
+    rgba(5, 7, 11, 0.7) 45%,
+    rgba(5, 7, 11, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.app:is([data-tab='today'], [data-tab='rooms'], [data-tab='you'])
+  .tabbar.has-accessory::before {
+  height: calc(var(--tabbar-h) + var(--tabbar-gap) + 104px);
+}
+
+/* On a tablet the Globe tab's leading pane is a scrolling list too. */
+@media (min-width: 600px) {
+  .app[data-tab='live'] .tabbar::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    left: calc(-12px - var(--safe-l));
+    right: calc(-12px - var(--safe-r));
+    bottom: calc(-1 * var(--tabbar-gap));
+    height: calc(var(--tabbar-h) + var(--tabbar-gap) + 46px);
+    background: linear-gradient(
+      to top,
+      rgba(5, 7, 11, 0.92) 0,
+      rgba(5, 7, 11, 0.7) 45%,
+      rgba(5, 7, 11, 0) 100%
+    );
+    pointer-events: none;
+  }
+
+  .app[data-tab='live'] .tabbar.has-accessory::before {
+    height: calc(var(--tabbar-h) + var(--tabbar-gap) + 104px);
+  }
+}

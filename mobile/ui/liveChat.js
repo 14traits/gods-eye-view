@@ -956,6 +956,8 @@ export function mountChatOverlay(core, el, ctx = {}) {
   let seqN = 0;
   let driven = false; // a player calls push(): ignore the engine's own clock
   const full = ctx.moment || null;
+  const maxLines = ctx.maxLines || 9;
+  if (maxLines > 9) root.classList.add('co-tall');
 
   function line(m, { quiet = false } = {}) {
     const key = m.id || `${m.t}|${m.handle}`;
@@ -980,7 +982,8 @@ export function mountChatOverlay(core, el, ctx = {}) {
     const node = h(lineHtml(msg, core.rt.me.handle));
     if (!quiet) node.classList.add('in');
     list.appendChild(node);
-    while (list.childElementCount > 9) list.firstElementChild.remove();
+    while (list.childElementCount > maxLines) list.firstElementChild.remove();
+    if (maxLines > 9) list.scrollTop = list.scrollHeight;
     // Lines fade after a while, as on a stream overlay.
     setTimeout(() => node.classList.add('old'), 9000);
     // Chat and hearts go together.
@@ -1062,7 +1065,7 @@ export function mountChatOverlay(core, el, ctx = {}) {
     // Lines already said: show the last few, quietly.
     const said = Array.isArray(m?.chat) ? m.chat : [];
     for (const c of said) shown.add(c.id || `${c.t}|${c.handle}`);
-    for (const c of said.slice(-6)) {
+    for (const c of said.slice(maxLines > 9 ? -24 : -6)) {
       shown.delete(c.id || `${c.t}|${c.handle}`);
       line(c, { quiet: true });
     }

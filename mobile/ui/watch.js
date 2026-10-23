@@ -471,8 +471,76 @@ export function createWatch({
     if (!document.hidden) evaluate();
   }, 30000);
 
+  /**
+   * Director: one deterministic banner. A real rule against live data when
+   * any rule matches now (fired before or not); else a real situation that
+   * a demo rule ("any emergency squawk anywhere") would catch; else a
+   * clearly labelled example. Sticky until tapped or the next beat.
+   */
+  async function demoAlert() {
+    clearBanners();
+    // Never wait on a cold live fetch: after 1.2 s the last good snapshot
+    // stands in (its age is said in the banner).
+    let sits = [];
+    try {
+      const fresh = await Promise.race([
+        getSituations(),
+        new Promise((r) => setTimeout(() => r(null), 1200)),
+      ]);
+      sits = fresh || (await globe.situationsCached?.()) || [];
+      sits = [...sits, ...(globe.detections?.() || [])];
+    } catch {
+      /* example below */
+    }
+    const live = sits.filter((s) => Number.isFinite(s.lat));
+    const age = (s) =>
+      s.cached && s.capturedAt ? ` · seen ${ago(+new Date(s.capturedAt))}` : '';
+    for (const r of state.rules) {
+      const w = what(r.what);
+      if (!r.on || !w.test) continue;
+      const pl = placeById(r.of);
+      const s = live.find(
+        (x) => w.test(x) && (r.within >= 20000 || distKm(pl, x) <= r.within),
+      );
+      if (s)
+        return banner({
+          title: s.title,
+          body: `${ruleText(r)} · ${fmtKm(distKm(pl, s))} from ${pl.name}${age(s)}`,
+          band: bandOf(s),
+          sticky: true,
+          onTap: () => onOpenSituation?.(s),
+        });
+    }
+    const home = placeById('home');
+    for (const id of ['emergency', 'circling', 'quake5', 'launch', 'fire']) {
+      const w = what(id);
+      const s = live
+        .filter((x) => w.test(x))
+        .sort((a, b) => distKm(home, a) - distKm(home, b))[0];
+      if (s)
+        return banner({
+          title: s.title,
+          body: `Demo rule: any ${w.label} anywhere · ${fmtKm(distKm(home, s))} from ${home.name}${age(s)}`,
+          band: bandOf(s),
+          sticky: true,
+          onTap: () => onOpenSituation?.(s),
+        });
+    }
+    return banner({
+      title: 'Squawk 7700 near Home',
+      body: 'Example alert · how a rule match looks when one fires',
+      band: 'sky',
+      sticky: true,
+    });
+  }
+  function clearBanners() {
+    stack.replaceChildren();
+  }
+
   return {
     banner,
+    demoAlert,
+    clearBanners,
     evaluate,
     open() {
       render();

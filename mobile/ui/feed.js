@@ -155,14 +155,28 @@ export function createFeed(
     const hd = $('[data-utc]', view);
     if (hd) hd.textContent = u;
     const dt = $('[data-date]', view);
-    if (dt)
-      dt.textContent = now
+    if (dt) {
+      // The kicker greets the hour: what the planet is doing for you now.
+      const hr = now.getHours();
+      const greet =
+        hr < 5
+          ? 'Up late'
+          : hr < 12
+            ? 'Good morning'
+            : hr < 17
+              ? 'Good afternoon'
+              : hr < 22
+                ? 'Good evening'
+                : 'Tonight';
+      const txt = `${now
         .toLocaleDateString('en-GB', {
           weekday: 'long',
           day: 'numeric',
           month: 'long',
         })
-        .toUpperCase();
+        .toUpperCase()} · ${greet.toUpperCase()}`;
+      if (dt.textContent !== txt) dt.textContent = txt;
+    }
     const lt = $('[data-localtime]', view);
     if (lt) {
       const txt = now.toLocaleTimeString('en-US', {

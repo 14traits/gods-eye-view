@@ -85,6 +85,7 @@ import { createCompositor } from './compositor.js';
 import { haversineKm } from './geo.js';
 import { applyModelAtmosphereWorkaround } from '../../src/app/atmosphereCompat.js';
 import { createRecorder } from './recorder.js';
+import { createArchive, historyView } from './archive.js';
 import { createDetector } from './detect.js';
 import { circlingCard, quakeClusterCard } from './detectCards.js';
 import { createGhosts } from './ghosts.js';
@@ -255,7 +256,7 @@ function tuneScene(viewer) {
   globe.depthTestAgainstTerrain = false;
   globe.preloadSiblings = false;
   globe.loadingDescendantLimit = 12;
-  globe.tileCacheSize = 120;
+  globe.tileCacheSize = 320;
   globe.showSkirts = true;
 
   const ssc = scene.screenSpaceCameraController;
@@ -392,12 +393,15 @@ export async function createGlobe(container, options = {}) {
   };
   // ── Recorder, detector, history, Moments ─────────────────────────
   const recorder = createRecorder({ persist: opts.record !== false });
+  // The bundled real recording, so the time machine always has ghosts.
+  const archive = createArchive();
+  const history = historyView(recorder, archive);
   const detector = createDetector(recorder);
   let momentState = null; // { moment, idx, prevT, restore }
   let momentToken = 0;
   function timeMode(ms, isLive) {
     if (momentState) return 'moment';
-    if (!isLive && recorder.covers(ms, 90_000)) return 'history';
+    if (!isLive && history.covers(ms, 90_000)) return 'history';
     return 'none';
   }
   const ingestFeed = (feed, kind) =>
@@ -465,7 +469,7 @@ export async function createGlobe(container, options = {}) {
   const layers = buildLayers(ctx, feeds);
   const pins = createPins({ scene, requestRender });
   const compositor = createCompositor({ feeds });
-  const ghosts = createGhosts({ scene, recorder, requestRender });
+  const ghosts = createGhosts({ scene, recorder: history, requestRender });
   const stage = createStage({ scene, requestRender, emit });
   const reactions = createReactions({
     host,
@@ -487,6 +491,13 @@ export async function createGlobe(container, options = {}) {
     ])
       f.get().catch(() => {});
   }, 4000);
+  // The bundled recording loads after the first frame (≈ 3 MB of JSON).
+  setTimeout(() => {
+    archive
+      .load()
+      .then(() => emit('history', api.history()))
+      .catch(() => {});
+  }, 5000);
   let viewerPos = opts.observer
     ? { lon: opts.observer.lon, lat: opts.observer.lat }
     : null;
@@ -725,7 +736,9 @@ export async function createGlobe(container, options = {}) {
     pitch = -90,
     duration,
     targetHeight,
+    eye = false,
   } = {}) {
+    // eye: lon/lat/height place the camera itself (not the point it looks at).
     if (!Number.isFinite(lon) || !Number.isFinite(lat))
       return Promise.reject(new TypeError('flyTo needs lon and lat'));
     const reduceMotion = globalThis.matchMedia?.(
@@ -739,7 +752,7 @@ export async function createGlobe(container, options = {}) {
         updateView();
         resolve();
       };
-      if (pitch <= -89.5) {
+      if (pitch <= -89.5 || eye) {
         camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
           orientation: { heading: h, pitch: p, roll: 0 },
@@ -1152,6 +1165,13 @@ export async function createGlobe(container, options = {}) {
   const trackCache = new Map();
   async function trackOf(key, layer) {
     key = String(key).toLowerCase();
+    // A contact known only from the bundled recording: its recorded track
+    // (a server track would describe today's flight, not that one).
+    if (!recorder.has(key) && archive.recorder.has(key)) {
+      const pts = archive.recorder.samples(key);
+      pts.source = 'Bundled recording (real positions, see capture time)';
+      return pts;
+    }
     const cached = trackCache.get(key);
     // A failed fetch is remembered for 5 min so a dead route costs nothing.
     const ttl = cached?.points?.length ? 60_000 : 5 * 60_000;
@@ -1216,7 +1236,7 @@ export async function createGlobe(container, options = {}) {
   }
   const entities = createEntities({
     feeds,
-    recorder,
+    recorder: history,
     detector,
     situations: () => {
       const m = new Map(lastSituations);
@@ -1464,7 +1484,47 @@ export async function createGlobe(container, options = {}) {
         entities: r.entities,
         points: r.points,
         bytes: r.bytes,
+        // The bundled real recording: { start, end, regions: [{ id, label,
+        // bbox, start, end, tracks, busiest: { t, aircraft } }] } or null.
+        archive: archive.range(),
       };
+    },
+
+    /**
+     * Recorded contacts near a point at an instant (device recorder and the
+     * bundled recording): [{ id, key, kind, title, lon, lat, altM }].
+     */
+    historyNear(ms, lon, lat, km = 100) {
+      const dLat = km / 111;
+      const dLon = km / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+      const rect = {
+        west: lon - dLon,
+        east: lon + dLon,
+        south: lat - dLat,
+        north: lat + dLat,
+      };
+      return history
+        .snapshotAt(ms, { rect })
+        .map((s) => ({
+          id: `${s.meta?.layer || 'flights'}:${s.key}`,
+          key: s.key,
+          kind: s.meta?.kind || 'aircraft',
+          title: s.meta?.callsign || s.meta?.title || s.key.toUpperCase(),
+          lon: s.lon,
+          lat: s.lat,
+          altM: s.altM,
+          d: Math.hypot(
+            s.lat - lat,
+            (s.lon - lon) * Math.cos((lat * Math.PI) / 180),
+          ),
+        }))
+        .sort((a, b) => a.d - b.d);
+    },
+
+    /** Resolves once the bundled recording is loaded → history().archive. */
+    async loadHistory() {
+      await archive.load();
+      return archive.range();
     },
 
     trackOf(entityId) {
@@ -1941,7 +2001,7 @@ export async function createGlobe(container, options = {}) {
 
     /** Internals for dev harnesses and tests (not part of the contract). */
     get debug() {
-      return { recorder, detector, stage, ghosts };
+      return { recorder, archive, detector, stage, ghosts };
     },
 
     get viewer() {

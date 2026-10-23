@@ -158,6 +158,11 @@ export function createMomentPlayer({
       </div>
       <aside class="mp-side glass-strong">
         <div class="mp-side-title"><div class="mp-st-k tele"></div><h3></h3><p class="mp-st-s"></p></div>
+        <section class="mp-feed" aria-label="On the record, as it happened">
+          <header class="mp-fh tele"><span>${icon('receipt')}On the record</span><span class="mp-fn"></span></header>
+          <div class="mp-feed-list"></div>
+        </section>
+        <header class="mp-ch tele"><span><span class="live-dot"></span>Chat replay</span><span class="mp-chn"></span></header>
         <div class="mp-side-head">
           <div class="segmented mp-seg" role="tablist"><button role="tab" type="button" data-seg="chat" aria-selected="true">Chat<span class="mp-n" data-n="chat"></span></button><button role="tab" type="button" data-seg="record" aria-selected="false">Record<span class="mp-n" data-n="record"></span></button><button role="tab" type="button" data-seg="captures" aria-selected="false">Captures<span class="mp-n" data-n="captures"></span></button></div>
         </div>
@@ -176,6 +181,8 @@ export function createMomentPlayer({
   const chatEl = $('.mp-chat', el);
   const recEl = $('.mp-record', el);
   const capsEl = $('.mp-caps', el);
+  const feedEl = $('.mp-feed-list', el);
+  let feedKeys = new Set();
 
   let m = null;
   let raf = 0;
@@ -230,6 +237,55 @@ export function createMomentPlayer({
       ${p.kind !== 'synthesis' ? `<footer class="tele"><span>${icon('agree')}${p.votes?.corroborate ?? 0} corroborate</span><span>${icon('dispute')}${p.votes?.dispute ?? 0} dispute</span>${p.captureId ? `<button type="button" data-cap="${esc(p.captureId)}">${icon('seal')}Sealed capture</button>` : ''}</footer>` : '<footer class="tele"><span>AI synthesis · cites 5 captures and 37 messages</span></footer>'}</article>`;
   }
 
+  /** A capture as a compact row for the leading pane's feed. */
+  function capRow(c) {
+    const fe = c.firstEyes;
+    return `<button class="mp-fi mp-fcap ${fe ? 'first' : ''}" type="button" data-cap="${esc(c.id)}">
+      ${coneThumb(c, m, { w: 96, hgt: 72 })}
+      <span class="mp-fbody"><span class="fe tele">${icon(fe ? 'sealFill' : c.live ? 'live' : 'seal')}${fe ? 'FIRST EYES' : c.live ? 'LIVE · SEALED' : 'SEALED CAPTURE'}</span>
+      <b>${esc(c.title)}</b><small>${esc(c.handle)} · ${esc(utc(c.t))} · ${esc(fmtKm((c.distanceM || 0) / 1000))}</small></span></button>`;
+  }
+
+  /**
+   * The leading pane's feed (tablet): captures and record posts stacked
+   * newest first as the clock passes them.
+   */
+  function renderFeed() {
+    const items = [
+      ...(m.captures || [])
+        .filter((c) => c.t <= t)
+        .map((c) => ({ key: `c:${c.id}`, t: c.t, html: capRow(c) })),
+      ...(m.posts || [])
+        .filter((p) => p.t <= t)
+        .map((p) => ({
+          key: `p:${p.id || p.t}`,
+          t: p.t,
+          html: postHtml(p).replace('class="mp-post', 'class="mp-fi mp-post'),
+        })),
+    ].sort((a, b) => b.t - a.t);
+    const keys = new Set(items.map((x) => x.key));
+    const same =
+      keys.size === feedKeys.size && [...keys].every((k) => feedKeys.has(k));
+    if (!same) {
+      const fresh = feedKeys.size > 0;
+      feedEl.innerHTML =
+        items
+          .slice(0, 12)
+          .map((x) =>
+            fresh && !feedKeys.has(x.key)
+              ? x.html.replace('class="mp-fi', 'class="mp-fi in')
+              : x.html,
+          )
+          .join('') ||
+        '<p class="mp-empty tele">Sealed captures and record posts appear here at the moment they were made</p>';
+      feedKeys = keys;
+      feedEl.scrollTop = 0;
+    }
+    $('.mp-fn', el).textContent = items.length
+      ? `${items.length} ITEM${items.length === 1 ? '' : 'S'}`
+      : '';
+  }
+
   function drawScrub() {
     const r = scrub.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -281,6 +337,24 @@ export function createMomentPlayer({
       sctx.beginPath();
       sctx.arc(x(p.t), mid + 9, 2, 0, Math.PI * 2);
       sctx.fill();
+    }
+    // First eyes stamps its byline onto the timeline as the clock passes it.
+    for (const c of m.captures || []) {
+      if (!c.firstEyes || c.t > t) continue;
+      const k = clamp((t - c.t) / 6000, 0, 1);
+      const label = `FIRST EYES · ${c.handle || ''}`;
+      sctx.font = '700 8px "JetBrains Mono", ui-monospace, monospace';
+      const w = sctx.measureText(label).width + 12;
+      const bx = clamp(x(c.t) - w / 2, 2, W - w - 2);
+      sctx.globalAlpha = k;
+      sctx.fillStyle = 'rgba(235,199,119,0.95)';
+      sctx.beginPath();
+      sctx.roundRect(bx, 1 + (1 - k) * 4, w, 12, 6);
+      sctx.fill();
+      sctx.fillStyle = '#2a1a00';
+      sctx.textAlign = 'left';
+      sctx.fillText(label, bx + 6, 10 + (1 - k) * 4);
+      sctx.globalAlpha = 1;
     }
     for (const c of m.captures || []) {
       sctx.fillStyle = c.t <= t ? '#ebc777' : 'rgba(235,199,119,0.4)';
@@ -377,6 +451,8 @@ export function createMomentPlayer({
     $('[data-n="chat"]', el).textContent = nc ? ` ${nc}` : '';
     $('[data-n="record"]', el).textContent = np ? ` ${np}` : '';
     $('[data-n="captures"]', el).textContent = nk ? ` ${nk}` : '';
+    $('.mp-chn', el).textContent = nc ? `${nc} MESSAGES` : '';
+    if (isTwoPane()) renderFeed();
     // Legend: live per-track readouts.
     (m.tracks || []).forEach((tr) => {
       const row = legend.querySelector(`[data-track="${CSS.escape(tr.id)}"]`);
@@ -483,6 +559,8 @@ export function createMomentPlayer({
       .map((x) => `${x.name}${x.detail ? ` — ${x.detail}` : ''}`)
       .join(' · ');
     shown = { chat: 0, posts: 0, caps: 0 };
+    feedKeys = new Set();
+    feedEl.innerHTML = '';
     chatEl.innerHTML = '';
     recEl.innerHTML = emptyRec();
     capsEl.innerHTML = '';
@@ -533,7 +611,13 @@ export function createMomentPlayer({
       try {
         const host = h('<div class="mp-ext"></div>');
         slot.prepend(host);
-        ext = sm.chatOverlay(host, { moment: raw, globe, getTime: () => t });
+        ext = sm.chatOverlay(host, {
+          moment: raw,
+          globe,
+          getTime: () => t,
+          // A tablet's leading pane has the height for a real chat column.
+          maxLines: isTwoPane() ? 60 : 9,
+        });
         ext?.setMoment?.({ ...raw, chat: [] });
         slot.classList.add('has-ext');
         el.classList.add('has-ext');

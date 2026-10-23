@@ -259,7 +259,9 @@ export function installRound3(
   async function loadHero() {
     if (hero) return hero;
     try {
-      const r = await fetch('/mobile/demo/moments/empire-state.json');
+      const r = await fetch(
+        new URL('../demo/moments/empire-state.json', import.meta.url).href,
+      );
       if (r.ok && /json/.test(r.headers.get('content-type') || '')) {
         const j = await r.json();
         if (j?.tracks?.length) hero = j;

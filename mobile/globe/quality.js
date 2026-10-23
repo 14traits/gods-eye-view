@@ -48,7 +48,7 @@ export function createGovernor(
       Math.min(viewer.canvas.clientWidth, viewer.canvas.clientHeight) < 600;
     const base = mode === 'high' ? 1.5 : compact ? 2 : 1.5;
     globe.maximumScreenSpaceError = base * Math.max(1, scale);
-    globe.tileCacheSize = mode === 'low' || lowPower ? 60 : 120;
+    globe.tileCacheSize = mode === 'low' || lowPower ? 100 : 320;
     // The first step down keeps bloom; the second (or being slow at the
     // floor) drops it.
     post?.setBloomAllowed(

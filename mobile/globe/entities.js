@@ -12,6 +12,7 @@
  * owners opted out (PIA / LADD) or that have no public registration are not
  * named beyond what their transponder broadcasts.
  */
+import { airlineFromCallsign } from './airlines.js';
 import { twoline2satrec } from 'satellite.js';
 import { findNextIssPass, lookAnglesAt } from '../../src/data/issPass.js';
 import { satPosition } from './layers/orbit.js';
@@ -324,13 +325,13 @@ export function createEntities(env) {
     const ladd = Boolean(r?.ladd || meta.ladd);
     const identity = pia || ladd ? null : await aircraftIdentity(key, callsign);
     const hasPublic = Boolean(identity?.type?.registration || r?.registration);
-    const privacy = pia
-      ? 'pia'
-      : ladd
-        ? 'ladd'
-        : identity?.typeFetched && !hasPublic
-          ? 'no-public-identity'
-          : null;
+    // Only real privacy programmes (PIA / LADD flags) withhold identity. A
+    // missing registry record is just that, and is said neutrally.
+    const privacy = pia ? 'pia' : ladd ? 'ladd' : null;
+    const registryMissing = Boolean(
+      !privacy && identity?.typeFetched && !hasPublic,
+    );
+    const prefixOperator = privacy ? null : airlineFromCallsign(callsign);
     // The server's full track can be slow (or down): the dossier waits at
     // most 2.5 s for it, then uses the recorder's own samples.
     const recorded = recorder.samples(key);
@@ -396,10 +397,12 @@ export function createEntities(env) {
       kind,
       title: callsign || key.toUpperCase(),
       subtitle: [
-        privacy ? null : identity?.route?.airline,
+        privacy ? null : identity?.route?.airline || prefixOperator,
         typeName,
         reg,
-        altM != null ? `${Math.round((altM * M_TO_FT) / 100) * 100} ft` : null,
+        altM != null
+          ? `${Math.round((Math.max(0, altM) * M_TO_FT) / 100) * 100} ft`
+          : null,
       ]
         .filter(Boolean)
         .join(' · '),
@@ -413,7 +416,9 @@ export function createEntities(env) {
           : {}),
         ...(identity?.route?.airline && !privacy
           ? { operator: identity.route.airline }
-          : {}),
+          : prefixOperator
+            ? { operator: prefixOperator }
+            : {}),
         ...(identity?.route && !privacy
           ? {
               route: `${identity.route.origin.code} → ${identity.route.destination.code}`,
@@ -457,6 +462,7 @@ export function createEntities(env) {
       sources,
       ...(trackPending ? { trackPending: true } : {}),
       ...(privacy ? { privacy } : {}),
+      ...(registryMissing ? { registryMissing: true } : {}),
     };
   }
 
@@ -954,6 +960,31 @@ export function createEntities(env) {
           relation: 'in moment',
         },
         ...others,
+        // The sealed captures that caught it, and the place it flew over.
+        ...(m.captures || [])
+          .filter((c) =>
+            new RegExp(
+              `${tr.label.split(/[\s(-]/)[0]}|${tr.kind === 'helicopter' ? 'helicopter|helo' : 'aircraft'}`,
+              'i',
+            ).test(`${c.title} ${c.place || ''}`),
+          )
+          .slice(0, 3)
+          .map((c) => ({
+            id: `capture:${m.id}:${c.id}`,
+            kind: 'capture',
+            title: c.title,
+            relation: 'seen in sealed capture',
+          })),
+        ...(Number.isFinite(cur?.lat)
+          ? [
+              {
+                id: `place:${slug(localPlace(cur.lat, cur.lon).name)}`,
+                kind: 'place',
+                title: localPlace(cur.lat, cur.lon).name,
+                relation: 'over',
+              },
+            ]
+          : []),
       ],
       sources: [
         {

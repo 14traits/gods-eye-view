@@ -198,6 +198,11 @@ function guard(engine, kind) {
     },
     cachedThumbnail: (s) => call('cachedThumbnail', null, s),
     history: () => call('history', null),
+    loadHistory: () => asyncCall('loadHistory', null),
+    historyNear: (ms, lon, lat, km) => {
+      const v = call('historyNear', [], ms, lon, lat, km);
+      return Array.isArray(v) ? v : [];
+    },
     trackOf: (id) => asyncCall('trackOf', [], id),
     playback: {
       play: (o) => {

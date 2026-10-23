@@ -280,3 +280,40 @@ globe.skyNow({ lon, lat } = viewer) → Promise<{
 ## Dev harness
 
 `mobile/globe/dev.html?moment=empire-state&speed=30` plays a Moment on load and prints its events in the HUD. `globe.debug` exposes `{ recorder, detector, stage, ghosts }` for tests. It is not part of the contract.
+
+---
+
+# Polish round
+
+Additive. Nothing above changes.
+
+## Bundled recording (the time machine always has ghosts)
+
+`mobile/demo/history/{nyc,london,gulf}.json` hold a real recording of every aircraft over the New York area, London and the North Sea approaches, and the Gulf of Mexico, captured by `node mobile/demo/capture-history.mjs` (adsb.lol point snapshots around each region's anchors, the dev server's `/api/flights` and `/api/military` as fallbacks; one fix per 30 s below 6 km, per 120 s in cruise). Positions are quantised to 1e-4° and 10 m and delta-encoded (`format: 'gev-history/1'`). Timestamps are the true capture times and are **never shifted**: the time machine shows the recording where it happened.
+
+The engine loads it about 5 s after the first frame into a second recorder (no expiry) and reads both through one view: ghosts, `setTime` history mode, `entity()`, `trackOf()` and `search()` see the recording; on a key present in both, the device's own recorder wins.
+
+```js
+globe.history().archive → { start, end, regions: [{ id, label, bbox, source, start, end, tracks,
+                            busiest: { t, aircraft } }] } | null
+globe.loadHistory()     → Promise<history().archive>          // resolves once it is loaded
+globe.historyNear(t, lon, lat, km = 100)
+  → [{ id /* entity id */, key, kind, title, lon, lat, altM }]  // recorded contacts at t, nearest first
+// event 'history' → history(), once the recording is loaded
+```
+
+The time ribbon shades the recording in teal (`RECORDING · 23 OCT`) next to the device's own `RECORDED` range, and its readout names the day when the playhead is on another UTC day.
+
+## Camera
+
+```js
+globe.flyTo({ lon, lat, height, heading, pitch, eye: true }); // eye: lon/lat/height place the camera itself
+```
+
+## Night close-ups
+
+Below ~400 km, where Cesium's lighting is faded out, a night-side view grades the Esri mosaic toward night (darker, desaturated, slightly cooler) with a soft glow of the real Black Marble lights above ~40 km; the strength follows the sun's elevation under the camera at the **scene clock**, so a Moment keeps the lighting of its own time (the hero is daylight). A terrain watchdog falls back to the flat ellipsoid when the keyless terrain host stalls (the globe would otherwise show only the star field).
+
+## Dossiers
+
+`privacy` is set only for real privacy programmes (`'pia'`, `'ladd'` flags). An airframe with no public registry record gets `registryMissing: true` instead, and `identity.operator` falls back to the callsign's ICAO airline prefix (`mobile/globe/airlines.js`, about 150 operators).

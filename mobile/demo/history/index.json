@@ -1,0 +1,30 @@
+{
+  "format": "gev-history-index/1",
+  "capturedAt": {
+    "start": "2026-10-23T08:25:37.000Z",
+    "end": "2026-10-23T09:02:03.000Z"
+  },
+  "regions": [
+    {
+      "id": "nyc",
+      "label": "New York area",
+      "bbox": { "west": -76.5, "south": 39.4, "east": -71.2, "north": 42.2 },
+      "file": "nyc.json",
+      "tracks": 47
+    },
+    {
+      "id": "london",
+      "label": "London and the North Sea approaches",
+      "bbox": { "west": -2.6, "south": 50.2, "east": 5.6, "north": 53.6 },
+      "file": "london.json",
+      "tracks": 500
+    },
+    {
+      "id": "gulf",
+      "label": "Gulf of Mexico",
+      "bbox": { "west": -98.5, "south": 23.5, "east": -81.5, "north": 31.2 },
+      "file": "gulf.json",
+      "tracks": 78
+    }
+  ]
+}

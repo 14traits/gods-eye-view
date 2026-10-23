@@ -16,6 +16,66 @@ import { trackAt } from './stubMoments.js';
 import { domeSvg } from './skySheet.js';
 
 const LAST_KEY = 'gev.lastVisit';
+const SKY_KEY = 'gev.sky.v1';
+/**
+ * The hero Moment's card, so it paints in the first frame (the full Moment
+ * JSON is ~0.5 MB and arrives a moment later). Its picture is the same Esri
+ * span the live card draws on, bundled (mobile/demo/moments/empire-state.jpg).
+ */
+const HERO_CARD = {
+  id: 'empire-state',
+  title: 'Climbers on the Empire State Building',
+  place: 'Midtown Manhattan, New York',
+  minutes: 25,
+  tracks: 3,
+  captures: 8,
+  illustrative: true,
+};
+const HERO_IMG = new URL('../demo/moments/empire-state.jpg', import.meta.url)
+  .href;
+
+/** The last sky snapshot (this device), so the card never says "Looking up…". */
+function readSky() {
+  try {
+    const j = JSON.parse(localStorage.getItem(SKY_KEY) || 'null');
+    if (j?.sky && Date.now() - j.at < 12 * 3600e3)
+      return { ...j.sky, cachedAt: j.at };
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+function saveSky(sky) {
+  try {
+    const slim = {
+      at: sky.at,
+      observer: sky.observer,
+      aircraft: (sky.aircraft || []).slice(0, 16).map((a) => ({
+        id: a.id,
+        title: a.title,
+        kind: a.kind,
+        elevationDeg: a.elevationDeg,
+        azimuthDeg: a.azimuthDeg,
+        headingDeg: a.headingDeg,
+      })),
+      satellites: (sky.satellites || []).slice(0, 24).map((x) => ({
+        id: x.id,
+        title: x.title,
+        elevationDeg: x.elevationDeg,
+        azimuthDeg: x.azimuthDeg,
+      })),
+      iss: sky.iss
+        ? { visibleNow: false, nextPass: sky.iss.nextPass || null }
+        : null,
+    };
+    localStorage.setItem(
+      SKY_KEY,
+      JSON.stringify({ at: Date.now(), sky: slim }),
+    );
+  } catch {
+    /* per-device convenience only */
+  }
+}
 const SEEN_KEY = 'gev.seenIds';
 
 function readLast() {
@@ -84,6 +144,17 @@ export function createToday(
   const mBtn = $('.bf-moment', slot);
   const mCanvas = $('.bf-mcanvas', slot);
   const mctx = mCanvas.getContext('2d');
+
+  // First frame: the hero card from its bundled picture and a few facts.
+  {
+    const img = $('.bf-mimg', slot);
+    img.onload = () => img.classList.add('loaded');
+    img.src = HERO_IMG;
+    $('.bf-mtitle', slot).textContent = HERO_CARD.title;
+    $('.bf-msub', slot).textContent =
+      `${HERO_CARD.place} · ${HERO_CARD.minutes} min in 20 s · ${HERO_CARD.tracks} helicopters · ${HERO_CARD.captures} sealed captures`;
+    $('.bf-mtag', slot).innerHTML = '<span class="tag-ill">Illustrative</span>';
+  }
 
   /* ---------- since you last looked ---------- */
   function changes() {
@@ -169,15 +240,19 @@ export function createToday(
     const span = 0.02;
     const img = $('.bf-mimg', slot);
     const r = mBtn.getBoundingClientRect();
+    // The card is 16:11 whatever its width (today.css).
     const w = Math.max(320, Math.round(r.width || 400));
-    const hgt = Math.max(200, Math.round(r.height || 260));
-    img.src = esriThumb(
-      m.lon,
-      m.lat,
-      span,
-      Math.min(1024, w * 2),
-      Math.min(1024, Math.round((hgt / w) * Math.min(1024, w * 2))),
-    );
+    const hgt = Math.round((w * 11) / 16);
+    if (m.id !== HERO_CARD.id) {
+      img.classList.remove('loaded');
+      img.src = esriThumb(
+        m.lon,
+        m.lat,
+        span,
+        Math.min(1024, w * 2),
+        Math.min(1024, Math.round((hgt / w) * Math.min(1024, w * 2))),
+      );
+    } else if (!img.src.includes('empire-state')) img.src = HERO_IMG;
     img.onload = () => img.classList.add('loaded');
     const dLon = span / Math.cos((m.lat * Math.PI) / 180);
     const dLat = span * (hgt / w);
@@ -304,7 +379,9 @@ export function createToday(
   }
   function renderTonight() {
     const rows = [];
-    const np = sky?.iss?.nextPass;
+    const pass = sky?.iss?.nextPass;
+    const np =
+      pass && (pass.end || pass.start + 600e3) > Date.now() ? pass : null;
     if (sky?.iss?.visibleNow)
       rows.push(
         `<button class="bf-row" type="button" data-sky data-band="orbit"><i class="bd"></i><span class="bf-main"><b>ISS is overhead now</b><small>${Math.round(sky.iss.elevationDeg)}° up, ${esc(cardinal(sky.iss.azimuthDeg))}</small></span></button>`,
@@ -329,11 +406,28 @@ export function createToday(
     }
     $('[data-tonight]', slot).innerHTML =
       rows.join('') ||
-      '<div class="bf-calm"><span>Clear skies, nothing scheduled.</span></div>';
+      (sky
+        ? '<div class="bf-calm"><span>Clear skies, nothing scheduled.</span></div>'
+        : '<div class="bf-row bf-ph"><i></i><span></span></div><div class="bf-row bf-ph"><i></i><span></span></div>');
   }
 
   function renderSky() {
-    if (!sky) return;
+    const kicker = $('.bf-skyk', slot);
+    if (!sky) {
+      // Never looked from this device yet: an empty dome, counting.
+      const home = getHome();
+      $('[data-dome]', slot).innerHTML = domeSvg(
+        { aircraft: [], satellites: [] },
+        { size: 120, labels: false },
+      );
+      $('[data-skyh]', slot).textContent = 'Counting what’s above you';
+      $('[data-skyn]', slot).textContent =
+        `Aircraft within 50 km and satellites over ${home.label || home.name}`;
+      return;
+    }
+    kicker.innerHTML = sky.cachedAt
+      ? `YOUR SKY · ${esc(ago(sky.cachedAt).toUpperCase())}`
+      : '<span class="live-dot"></span>YOUR SKY NOW';
     $('[data-dome]', slot).innerHTML = domeSvg(sky, {
       size: 120,
       labels: false,
@@ -434,12 +528,20 @@ export function createToday(
   async function refreshSky() {
     if (!globe) return;
     const home = getHome();
-    sky = await globe
+    const fresh = await globe
       .skyNow({ lon: home.lon, lat: home.lat })
       .catch(() => null);
+    if (fresh) {
+      sky = fresh;
+      saveSky(fresh);
+    }
     renderSky();
     renderTonight();
   }
+
+  sky = readSky();
+  renderSky();
+  if (sky) renderTonight();
 
   watch.onChange(() => renderWatch());
   setInterval(() => {

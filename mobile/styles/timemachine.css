@@ -186,10 +186,12 @@
   animation: none;
 }
 
+/* Floats above the whole time machine, so it never covers the readout. */
 .tm-callout {
   position: absolute;
+  z-index: 2;
   left: 50%;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   transform: translateX(-50%);
   max-width: 82%;
   padding: 5px 9px;
@@ -282,4 +284,48 @@
 .tm-cliplen {
   white-space: normal;
   line-height: 1.35;
+}
+
+/* NOW snap: a ring pulses out of the playhead and the NOW pill. */
+.ribbon.tm.snap .tm-head::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 69, 58, 0.9);
+  animation: tm-snap 760ms var(--ease-out) both;
+  pointer-events: none;
+}
+
+.ribbon.tm.snap .tm-now {
+  animation: tm-now-pop 520ms var(--spring) both;
+}
+
+@keyframes tm-snap {
+  from {
+    opacity: 1;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(6);
+  }
+}
+
+@keyframes tm-now-pop {
+  40% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(255, 69, 58, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon.tm.snap .tm-head::after,
+  .ribbon.tm.snap .tm-now {
+    animation: none;
+  }
 }

@@ -38,7 +38,7 @@ import { createMomentPlayer } from './ui/moment.js';
 import { createDirector } from './ui/director.js';
 import { social, callSocial } from './ui/socialBridge.js';
 import { PLACES } from './ui/shim3.js';
-import { distKm, llShort, fmtKm } from './ui/bands.js';
+import { distKm, llShort } from './ui/bands.js';
 
 const app = $('#app');
 const stage = $('#stage');
@@ -309,7 +309,7 @@ const fetchJson = (url) =>
     .catch(() => null);
 // No snapshot on this device yet: the bundled one (real data, see capturedAt).
 if (!snap)
-  fetchJson('/mobile/demo/snapshot.json').then((j) => {
+  fetchJson(new URL('./demo/snapshot.json', import.meta.url).href).then((j) => {
     const list = Array.isArray(j) ? j : j?.situations;
     if (!list?.length || situationsCache) return;
     const at = j?.capturedAt || null;
@@ -325,9 +325,9 @@ if (!snap)
     }
   });
 // Today's Moment paints from the bundle before the globe is up.
-fetchJson('/mobile/demo/moments/empire-state.json').then(
-  (m) => m?.tracks && today.setMoment(m),
-);
+fetchJson(
+  new URL('./demo/moments/empire-state.json', import.meta.url).href,
+).then((m) => m?.tracks && today.setMoment(m));
 
 // Distances appear by themselves when location was already granted.
 navigator.permissions
@@ -463,10 +463,21 @@ async function clipMoment({ start, end }) {
   const g = await globeReady;
   const c = lastCam || { lon: -73.98, lat: 40.75, height: 400e3 };
   const radius = Math.max(15, Math.min(600, (c.height || 400e3) / 1000 / 1.5));
-  const near = g
-    .contactsNear(c.lon, c.lat, radius)
-    .filter((x) => /aircraft|helicopter|military|ship|vessel/.test(x.kind))
-    .slice(0, 6);
+  // What the recorder (or the bundled recording) holds for that range,
+  // else whatever is live around the camera.
+  const recorded = g
+    .historyNear((start + end) / 2, c.lon, c.lat, radius)
+    .slice(0, 12);
+  const fromRecord = recorded.length >= 2;
+  const near = fromRecord
+    ? recorded
+    : g
+        .contactsNear(c.lon, c.lat, radius)
+        .filter((x) => /aircraft|helicopter|military|ship|vessel/.test(x.kind))
+        .slice(0, 6);
+  const archive = g.history()?.archive;
+  const inArchive =
+    archive && start >= archive.start - 60e3 && end <= archive.end + 60e3;
   const tracks = (
     await Promise.all(
       near.map(async (x) => {
@@ -500,8 +511,21 @@ async function clipMoment({ start, end }) {
   let place = PLACES.map((p) => ({ p, d: distKm(c, p) })).sort(
     (a, b) => a.d - b.d,
   )[0];
+  // Name the clip honestly: a landmark only when the view is that close,
+  // else the recording's region, else coordinates.
+  const region = inArchive
+    ? archive.regions?.find(
+        (r) =>
+          c.lat >= r.bbox.south &&
+          c.lat <= r.bbox.north &&
+          c.lon >= r.bbox.west &&
+          c.lon <= r.bbox.east,
+      )
+    : null;
   const placeName =
-    place && place.d < radius ? place.p.name : llShort(c.lat, c.lon, 2);
+    place && place.d < Math.min(radius, 25)
+      ? place.p.name
+      : region?.label || llShort(c.lat, c.lon, 2);
   const m = {
     id: `clip-${Math.round(start / 1000).toString(36)}`,
     title: `Clip · ${placeName}`,
@@ -533,7 +557,11 @@ async function clipMoment({ start, end }) {
       {
         name: g.isStub
           ? 'Simulated recorder (offline stub)'
-          : 'On-device recorder',
+          : inArchive
+            ? 'Bundled recording (real positions, captured ' +
+              new Date(archive.start).toISOString().slice(0, 10) +
+              ')'
+            : 'On-device recorder',
         detail: `${tracks.length} tracks · ${evts.length} events · ${new Date(start).toISOString().slice(11, 16)}–${new Date(end).toISOString().slice(11, 16)}Z`,
       },
     ],
@@ -677,25 +705,18 @@ globeReady
           applyTab('live');
         }
         const subj = s.moment?.subject;
-        const c = subj
-          ? { lon: subj.lon, lat: subj.lat, height: 4200 }
-          : s.camera || {};
-        const height = Math.max(2500, Math.min(c.height || 3000, 6000));
-        // On a phone the room sheet covers the lower half: lift the place
-        // into the visible top of the map so the hearts rise in view.
-        let lat = c.lat ?? s.lat;
-        if (!isTwoPane()) {
-          const r = stage.getBoundingClientRect();
-          const mPerPx = (height * 0.364) / (Math.min(r.width, r.height) / 2);
-          lat -= (mPerPx * r.height * 0.27) / 111320;
-        }
-        g.flyTo({
-          lon: c.lon ?? s.lon,
-          lat,
-          height,
-          pitch: -40,
-          duration: 1.8,
-        });
+        const c = subj ? { lon: subj.lon, lat: subj.lat } : s.camera || {};
+        const lon = c.lon ?? s.lon;
+        const lat = c.lat ?? s.lat;
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+        frameForSheet(
+          { lon, lat },
+          {
+            distM: subj
+              ? 3000
+              : Math.max(2500, Math.min((c.height || 3000) * 0.9, 6000)),
+          },
+        );
       },
       onCredits: () => chrome.openCredits(),
       onLocate: () => locate(),
@@ -814,6 +835,10 @@ globeReady
         today.setSituations(cached);
       }
     }
+    // The director is ready as soon as the shell is: a presenter must never
+    // wait on the first live situations() call (it can take a minute).
+    director = buildDirector(g);
+    director.bindTripleTap(feed.titleEl);
     today.setGlobe(g);
     await feed.load({ quiet: primed });
     const sits = await getSituations();
@@ -837,8 +862,6 @@ globeReady
       .evaluate({ quiet: true })
       .then(() => setTimeout(() => watch.evaluate(), 4000));
     applyTab(current);
-    director = buildDirector(g);
-    director.bindTripleTap(feed.titleEl);
 
     // Deep links: #s=<situation id>, #m=<moment id>, #e=<entity id>
     const hs = /#s=([^&]+)/.exec(location.hash);
@@ -941,8 +964,91 @@ async function openThreadFor(s) {
     });
 }
 
+/**
+ * An oblique view of a place, framed into the part of the map a sheet leaves
+ * visible: on a phone the medium sheet covers the lower half, so the place
+ * sits in the upper third; on iPad (sheets in the leading pane) a little
+ * below the centre, leaving room above for rising reactions.
+ */
+function frameForSheet(
+  { lon, lat },
+  { distM = 3000, rayDeg = 30, heading = 32, duration = 1.6 } = {},
+) {
+  if (!globe) return Promise.resolve();
+  const r = stage.getBoundingClientRect();
+  const W = r.width || 1;
+  const H = r.height || 1;
+  const fov = globe.raw?.viewer?.camera?.frustum?.fov ?? Math.PI / 3;
+  const tanHalfV = W > H ? (Math.tan(fov / 2) * H) / W : Math.tan(fov / 2);
+  const yFrac = isTwoPane() ? 0.56 : 0.27;
+  const above = Math.atan((0.5 - yFrac) * 2 * tanHalfV) * (180 / Math.PI);
+  const pitch = Math.max(-88, -rayDeg - above);
+  const ray = (rayDeg * Math.PI) / 180;
+  const back = distM * Math.cos(ray);
+  const hd = ((heading + 180) * Math.PI) / 180;
+  return globe.flyTo({
+    lon:
+      lon + (back * Math.sin(hd)) / (111320 * Math.cos((lat * Math.PI) / 180)),
+    lat: lat + (back * Math.cos(hd)) / 111320,
+    height: 12 + distM * Math.sin(ray),
+    heading,
+    pitch,
+    eye: true,
+    duration,
+  });
+}
+
+/**
+ * The busiest region of the bundled recording: a camera over it and the
+ * instant to start replaying (20 min before its busiest 5 minutes).
+ */
+async function busiestRecording(g) {
+  const arch = (await g.loadHistory()) || g.history()?.archive;
+  const regions = arch?.regions || [];
+  if (!regions.length) return null;
+  const r = regions
+    .slice()
+    .sort((a, b) => (b.busiest?.aircraft || 0) - (a.busiest?.aircraft || 0))[0];
+  const b = r.bbox;
+  const lat = (b.south + b.north) / 2;
+  const widthKm =
+    (b.east - b.west) * 111 * Math.cos((lat * Math.PI) / 180) * 0.62;
+  return {
+    label: r.label,
+    from: Math.max(r.start, (r.busiest?.t ?? r.start) - 20 * 60e3),
+    camera: {
+      lon: (b.west + b.east) / 2,
+      // A little south: the ribbon and tab bar cover the bottom of the map.
+      lat: lat - (b.north - b.south) * 0.12,
+      height: Math.max(160e3, Math.min(700e3, widthKm * 1000 * 0.9)),
+    },
+  };
+}
+
+/** Director: a steady stream of reactions rising from a place. */
+let reactTimer = 0;
+function reactionStream(g, { lon, lat }, ms = 15000) {
+  clearInterval(reactTimer);
+  const kinds = ['heart', 'heart', 'fire', 'heart', 'eyes', 'wow', 'heart'];
+  const until = Date.now() + ms;
+  let i = 0;
+  reactTimer = setInterval(() => {
+    if (Date.now() > until) return clearInterval(reactTimer);
+    g.react({
+      lon: lon + (Math.random() - 0.5) * 0.006,
+      lat: lat + (Math.random() - 0.5) * 0.005,
+      kind: kinds[i++ % kinds.length],
+      count: 2 + Math.round(Math.random() * 2),
+    });
+  }, 650);
+}
+
 /* ---------------- Director (demo mode) ---------------- */
 function closeAll() {
+  clearInterval(reactTimer);
+  // Capture covers the globe (and on iPad the whole stage): leave it.
+  if (current === 'capture') applyTab(isTwoPane() ? 'today' : 'live');
+  watch.clearBanners();
   player?.close();
   dossier?.close();
   sky?.close();
@@ -1012,16 +1118,15 @@ function buildDirector(g) {
         run: async () => {
           closeAll();
           const m = await hero();
-          // Show the globe first, then the Live lane over it.
-          const sit =
-            (await getSituations()).find((x) => x.momentId === m.id) || m;
+          // The Live lane over the globe: the room frames Midtown above the
+          // sheet (onShowGlobe) and hearts rise from the city.
+          // Never wait on a cold live situations() call.
+          const list =
+            situationsCache ||
+            (await Promise.race([getSituations(), settle(1500)])) ||
+            [];
+          const sit = list.find((x) => x.momentId === m.id) || m;
           if (!isTwoPane()) selectTab('live');
-          await g.flyTo({
-            lon: m.lon,
-            lat: m.lat - 0.004,
-            height: 4200,
-            duration: 1.2,
-          });
           const ok = (
             await callSocial('openRoom', sit, {
               lane: 'live',
@@ -1029,17 +1134,10 @@ function buildDirector(g) {
             })
           ).ok;
           if (!ok) await openRoom(m, { lane: 'live' });
-          for (let i = 0; i < 6; i += 1)
-            setTimeout(
-              () =>
-                g.react({
-                  lon: m.lon + (Math.random() - 0.5) * 0.02,
-                  lat: m.lat + (Math.random() - 0.5) * 0.02,
-                  kind: ['heart', 'fire', 'heart', 'eyes', 'heart', 'wow'][i],
-                  count: 3,
-                }),
-              300 + i * 260,
-            );
+          const subj = m.subject || { lon: m.lon, lat: m.lat };
+          await settle(300);
+          await frameForSheet(subj, { distM: 3000, duration: 1.2 });
+          reactionStream(g, subj);
         },
       },
       {
@@ -1109,18 +1207,33 @@ function buildDirector(g) {
         },
       },
       {
-        title: 'Time machine: −3 h at 60×',
-        note: 'The recorder replays where everything actually was',
+        title: 'Time machine at 60×',
+        note: 'Replays a real recording: where everything actually was',
         icon: 'clock',
         run: async () => {
           closeAll();
           selectTab('live');
-          g.flyTo({ lon: -62, lat: 38, height: 4200e3, duration: 1.4 });
+          const r = await busiestRecording(g);
+          if (r) {
+            await g.flyTo({ ...r.camera, duration: 1.4 });
+            await settle(300);
+            chrome.ribbon.jump(r.from, { play: true, speed: 60 });
+            toast(
+              `Replaying a real recording · ${r.label} · ${new Date(r.from).toUTCString().slice(5, 11)}`,
+              { icon: icon('clock') },
+            );
+            return;
+          }
+          // No bundled recording: the true start of this device's history.
+          const h = g.history();
+          g.flyTo({ lon: -73.98, lat: 40.2, height: 420e3, duration: 1.4 });
           await settle(450);
-          chrome.ribbon.jump(Date.now() - 3 * 3600e3, {
-            play: true,
-            speed: 60,
-          });
+          chrome.ribbon.jump(
+            Number.isFinite(h?.start)
+              ? Math.max(h.start, Date.now() - 3 * 3600e3)
+              : Date.now() - 15 * 60e3,
+            { play: true, speed: 60 },
+          );
         },
       },
       {
@@ -1130,14 +1243,19 @@ function buildDirector(g) {
         run: async () => {
           closeAll();
           selectTab('live');
-          await g.flyTo({
+          const r = await busiestRecording(g);
+          const cam = r?.camera || {
             lon: -73.95,
             lat: 40.72,
             height: 260e3,
+          };
+          await g.flyTo({
+            ...cam,
+            height: Math.min(cam.height, 300e3),
             duration: 1.2,
           });
           await settle(350);
-          const t0 = Date.now() - 50 * 60e3;
+          const t0 = r ? r.from + 6 * 60e3 : Date.now() - 50 * 60e3;
           chrome.ribbon.jump(t0 + 9 * 60e3);
           chrome.ribbon.selectRange(t0, t0 + 18 * 60e3);
         },
@@ -1149,26 +1267,22 @@ function buildDirector(g) {
         run: async () => {
           closeAll();
           applyTab('today');
-          const s = (await getSituations()).find((x) =>
-            /squawk/.test(x.kind || ''),
-          );
-          const home = watch.home();
-          const d = s ? distKm(home, s) : NaN;
-          watch.banner({
-            title: s?.title || 'Squawk 7700',
-            body: `${s?.place || 'Emergency squawk'}${Number.isFinite(d) ? ` · ${fmtKm(d)} from ${home.label || home.name}` : ''} · your rule: any emergency squawk`,
-            band: 'sky',
-            onTap: () => s && openSituation(s),
-          });
+          await settle(250);
+          await watch.demoAlert();
         },
       },
       {
         title: 'Search to dossier',
-        note: '“7700”, “ISS”, “Piccadilly”',
+        note: '“7700” when a squawk is live, else “ISS”; then any result',
         icon: 'search',
         run: async () => {
           closeAll();
-          search.open('7700');
+          // “7700” only reads well while an aircraft is squawking it.
+          const hits = await g.search('7700').catch(() => []);
+          const squawk = hits.some((x) =>
+            /aircraft|helicopter|military/.test(x.kind),
+          );
+          search.open(squawk ? '7700' : 'ISS');
         },
       },
     ],
