@@ -247,3 +247,99 @@ Capture is how a person becomes a sensor. Four modes share one dial:
 After the shutter comes the **attach sheet**. It suggests the situation you are probably at, from distance and time ("Typhoon Champi · 4.2 km from track", "Times Square camera · 180 m"). It offers "new place" if none fits, a post kind (Witness by default), an optional note, and whether to drop it as a **hologram** that others can find at this spot later. Posting puts the capture in that situation's room, and a Witness card in the feed when it is notable.
 
 Privacy: faces and plates are blurred before upload by on-device detection (a native-build commitment, and a disclosed limitation in the web prototype). Your exact location is shared at the precision you choose (exact, 100 m, 1 km), and the seal still proves the exact value to verifiers without publishing it.
+
+---
+
+## 12. Round three: Gotham for everyone
+
+Founder's brief for this round: take what made Palantir Gotham work, fix what Citizen got wrong, and build the window people open every day and the first app they open when something happens. The time slider does far more. Communication feels like Twitch chat meets an X community meets Reddit. Real data wherever possible, more realistic everywhere else. It is demoed on a Mac in Chrome's device mode, as a phone and as a tablet.
+
+> No longer should the audit trail for physical reality be the dominion of nation states. We have the right to know, with the receipts attached.
+
+### 12.1 What we take from Gotham
+
+Gotham's power is not the map. It is that **everything is an object, every object has a history and links, and every view (map, timeline, graph, dossier) shows the same objects**. Select something anywhere and every view follows. Analysts build an investigation, share it, and every fact keeps its source.
+
+| Gotham idea | God's Eye version |
+| --- | --- |
+| Ontology of objects and links | **Entities**: aircraft, vessels, satellites, cameras, places, events, captures and contributors (pseudonymous). Each has a **dossier**: identity, live state, track history, events, links and receipts. |
+| Map + timeline + graph, synchronized | Globe, **time machine** and **link graph** share one selection and one clock. |
+| Search to dossier | Universal search ("N46567", "7700", "Piccadilly", "M5.2", "ISS") opens a dossier, not a list of pins. |
+| Watchlists and alerts | **Watch**: follow an entity or a place, and write alert rules in plain chips ("any squawk 7700 within 200 km of Home"). |
+| Investigations with provenance | **Moments**: shareable 4D reconstructions whose every track, capture and claim carries its source and hash. |
+| Audit log | The room ledger: every post, note, AI synthesis and vote is hash-chained and exportable. |
+
+**The line we don't cross.** Gotham tracks people; we don't. Trackable entities are things that broadcast publicly (transponders, AIS, orbital elements), public infrastructure, and events. Contributors are pseudonymous. There is no face recognition and no person search, and aircraft on owner-privacy lists (LADD/PIA) are never named. This is the product's moral spine and a talking point, not a footnote.
+
+### 12.2 What Citizen got wrong, and our incentives
+
+Citizen grew on fear: an alert stream about crime near you, ranked by alarm, with little verification and a paid "Protect" upsell. Anxiety is the retention loop, rumor travels as fast as truth, and nobody is rewarded for being right.
+
+Ours rewards **being right, early, with receipts**:
+
+- **Signal, not followers.** A contributor's reputation (Signal) rises when their sealed captures are corroborated (cited by others, matched by sensor data such as ADS-B, radar or quakes) and falls when their claims are corrected. Signal weighs their votes and notes. Follower counts are not shown.
+- **First eyes.** The first sealed capture of an event gets a permanent byline on the record ("First eyes: @harbor_cam_kid, 14:02:11Z, 180 m"). This is the reason to open the app and capture when something happens.
+- **Need eyes.** Any room can request coverage at a place ("Is the 7th St bridge underwater?"). People nearby get one quiet ask; fulfilling it with a sealed capture earns Signal and the byline. This turns curiosity into coverage, which is the incentive structure Citizen never had.
+- **Calm by default.** Notifications are severity-gated and local, "Nothing unusual near you" is a valid state, and half the feed is wonder (the ISS overhead, a launch, aurora, a helicopter school) so the daily habit is curiosity, not dread.
+- **Ranking by evidence.** Sealed, corroborated, and close beats loud.
+
+### 12.3 The daily loop
+
+- **Today** (first tab) opens with a brief: "Your world · 7:42 AM": since you last looked (the three biggest changes), what's overhead tonight (ISS pass, launch window), your watched places and things, and **Today's Moment**, one 20-second 4D replay a day worth watching (a ritual, like a daily puzzle). Below the brief comes the situation feed (§11.2).
+- **Your sky now.** One tap shows what is above you this minute: aircraft, satellites, the ISS. This is the most delightful hook in the app.
+- **Watch.** Follow places (home, commute, a family member's city) and things (a tail number, a ship, the ISS). A followed thing's status rides in the tab-bar accessory.
+
+### 12.4 When something happens: Moments
+
+A **Moment** is a 4D reconstruction assembled around an event: tracks, sensor frames, sealed captures with their view cones, the chat, and the record, all on one clock.
+
+- **Detected from real data.** When two or more aircraft circle the same point (news and police helicopters orbiting a scene), the engine raises a situation before any headline: "3 helicopters circling Midtown Manhattan". It also flags an emergency squawk, a cluster of quakes or a sudden lightning cell. These are real detections on live ADS-B and sensor feeds.
+- **Replayable.** Open a Moment and the time machine replays it: helicopter tracks with trails, captures popping in at their timestamps with view cones pointing at the subject, chat replaying at its pace, and posts appearing as they were made.
+- **Hero demo Moment: "Climbers on the Empire State Building".** An illustrative reconstruction with realistic synthetic tracks: two news helicopters and one police helicopter orbiting at 1,000–1,500 ft and radii of 400–700 m, with realistic speeds and turn rates. Witness captures from 34th St, 5th Ave and an office at 1 Penn are shown with their view cones, along with the chat and the record. It is clearly labelled illustrative. It shows exactly what the product does when this happens for real.
+
+### 12.5 The time machine
+
+The time ribbon becomes a time machine:
+
+- **It remembers.** The app records every live contact's position each poll (a ring buffer persisted in IndexedDB, about 6 h). Scrubbing back shows where everything actually was, with ghost trails. A selected aircraft's full track comes from the server's track routes.
+- **Everything moves together.** Contacts, radar and lightning frames, quakes and fires appearing, cyclone positions, the sun, room posts, and captures all follow the clock.
+- **Play.** Play/pause and 1×, 10×, 60× and 600× speeds; momentum scrubbing; detents at events; a **NOW** snap.
+- **Event pips.** Pips from every layer are colour-coded by altitude band. Tapping one jumps to it.
+- **Clip.** Select a range, then "Clip this Moment", which creates a shareable Moment with its receipts.
+
+### 12.6 Talking: Live and Record
+
+Two lanes in every room. This is the delineation that keeps the conversation both fun and true.
+
+| | **Live** (Twitch) | **Record** (Reddit and X) |
+| --- | --- | --- |
+| Pace | Fast, ephemeral, scrolls away | Considered, persistent, threaded |
+| Shape | One-line chat, emotes, @mentions, slow mode, viewer count | Posts with kinds (§11.3), replies, quote-posts, attachments |
+| Reactions | Hearts, 🔥, 👀 and 😮 fly up the screen, **and rise from the reactor's location on the globe**: you see the world watching | Corroborate / Dispute votes weighted by Signal |
+| Badges | Witness glow for people with a sealed capture nearby, plus First eyes | Was there, Sealed, Local, Domain |
+| Becomes the record? | Only if it carries evidence or is promoted by corroboration | Yes, hash-chained in the ledger |
+
+- **The clerk.** Every few minutes, AI summarizes the Live lane into "What chat is saying", with citations to messages, and posts it into the Record as a clearly labelled synthesis.
+- **Crews.** Crews are persistent groups (X communities): "NYC Scanner Nerds", "Fort Novosel Alumni", "Gulf Storm Chasers". A crew has its own feed, members and rooms, and can co-watch a Moment together.
+- **Watch parties.** Opening a live situation drops you into its Live lane, with presence and the heart stream. That is the "hearts flying" feeling, everywhere.
+
+### 12.7 Tabs
+
+**Today · Live · Capture · Rooms · You**
+
+- **Today**: the brief plus the feed.
+- **Live**: the globe, time machine and lenses.
+- **Capture**: Look · Witness · Live · Upload, plus Need eyes requests near you.
+- **Rooms**: live rooms, crews and Moments.
+- **You**: Signal, receipts, captures, watchlist and alert rules.
+
+Search (the tab-bar search button) leads to dossiers.
+
+### 12.8 Demo mode
+
+The demo is presented in Chrome's device toolbar on a Mac:
+
+- **Instant first frame.** The last good situations and thumbnails are cached (IndexedDB) and a bundled snapshot of real data ships with the app (`mobile/demo/`, with its capture time shown). The app paints in under a second, then hydrates live.
+- **Mouse and touch** work everywhere (drag sheets, scrub, pinch with trackpad).
+- **Director.** Press `.` (or triple-tap the logo) to open a presenter menu that jumps to the beats of the story: Today → Your sky now → the Empire State Moment → the Live lane with hearts → Need eyes → Capture → Dossier and link graph → the time machine → tablet layout. Each beat sets up its state so the demo never depends on luck.
+- **Honest labels.** Real data shows its source and age. Illustrative content (the hero Moment, simulated chat, example posts and crews) carries a small "Illustrative" or "Simulated" tag. A VC should see that the real parts are real.
