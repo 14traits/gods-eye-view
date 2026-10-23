@@ -171,6 +171,9 @@ function applyTab(tab) {
   if (tab === 'live' && two) chrome?.renderLeadView();
   if (tab !== 'live') chrome?.hidePick();
 }
+// Paint the right panes in the first frame (on a tablet the Globe pane
+// would otherwise cover Today until the engine is up).
+applyTab(current);
 
 function selectTab(tab) {
   if (tab === current) return;
@@ -967,12 +970,14 @@ async function openThreadFor(s) {
 /**
  * An oblique view of a place, framed into the part of the map a sheet leaves
  * visible: on a phone the medium sheet covers the lower half, so the place
- * sits in the upper third; on iPad (sheets in the leading pane) a little
- * below the centre, leaving room above for rising reactions.
+ * sits in the upper third; on iPad (sheets in the leading pane) at the
+ * centre, seen more steeply, leaving room above for rising reactions. The default
+ * heading looks north, up Midtown toward Central Park, which keeps
+ * the airports' dense live traffic (LaGuardia, JFK, Newark) out of frame.
  */
 function frameForSheet(
   { lon, lat },
-  { distM = 3000, rayDeg = 30, heading = 32, duration = 1.6 } = {},
+  { distM = 3000, rayDeg = 30, heading = 12, duration = 1.6 } = {},
 ) {
   if (!globe) return Promise.resolve();
   const r = stage.getBoundingClientRect();
@@ -980,7 +985,9 @@ function frameForSheet(
   const H = r.height || 1;
   const fov = globe.raw?.viewer?.camera?.frustum?.fov ?? Math.PI / 3;
   const tanHalfV = W > H ? (Math.tan(fov / 2) * H) / W : Math.tan(fov / 2);
-  const yFrac = isTwoPane() ? 0.56 : 0.27;
+  // On a tablet the whole stage is free: look steeper, place at centre.
+  if (isTwoPane()) rayDeg = Math.max(rayDeg, 42);
+  const yFrac = isTwoPane() ? 0.5 : 0.27;
   const above = Math.atan((0.5 - yFrac) * 2 * tanHalfV) * (180 / Math.PI);
   const pitch = Math.max(-88, -rayDeg - above);
   const ray = (rayDeg * Math.PI) / 180;
@@ -1027,7 +1034,7 @@ async function busiestRecording(g) {
 
 /** Director: a steady stream of reactions rising from a place. */
 let reactTimer = 0;
-function reactionStream(g, { lon, lat }, ms = 15000) {
+function reactionStream(g, { lon, lat }, ms = 45000) {
   clearInterval(reactTimer);
   const kinds = ['heart', 'heart', 'fire', 'heart', 'eyes', 'wow', 'heart'];
   const until = Date.now() + ms;

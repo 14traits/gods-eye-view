@@ -172,7 +172,9 @@ const PATTERNS = {
 export function haptic(kind = 'tick') {
   if (!settings.haptics) return;
   try {
-    if (navigator.vibrate) navigator.vibrate(PATTERNS[kind] ?? 5);
+    // Chrome logs an intervention for vibrate() before any user gesture.
+    if (navigator.vibrate && navigator.userActivation?.hasBeenActive !== false)
+      navigator.vibrate(PATTERNS[kind] ?? 5);
   } catch {
     /* ignore */
   }

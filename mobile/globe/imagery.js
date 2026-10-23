@@ -42,7 +42,7 @@ const GRADE = Object.freeze({
  * while it is on screen (the keyless terrain host throttles under load, and
  * Cesium then shows only the star field), fall back to the flat ellipsoid.
  */
-const TERRAIN_STALL_MS = 5000;
+const TERRAIN_STALL_MS = 3000;
 
 export const BASE_CREDITS = Object.freeze([
   {
