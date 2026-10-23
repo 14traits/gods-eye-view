@@ -289,6 +289,13 @@ export function createEntities(env) {
               : {}),
           });
     }
+    // One link per target (the first relation wins).
+    const seenIds = new Set();
+    links.splice(
+      0,
+      links.length,
+      ...links.filter((l) => !seenIds.has(l.id) && seenIds.add(l.id)),
+    );
     if (here)
       links.push({
         id: `place:${slug(localPlace(here.lat, here.lon).name)}`,
@@ -307,6 +314,7 @@ export function createEntities(env) {
     const callsign = (r?.callsign || meta.callsign || '').trim();
     const t = env.timeMs();
     const recState = recorder.stateAt(key, t);
+    if (!live && !recorder.has(key)) throw new Error(`Unknown aircraft ${key}`);
     const here = r
       ? { lon: r.lon, lat: r.lat }
       : recState
@@ -415,7 +423,13 @@ export function createEntities(env) {
         ...(r?.squawk || meta.squawk
           ? { squawk: r?.squawk || meta.squawk }
           : {}),
-        category: isHeli ? 'rotorcraft' : r?.cls || meta.kind || null,
+        category: isHeli
+          ? 'rotorcraft'
+          : r?.category != null && r?.cls
+            ? r.cls
+            : isMil
+              ? 'military'
+              : null,
         military: isMil,
       },
       live:

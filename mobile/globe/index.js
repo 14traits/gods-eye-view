@@ -1502,12 +1502,16 @@ export async function createGlobe(container, options = {}) {
     },
 
     async momentOfTheDay() {
-      const live = liveMoments()
-        .filter(
-          (m) => m.tracks.length >= 2 || m.time.end - m.time.start > 5 * 60_000,
+      // Worth a daily replay: several aircraft circling one place, or an
+      // emergency with at least 5 min of track. A lone orbit is not enough.
+      const best = liveMoments()
+        .filter((m) =>
+          m.situationId
+            ? m.tracks.length >= 2
+            : m.time.end - m.time.start > 5 * 60_000,
         )
         .sort((a, b) => b.tracks.length - a.tracks.length);
-      return live[0] || hero();
+      return best[0] || hero();
     },
 
     async playMoment(

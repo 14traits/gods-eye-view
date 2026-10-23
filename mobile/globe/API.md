@@ -170,7 +170,7 @@ Entity ids are layer-qualified: `flights:<icao24>`, `military:<hex>`, `satellite
 
 Detections run on recorder data every poll. They appear only when real data shows them.
 
-- `circling`: two or more aircraft (rotorcraft and low-and-slow preferred, below about 8,000 ft and 155 kt), each turning through at least 360° within about 1.5 km of a common centre in the last 20 min. Card: `{ kind:'circling', band:'sky', archetype:'track', title:'3 helicopters circling Midtown Manhattan', momentId:'live-circling-…', members:[{ key, layer, callsign, helicopter }], entityIds, detected:true }`. Its thumbnail draws the recorded orbit tracks.
+- `circling`: two or more aircraft (rotorcraft and low-and-slow preferred, below about 8,000 ft and 155 kt), each turning through at least 360° within about 1.5 km of a common centre in the last 20 min. Card: `{ kind:'circling', band:'sky', archetype:'track', title:'3 helicopters circling Midtown Manhattan', momentId:'live-circling-…', members:[{ key, layer, callsign, helicopter }], entityIds, detected:true }`. Its thumbnail draws the recorded orbit tracks. A single aircraft on its second full orbit is a lesser detection (severity 4.5, `single: true`, for example "Helicopter circling Las Vegas Strip"). `momentOfTheDay()` ignores single orbits.
 - `quake-cluster`: three or more M2.5+ earthquakes within 50 km in 24 h. Archetype `number`, with a magnitude series.
 - `squawk` cards now carry `momentId: 'live-squawk-<icao24>'`.
 

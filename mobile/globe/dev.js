@@ -13,6 +13,13 @@ const globe = await createGlobe(document.getElementById('globe'), {
   preserveDrawingBuffer: params.has('capture'),
 });
 window.globe = globe;
+window.__globeReady = performance.now();
+{
+  const off = globe.viewer.scene.postRender.addEventListener(() => {
+    window.__firstFrame = performance.now();
+    off();
+  });
+}
 
 let quality = globe.quality();
 let lastPick = null;

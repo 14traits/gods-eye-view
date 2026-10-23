@@ -198,8 +198,19 @@ export function createDetector(recorder) {
             : helis
               ? 'aircraft'
               : 'low aircraft';
-      const id = `circling-${lat.toFixed(2)}_${lon.toFixed(2)}`;
+      let id = `circling-${lat.toFixed(2)}_${lon.toFixed(2)}`;
       const firstOrbit = Math.min(...g.map((m) => m.orbit.from));
+      // The same aircraft drifting a few hundred metres is the same
+      // detection: keep its id and start time.
+      for (const [oid, d] of live)
+        if (
+          oid !== id &&
+          d.members.some((m) => g.some((x) => x.key === m.key)) &&
+          haversineKm(d.lat, d.lon, lat, lon) < 3
+        ) {
+          id = oid;
+          break;
+        }
       const prev = live.get(id);
       const det = {
         id,

@@ -190,7 +190,11 @@ export function createRecorder({
         prev.callsign !== meta.callsign ||
         (meta.registration && prev.registration !== meta.registration)
       ) {
+        // Flags learned from any source stick (one feed may omit the
+        // rotorcraft category another one reported).
         tr.meta = { ...prev, ...meta };
+        for (const flag of ['helicopter', 'military', 'pia', 'ladd'])
+          if (prev?.[flag]) tr.meta[flag] = true;
         if (!fromStore) dirtyMeta.add(key);
       }
     }

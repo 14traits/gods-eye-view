@@ -585,16 +585,18 @@ export function createStage({ scene, requestRender, emit }) {
         }),
       );
       fill.show = false;
-      const edgeMat = Cesium.Material.fromType('Color', {
-        color: css(color, c.firstEyes ? 0.95 : 0.6),
-      });
+      // One material per polyline: a collection destroys each on removal.
+      const edgeMat = () =>
+        Cesium.Material.fromType('Color', {
+          color: css(color, c.firstEyes ? 0.95 : 0.6),
+        });
       const edges = [];
       for (let k = 0; k < 4; k++)
         edges.push(
           lines.add({
             positions: [origin, corners[k]],
             width: c.firstEyes ? 1.8 : 1.1,
-            material: edgeMat,
+            material: edgeMat(),
             show: false,
           }),
         );
@@ -602,7 +604,7 @@ export function createStage({ scene, requestRender, emit }) {
         lines.add({
           positions: [...corners, corners[0]],
           width: c.firstEyes ? 2 : 1.2,
-          material: edgeMat,
+          material: edgeMat(),
           show: false,
         }),
       );
@@ -631,7 +633,6 @@ export function createStage({ scene, requestRender, emit }) {
         c,
         fill,
         edges,
-        edgeMat,
         pin,
         flash,
         origin,
