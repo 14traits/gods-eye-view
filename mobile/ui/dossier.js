@@ -62,7 +62,13 @@ const ID_LABEL = {
   mmsi: 'MMSI',
 };
 
-const cap = (x) => (x ? `${x[0].toUpperCase()}${x.slice(1)}` : x);
+const capFirst = (x) => (x ? `${x[0].toUpperCase()}${x.slice(1)}` : x);
+const cap = (x) => {
+  const t = String(x || '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase();
+  return t ? `${t[0].toUpperCase()}${t.slice(1)}` : t;
+};
 
 function liveRows(d) {
   const L = d.live;
@@ -219,9 +225,12 @@ export function createDossier({
   function bodyHtml() {
     const rows = liveRows(d);
     const followed = store.isFollowed(followKey());
-    const ident = Object.entries(d.identity || {}).filter(
-      ([, v]) => v != null && v !== '',
-    );
+    const ident = Object.entries(d.identity || {})
+      .filter(
+        ([, v]) =>
+          v != null && v !== '' && v !== false && typeof v !== 'object',
+      )
+      .map(([k, v]) => [k, v === true ? 'Yes' : v]);
     const L = d.live;
     const isMoment = d.kind === 'moment';
     return `
@@ -258,7 +267,7 @@ export function createDossier({
               .slice(0, 12)
               .map(
                 (l) =>
-                  `<button class="ds-link" type="button" data-link="${esc(l.id)}" data-band="${bandOfKind(l.kind)}"><span class="ds-link-ic">${icon(KIND_ICON[l.kind] || 'scope')}</span><span class="ds-link-main"><b>${esc(l.title)}</b><small>${esc(cap(l.relation || ''))}${Number.isFinite(l.distanceKm) ? ` · ${esc(l.distanceKm < 1 ? `${Math.round(l.distanceKm * 1000)} m` : `${fmtNum(l.distanceKm, l.distanceKm < 10 ? 1 : 0)} km`)}` : ''}</small></span>${icon('chevronRight', { cls: 'chev' })}</button>`,
+                  `<button class="ds-link" type="button" data-link="${esc(l.id)}" data-band="${bandOfKind(l.kind)}"><span class="ds-link-ic">${icon(KIND_ICON[l.kind] || 'scope')}</span><span class="ds-link-main"><b>${esc(l.title)}</b><small>${esc(capFirst(l.relation || ''))}${Number.isFinite(l.distanceKm) ? ` · ${esc(l.distanceKm < 1 ? `${Math.round(l.distanceKm * 1000)} m` : `${fmtNum(l.distanceKm, l.distanceKm < 10 ? 1 : 0)} km`)}` : ''}</small></span>${icon('chevronRight', { cls: 'chev' })}</button>`,
               )
               .join('')}</div></section>`
           : ''
