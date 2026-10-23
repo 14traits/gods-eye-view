@@ -424,3 +424,189 @@ test('hidden and back-facing annotations do not sample; visible unresolved heigh
   assert.equal(camera.moveEnd.numberOfListeners, 0);
   assert.equal(postRender.numberOfListeners, 0);
 });
+
+function sampledLon(world) {
+  const carto = Cesium.Cartographic.fromCartesian(world);
+  return Number(Cesium.Math.toDegrees(carto.longitude).toFixed(5));
+}
+
+function installDom(t) {
+  const previous = globalThis.document;
+  const previousRaf = globalThis.requestAnimationFrame;
+  globalThis.document = fakeDocument();
+  globalThis.requestAnimationFrame = (fn) => {
+    fn();
+    return 1;
+  };
+  t.after(() => {
+    globalThis.document = previous;
+    globalThis.requestAnimationFrame = previousRaf;
+  });
+}
+
+function squareFrustum() {
+  const frustum = new Cesium.PerspectiveFrustum();
+  frustum.fov = Cesium.Math.toRadians(60);
+  frustum.aspectRatio = 1;
+  frustum.near = 1;
+  frustum.far = 1e8;
+  return frustum;
+}
+
+test('an arrow with one endpoint outside a real frustum keeps its visible connector', (t) => {
+  installDom(t);
+  t.mock.method(Cesium.SceneTransforms, 'worldToWindowCoordinates', (_scene, world) =>
+    sampledLon(world) > 0.1 ? { x: 1100, y: 400 } : { x: 400, y: 400 },
+  );
+  // 5 km straight down over (0, 0): east is +Y, north is +Z in ECEF here.
+  const camera = {
+    positionWC: Cesium.Cartesian3.fromDegrees(0, 0, 5000),
+    directionWC: new Cesium.Cartesian3(-1, 0, 0),
+    upWC: new Cesium.Cartesian3(0, 0, 1),
+    positionCartographic: { height: 5000 },
+    frustum: squareFrustum(),
+  };
+  const sampled = [];
+  const postRender = new Cesium.Event();
+  const scene = {
+    camera,
+    canvas: { width: 800, height: 800 },
+    postRender,
+    clampToHeightSupported: true,
+    clampToHeight(world) {
+      sampled.push(sampledLon(world));
+      return world;
+    },
+  };
+  // The 0.2-degree endpoint (~22 km east) is well beyond the side plane plus
+  // the 9.5 km height-bound radius, yet in front of the camera and the horizon.
+  const far = Cesium.Cartesian3.fromDegrees(0.2, 0, 0);
+  const volume = camera.frustum.computeCullingVolume(
+    camera.positionWC,
+    camera.directionWC,
+    camera.upWC,
+  );
+  assert.equal(
+    volume.computeVisibility(new Cesium.BoundingSphere(far, 9500)),
+    Cesium.Intersect.OUTSIDE,
+  );
+  const renderer = createScreenAnnotationRenderer({ scene, camera });
+  renderer.add({
+    id: 'partial-arrow',
+    type: 'arrow',
+    label: 'Ridge',
+    anchor: { lon: 0, lat: 0 },
+    to: { lon: 0.2, lat: 0 },
+  });
+  postRender.raiseEvent();
+  const { group } = findAnnotationGroup(globalThis.document);
+  assert.equal(group.style.display, '', 'the arrow stays drawn');
+  const path = group.children.find((child) => child.classList.contains('gev-anno-arrow'));
+  assert.match(path.getAttribute('d'), /^M 400\.0 400\.0 Q .* 1100\.0 400\.0$/);
+  assert.deepEqual([...new Set(sampled)], [0], 'only the in-frustum endpoint samples');
+  renderer.destroy();
+});
+
+test('a low-angle cached roof stays visible when range endpoints fail different tests', (t) => {
+  installDom(t);
+  t.mock.method(Cesium.SceneTransforms, 'worldToWindowCoordinates', () => ({ x: 400, y: 380 }));
+  // Camera 1 m above the ellipsoid, heading east, pitched 25 degrees down.
+  const pitch = Cesium.Math.toRadians(25);
+  const camera = {
+    positionWC: Cesium.Cartesian3.fromDegrees(0, 0, 1),
+    directionWC: new Cesium.Cartesian3(-Math.sin(pitch), Math.cos(pitch), 0),
+    upWC: new Cesium.Cartesian3(Math.cos(pitch), Math.sin(pitch), 0),
+    positionCartographic: { height: 1 },
+    frustum: squareFrustum(),
+  };
+  const roofLon = 4000 / 111319.49;
+  let samples = 0;
+  const postRender = new Cesium.Event();
+  const scene = {
+    camera,
+    canvas: { width: 800, height: 800 },
+    postRender,
+    clampToHeightSupported: true,
+    clampToHeight() {
+      samples++;
+      return Cesium.Cartesian3.fromDegrees(roofLon, 0, 20);
+    },
+  };
+  // Sanity: height 0 is beyond the horizon and 9000 m is behind the camera,
+  // while the 20 m roof itself is in front and above the horizon.
+  const occluder = new Cesium.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, camera.positionWC);
+  const ahead = (h) => {
+    const p = Cesium.Cartesian3.fromDegrees(roofLon, 0, h);
+    const v = Cesium.Cartesian3.subtract(p, camera.positionWC, new Cesium.Cartesian3());
+    return Cesium.Cartesian3.dot(v, camera.directionWC) > 0;
+  };
+  assert.equal(occluder.isPointVisible(Cesium.Cartesian3.fromDegrees(roofLon, 0, 0)), false);
+  assert.equal(ahead(9000), false);
+  assert.equal(ahead(20), true);
+  assert.equal(occluder.isPointVisible(Cesium.Cartesian3.fromDegrees(roofLon, 0, 20)), true);
+
+  const renderer = createScreenAnnotationRenderer({ scene, camera });
+  renderer.add({ id: 'roof', type: 'label', label: 'Roof', anchor: { lon: roofLon, lat: 0 } });
+  const { group } = findAnnotationGroup(globalThis.document);
+  assert.equal(samples, 1, 'the unknown height is sampled, not culled');
+  assert.equal(group.style.display, '');
+  for (let i = 0; i < 5; i++) postRender.raiseEvent();
+  assert.equal(samples, 1, 'the settled height is reused');
+  assert.equal(group.style.display, '', 'the cached roof point is tested and shown');
+  renderer.destroy();
+});
+
+test('height retries beyond the first budget are served under sparse passes', (t) => {
+  installDom(t);
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  t.mock.method(Cesium.SceneTransforms, 'worldToWindowCoordinates', () => ({ x: 100, y: 100 }));
+  const camera = {
+    positionWC: Cesium.Cartesian3.fromDegrees(0, 0, 100000),
+    directionWC: new Cesium.Cartesian3(-1, 0, 0),
+    positionCartographic: { height: 100000 },
+  };
+  const lons = Array.from({ length: 33 }, (_, i) => Number(((i + 1) / 1000).toFixed(3)));
+  const last = lons.at(-1);
+  let tilesReady = false;
+  let pass = [];
+  const postRender = new Cesium.Event();
+  const scene = {
+    camera,
+    canvas: { width: 800, height: 600 },
+    postRender,
+    clampToHeightSupported: true,
+    clampToHeight(world) {
+      const lon = sampledLon(world);
+      pass.push(lon);
+      return tilesReady && lon === last ? Cesium.Cartesian3.fromDegrees(lon, 0, 12) : undefined;
+    },
+  };
+  const renderer = createScreenAnnotationRenderer({ scene, camera });
+  for (const lon of lons) {
+    renderer.add({ id: `p${lon}`, type: 'label', label: 'P', anchor: { lon, lat: 0 } });
+  }
+  assert.ok(pass.includes(last), 'every point gets its initial miss');
+  tilesReady = true; // tiles under the final point arrive after its miss
+  const lastSamples = [];
+  for (let i = 0; i < 4; i++) {
+    t.mock.timers.tick(1000);
+    pass = [];
+    postRender.raiseEvent();
+    assert.ok(pass.length <= 32, `pass ${i} keeps the 32-sample budget`);
+    lastSamples.push(pass.filter((lon) => lon === last).length);
+  }
+  assert.ok(lastSamples.slice(0, 2).includes(1), 'the 33rd point is served within two passes');
+  assert.equal(lastSamples.at(-1), 0, 'and then stays settled');
+  // Points refused in one pass are served first in the next: every point is
+  // retried within any two consecutive sparse passes.
+  pass = [];
+  t.mock.timers.tick(1000);
+  postRender.raiseEvent();
+  const firstPass = pass;
+  pass = [];
+  t.mock.timers.tick(1000);
+  postRender.raiseEvent();
+  const served = new Set([...firstPass, ...pass]);
+  for (const lon of lons.slice(0, -1)) assert.ok(served.has(lon), `${lon} retried`);
+  renderer.destroy();
+});
