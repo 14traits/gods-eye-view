@@ -27,7 +27,7 @@ export function createSheet(o) {
 
   const root = h(`<div class="sheet-layer ${o.modal ? 'is-modal' : ''}" hidden>
       ${o.modal ? '<div class="sheet-scrim" aria-hidden="true"></div>' : ''}
-      <section class="sheet ${o.className || ''}" role="dialog" aria-modal="${o.modal ? 'true' : 'false'}" aria-label="${o.label}">
+      <section class="sheet ${o.className || ''}" tabindex="-1" role="dialog" aria-modal="${o.modal ? 'true' : 'false'}" aria-label="${o.label}">
         <button class="sheet-grabber" type="button" aria-label="${o.label}: resize"><span></span></button>
         ${o.closeButton ? `<button class="sheet-close icon-btn" type="button" aria-label="Close">${icon('close')}</button>` : ''}
         <div class="sheet-head"></div>
@@ -100,10 +100,11 @@ export function createSheet(o) {
     if (o.modal)
       setTimeout(
         () =>
-          (
-            sheet.querySelector('[autofocus]') ||
-            root.querySelector('.sheet-grabber')
-          )?.focus({ preventScroll: true }),
+          // The dialog itself takes focus (no ring on the grabber); Tab
+          // reaches the grabber and every control from there.
+          (sheet.querySelector('[autofocus]') || sheet)?.focus({
+            preventScroll: true,
+          }),
         60,
       );
   }

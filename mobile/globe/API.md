@@ -111,3 +111,168 @@ When NHC has published an advisory but its cone geometry is still pending, the c
   - `?lat=&lon=` sets the viewer.
   - `?only=cyclone,eye` filters cards by id prefix.
   - `?w=330` sets the card width.
+
+---
+
+# Round three: Gotham for everyone (DESIGN.md §12)
+
+Additive. Nothing above changes. Every call below exists on the object `createGlobe()` resolves to. Times are epoch ms unless a `Date` is shown.
+
+## Instant first frame
+
+```js
+globe.situations({ cached: true }) → Promise<Situation[]>
+  // resolves at once from the last good IndexedDB snapshot (written by every live
+  // situations() call), else the bundled mobile/demo/snapshot.json (real data).
+  // Each cached Situation adds: cached: true, cacheOrigin: 'device' | 'bundled',
+  // capturedAt (epoch ms), live: false, thumbUrl (bundled /mobile/demo/thumbs/<id>.jpg
+  // or a Cache API blob URL) or null.
+globe.situations()                → Promise<Situation[]>   // live, as before (also saves the cache)
+globe.cachedThumbnail(situation)  → string | null           // sync; thumbUrl for a cached card
+globe.thumbnail(cachedSituation)  → resolves to the cached JPEG when the card has no live scene
+```
+
+The globe paints its first frame with imagery only. Live layers start right after it, and weather, transit, GNSS, Starlink and satellites start about a second later. Background warm-ups (jet, TCM, AQ, CCTV, rasters) start at 4 s.
+
+## Recorder and time machine
+
+```js
+globe.history() → { start, end, entities, points, bytes }   // recorded range; start/end null when empty
+globe.setTime(t)   // unchanged. Inside the recorded range, contacts are drawn at their interpolated
+                   // recorded positions with 4-minute ghost trails (pickable: 'pick' kind is the
+                   // contact's kind, meta.layer 'history', entityId). Beyond the record, dimmed as before.
+globe.trackOf(entityId) → Promise<[{ t, lon, lat, altM, headingDeg, speed }]>
+                   // recorder samples merged with /api/flights/track (OpenSky) or /api/military/track
+                   // (adsb.lol traces); the array has .source
+
+globe.playback.play({ speed = 60, from?, until? } = {}) → state
+  // speeds: 1, 10, 30, 60, 600. From live it replays the last 15 min. Reaching "now" goes live;
+  // inside a Moment it stops at the Moment's end.
+globe.playback.stop() → state
+globe.playback.state() → { playing, speed, t, live }
+globe.playback.speeds  // [1, 10, 30, 60, 600]
+  // event 'playback' → state, on start/stop and every 250 ms while playing.
+  // 'time' is also emitted every 250 ms while playing ({ live:false, time, playing:true }).
+  // Playing runs the render loop; at rest the globe is request-render again.
+
+globe.timeline({ from, to } = {}) → [{ t, kind, band, title, severity, situationId?, entityId?, momentId?, lon?, lat? }]
+  // kind: 'quake' | 'quake-cluster' | 'launch' | 'squawk' | 'cyclone' | 'fire' | 'circling'
+  //       | 'lightning' | 'moment' (a Moment beat) | 'capture' | 'post' | 'chat-burst'
+  // band: 'orbit' | 'sky' | 'ground' | 'inside'; severity 0..3; sorted by t.
+  // Defaults to timeWindow(). Moment items appear for Moments that were loaded and overlap the range.
+```
+
+The recorder keeps every poll for low traffic (helicopters, approaches, anything below about 6 km) and one fix every 50 s for cruise traffic. Samples older than 30 min are thinned. The buffer is capped at 1.2 M samples (about 24 MB) and persisted to IndexedDB about once a minute, so a reload keeps up to 6 h. When OpenSky is down, the recorder also polls adsb.lol snapshots around New York, London, Los Angeles and the viewer every 15 s, so the detector has real data.
+
+Entity ids are layer-qualified: `flights:<icao24>`, `military:<hex>`, `satellites:<norad>`, `earthquakes:<id>`, `cctv:<id>`, `vessels:<mmsi>`, `situation:<id>`, `place:<slug>`, `moment:<momentId>`, `moment:<momentId>:<trackId>`, `capture:<momentId>:<captureId>`. Every `'pick'` payload can be passed to `entity()` as is.
+
+## Detection
+
+Detections run on recorder data every poll. They appear only when real data shows them.
+
+- `circling`: two or more aircraft (rotorcraft and low-and-slow preferred, below about 8,000 ft and 155 kt), each turning through at least 360° within about 1.5 km of a common centre in the last 20 min. Card: `{ kind:'circling', band:'sky', archetype:'track', title:'3 helicopters circling Midtown Manhattan', momentId:'live-circling-…', members:[{ key, layer, callsign, helicopter }], entityIds, detected:true }`. Its thumbnail draws the recorded orbit tracks.
+- `quake-cluster`: three or more M2.5+ earthquakes within 50 km in 24 h. Archetype `number`, with a magnitude series.
+- `squawk` cards now carry `momentId: 'live-squawk-<icao24>'`.
+
+```js
+globe.detections() → Situation[]    // current detections, sync
+// event 'detections' → detector output, when the set of circling detections changes
+```
+
+## Moments
+
+```js
+globe.moments() → Promise<Moment[]>      // live (circling, squawks) first, then the bundled hero
+globe.moment(id) → Promise<Moment|null>  // 'empire-state' | 'live-circling-…' | 'live-squawk-<hex>'
+globe.momentOfTheDay() → Promise<Moment> // best live Moment if any, else the hero
+globe.playMoment(idOrMoment, { speed, camera = true, autoplay = true, framing = 6 } = {}) → Promise<Moment>
+  // speed defaults to moment.recommendedSpeed (hero: 30 → 50 s). camera:false leaves the camera alone.
+  // framing: degrees the cinematic camera looks below the subject (puts it in the upper half).
+  // Hides every live layer, draws tracks (glyph, 90 s bright trail, faint flown path, drop line),
+  // capture view frustums that pop in at their t, the subject building and its beacon, and flies
+  // the camera path keyed to the clock. Touching the globe releases the camera.
+globe.exitMoment({ restoreCamera = true } = {})   // back to live (or the time before) and the old camera
+globe.activeMoment() → { id, title, illustrative, t, start, end, playing, speed, cinematic, moment } | null
+globe.seekMoment(t)            // epoch ms, or a 0..1 fraction of the Moment
+globe.momentCamera(on = true)  // re-attach (or release) the cinematic camera → boolean
+// event 'moment' → { type, item, t, momentId }
+//   type: 'start' (item = Moment) | 'capture' | 'chat' | 'post' | 'beat' | 'end' | 'exit'
+//         | 'camera' (item = { cinematic:false } when the person takes the camera)
+//   Items fire as the clock passes them while playing, and on small seeks. A seek back, or a jump of
+//   more than 90 s while paused, repositions silently: render the Live/Record lanes by filtering
+//   activeMoment().moment.chat/posts/captures by t <= activeMoment().t.
+```
+
+```ts
+Moment = {
+  id, title, place, lon, lat,
+  time: { start, end },                 // epoch ms
+  illustrative: boolean,                // true for the bundled hero; false for live detections
+  illustrativeNote?: string,
+  recommendedSpeed?: number,
+  subject?: { lon, lat, altM, label, roofM?, antennaM?, decks? },
+  cameraPath: [{ t, lon, lat, height /* m above ground */, heading, pitch }],
+  beats?: [{ t, title }],
+  tracks:   [{ id, kind /* 'helicopter'|'aircraft' */, label, operator, callsign?, registration?, type?,
+               color?, entityId? /* live: 'flights:<hex>' */, points: [{ t, lon, lat, altM /* MSL */ }] }],
+  captures: [{ id, t, lon, lat, altM, headingDeg, pitchDeg, fovDeg, rangeM, title, handle, place,
+               sealed, firstEyes?, kind /* 'photo'|'clip' */, image? }],
+  chat:     [{ t, handle, text, badge? /* 'first-eyes'|'witness'|'local'|'pilot'|'met' */ }],
+  posts:    [{ id, t, handle, kind /* 'witness'|'context'|'question'|'correction' */, text, votes, captureId? }],
+  sources:  [{ name, detail }],
+}
+```
+
+The hero is `mobile/demo/moments/empire-state.json` (id `empire-state`): "Climbers on the Empire State Building", 25 min, 3 helicopters, 8 captures, 120 chat lines and 12 posts. Regenerate it with `node mobile/demo/build-empire-state.mjs`. Its Midtown massing is real NYC Open Data footprints and roof heights in `mobile/demo/midtown-buildings.json` (`node mobile/demo/build-midtown.mjs`).
+
+## Entities and dossiers
+
+```js
+globe.entity(ref) → Promise<Dossier>   // ref: entity id string, a 'pick' payload, or { kind, id }
+Dossier = {
+  id, kind, title, subtitle,
+  identity: { icao24?, callsign?, registration?, type?, typeCode?, operator?, route?, country?, squawk?,
+              norad?, intlDesignator?, tle?, mmsi?, provider?, magnitude?, illustrative?, ... },
+  live: { lon, lat, altM, speed /* m/s */, heading, squawk?, updatedAt, speedKt?, elevationDeg? } | null,
+  track: [{ t, lon, lat, altM }],
+  events: [{ t, title }],
+  links: [{ id, kind, title, relation, distanceKm? }],
+  sources: [{ name, fetchedAt, url?, hash /* 'sha256:…' (or 'fnv1a:…' outside secure contexts) */, detail? }],
+  privacy?: 'pia' | 'ladd' | 'no-public-identity',  // identity then holds only what the transponder broadcasts
+  trackPending?: true,     // the server track was slow; call trackOf(id) later for the full one
+  nextPass?: { start, max, end, maxElevationDeg, visible },   // satellites, for the viewer
+  illustrative?: true,     // hero Moment tracks and captures
+}
+globe.search(query) → Promise<[{ id, kind, title, subtitle }]>   // ≤ 30; "N46567", "UAL", "7700",
+  // "M5.2", "ISS", "Midtown", "empire"… across live aircraft, the record, satellites, quakes,
+  // cameras, situations, places (neighbourhoods, airports, cities) and Moments
+globe.graph(ref) → { center, nodes: [{ id, kind, title }], edges: [{ from, to, relation }] }   // ≤ 40 nodes, sync
+```
+
+Kinds: `aircraft`, `helicopter`, `military`, `satellite`, `vessel`, `quake`, `camera`, `situation`, `place`, `moment`, `track`, `capture`. There are never person entities. Aircraft dossiers wait at most 2.5 s for the server track (aircraft identity comes from adsbdb, 3.5 s budget).
+
+## Reactions and attention
+
+```js
+globe.react({ lon, lat, kind: 'heart'|'fire'|'eyes'|'wow', count = 1, altM = 0 }) → number
+globe.attentionHeat(points | null)    // points: [{ lon, lat, weight? }]; soft glow where viewers are
+```
+
+Reactions draw on a screen-space canvas that the globe owns (`.gev-reactions`, pointer-events none, above the globe and below your HTML). Each glyph stays anchored to its point as the globe moves. At most 300 are alive at once, and the canvas animates only while some are alive.
+
+## Your sky now
+
+```js
+globe.skyNow({ lon, lat } = viewer) → Promise<{
+  at, observer, sunElevationDeg,
+  aircraft:   [{ id, title, kind, lon, lat, altM, distanceKm, elevationDeg, azimuthDeg, headingDeg, speedMps, squawk }],
+  satellites: [{ id, title, norad, altKm, elevationDeg, azimuthDeg }],
+  iss: { visibleNow, aboveHorizon, elevationDeg, azimuthDeg,
+         nextPass: { start, max, end, maxElevationDeg, riseAzimuthDeg, visible } | null },
+  sources: [string],
+}>   // aircraft within 50 km, satellites above the horizon; each list sorted by elevation, highest first
+```
+
+## Dev harness
+
+`mobile/globe/dev.html?moment=empire-state&speed=30` plays a Moment on load and prints its events in the HUD. `globe.debug` exposes `{ recorder, detector, stage, ghosts }` for tests. It is not part of the contract.

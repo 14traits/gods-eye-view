@@ -8,10 +8,10 @@ import { icon, FAMILY_ICON } from './icons.js';
 import { $, $$, esc, ago, fmtNum, haptic } from './dom.js';
 
 export const TABS = [
-  { id: 'now', label: 'Now', icon: 'now' },
-  { id: 'globe', label: 'Globe', icon: 'globe' },
+  { id: 'today', label: 'Today', icon: 'today' },
+  { id: 'live', label: 'Live', icon: 'globe' },
   { id: 'capture', label: 'Capture', icon: 'viewfinder' },
-  { id: 'threads', label: 'Threads', icon: 'threads' },
+  { id: 'rooms', label: 'Rooms', icon: 'rooms' },
   { id: 'you', label: 'You', icon: 'you' },
 ];
 
@@ -41,7 +41,7 @@ export function createTabBar(nav, { onSelect, onSearch, onAccessory }) {
   const acc = $('.tb-accessory', nav);
   const miniTab = $('.tb-mini-tab', nav);
   const miniAcc = $('.tb-mini-acc', nav);
-  let current = 'now';
+  let current = 'today';
   let minimized = false;
   let accSituation = null;
 
@@ -74,9 +74,9 @@ export function createTabBar(nav, { onSelect, onSearch, onAccessory }) {
 
   function accessoryHtml(s) {
     const m = s.metrics?.[0];
-    return `<span class="acc-glyph" data-family="${esc(s.family)}">${icon(FAMILY_ICON[s.family] || 'now')}</span>
+    return `<span class="acc-glyph" data-family="${esc(s.family)}">${icon(s.icon || FAMILY_ICON[s.family] || 'now')}</span>
       <span class="acc-text"><span class="acc-title">${esc(s.title)}</span>
-      <span class="acc-meta">${esc(s.place || '')} · ${esc(ago(s.updatedAt))}</span></span>
+      <span class="acc-meta">${esc(s.status || `${s.place || ''} · ${ago(s.updatedAt)}`)}</span></span>
       ${m ? `<span class="acc-metric num" data-family="${esc(s.family)}">${esc(fmtNum(m.value))}${m.unit ? ` <small>${esc(m.unit)}</small>` : ''}</span>` : ''}`;
   }
 

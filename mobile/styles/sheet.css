@@ -543,3 +543,7 @@
   display: block;
   margin-bottom: 4px;
 }
+
+.sheet:focus {
+  outline: none;
+}

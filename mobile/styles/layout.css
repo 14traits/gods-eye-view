@@ -51,7 +51,7 @@
     left: var(--stage-left);
   }
 
-  #view-globe {
+  #view-live {
     display: block;
   }
 
@@ -114,6 +114,82 @@
 
   .hero {
     border-radius: 0;
+  }
+
+  /* Dossier, watch and your-sky sheets live in the leading pane, so the
+     globe and the time machine stay live and in sync beside them. */
+  .pane-sheets {
+    right: auto;
+    width: var(--lead-w);
+    z-index: 45;
+  }
+
+  .pane-sheets .sheet {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    margin: 0;
+  }
+
+  .pane-sheets .sheet-scrim {
+    opacity: 0 !important;
+  }
+
+  /* Moments: chat, record and captures take the leading pane. */
+  .app.is-moment .lead {
+    visibility: hidden !important;
+  }
+
+  .mp-stage {
+    left: var(--stage-left);
+  }
+
+  .mp-side {
+    left: 0;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: var(--lead-w);
+    height: auto;
+    border-radius: 0;
+    padding-top: calc(var(--safe-t) + 8px);
+    background: rgba(7, 9, 12, 0.94);
+    box-shadow: inset -0.5px 0 0 var(--hairline-strong);
+  }
+
+  .mp-side-head {
+    padding: 10px 14px 8px;
+  }
+
+  .mp-pane {
+    padding: 0 16px 14px;
+  }
+
+  .mp-react {
+    bottom: calc(var(--safe-b) + 84px);
+  }
+
+  .mp-pops {
+    width: 230px;
+  }
+
+  .app.is-moment .gc-attr {
+    bottom: calc(var(--safe-b) + 80px);
+  }
+
+  .mp-legend {
+    width: 250px;
+  }
+
+  .mp-title {
+    font-size: 1.625rem;
+  }
+
+  .banners {
+    left: auto;
+    right: 0;
+    width: min(440px, 100%);
+    justify-items: end;
   }
 }
 

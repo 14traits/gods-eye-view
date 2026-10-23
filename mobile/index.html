@@ -39,11 +39,16 @@
     <link rel="stylesheet" href="./styles/threads.css" />
     <link rel="stylesheet" href="./styles/cards.css" />
     <link rel="stylesheet" href="./styles/room.css" />
+    <link rel="stylesheet" href="./styles/today.css" />
+    <link rel="stylesheet" href="./styles/timemachine.css" />
+    <link rel="stylesheet" href="./styles/moment.css" />
+    <link rel="stylesheet" href="./styles/dossier.css" />
+    <link rel="stylesheet" href="./styles/watch.css" />
     <link rel="stylesheet" href="./styles/layout.css" />
     <script type="module" src="./main.js"></script>
   </head>
   <body>
-    <div id="app" class="app" data-tab="now" data-booting="true">
+    <div id="app" class="app" data-tab="today" data-booting="true">
       <!-- The one persistent globe. Everything else is glass over it. -->
       <div id="stage" class="stage" aria-label="Globe">
         <div id="globe" class="globe-host"></div>
@@ -53,22 +58,22 @@
 
       <main id="lead" class="lead">
         <section
-          id="view-now"
+          id="view-today"
           class="view view--scroll"
-          data-view="now"
-          aria-label="Now"
+          data-view="today"
+          aria-label="Today"
         ></section>
         <section
-          id="view-globe"
+          id="view-live"
           class="view view--scroll"
-          data-view="globe"
-          aria-label="Globe layers"
+          data-view="live"
+          aria-label="Live layers"
         ></section>
         <section
-          id="view-threads"
+          id="view-rooms"
           class="view view--scroll"
-          data-view="threads"
-          aria-label="Threads"
+          data-view="rooms"
+          aria-label="Rooms"
           hidden
         ></section>
         <section
@@ -88,6 +93,9 @@
         hidden
       ></section>
 
+      <!-- Sheets that belong to the leading pane on a tablet (dossier, watch,
+           your sky); on a phone they cover the whole screen. -->
+      <div id="pane-sheets" class="sheets pane-sheets"></div>
       <div id="sheets" class="sheets"></div>
       <nav id="tabbar" class="tabbar" aria-label="Primary"></nav>
     </div>

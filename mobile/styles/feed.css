@@ -2,7 +2,7 @@
 /* Now feed: header, altitude filter, masonry + wide rows             */
 /* ------------------------------------------------------------------ */
 
-#view-now {
+#view-today {
   background: var(--ground);
 }
 
@@ -39,13 +39,13 @@
   letter-spacing: 0.04em;
 }
 
-#view-now .title-sub {
+#view-today .title-sub {
   gap: 7px;
   color: var(--ink-3);
   font-size: 0.625rem;
 }
 
-#view-now .title-sub .live-dot {
+#view-today .title-sub .live-dot {
   --fam: var(--ink);
   width: 5px;
   height: 5px;
@@ -83,11 +83,11 @@
   transition: opacity var(--dur-1) linear;
 }
 
-#view-now.is-scrolled .bandbar::before {
+#view-today.is-scrolled .bandbar::before {
   opacity: 1;
 }
 
-#view-now.is-scrolled .navbar::before {
+#view-today.is-scrolled .navbar::before {
   border-bottom-color: transparent;
 }
 
@@ -328,6 +328,6 @@
 }
 
 /* The Near lens: the feed becomes a distance-ordered list around you. */
-#view-now.is-near .feed-count::after {
+#view-today.is-near .feed-count::after {
   content: ' · nearest first';
 }

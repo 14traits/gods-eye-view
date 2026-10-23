@@ -7,6 +7,8 @@
  * the shell down; mismatches are collected in `contractReport` for the lead.
  */
 
+import { installRound3 } from './shim3.js';
+
 const REQUIRED = [
   'flyTo',
   'home',
@@ -36,6 +38,28 @@ const ROUND_TWO = [
   'pins',
   'nearestEye',
   'eyeFrameUrl',
+];
+
+/** Round-three additions (mobile/globe/API.md, "Round three"), optional. */
+const ROUND_THREE = [
+  'history',
+  'trackOf',
+  'timeline',
+  'detections',
+  'moments',
+  'moment',
+  'momentOfTheDay',
+  'playMoment',
+  'exitMoment',
+  'activeMoment',
+  'seekMoment',
+  'entity',
+  'search',
+  'graph',
+  'react',
+  'attentionHeat',
+  'skyNow',
+  'cachedThumbnail',
 ];
 
 export const contractReport = {
@@ -166,6 +190,71 @@ function guard(engine, kind) {
     },
     project: (lon, lat, alt) => call('project', null, lon, lat, alt),
     time: () => call('time', null),
+
+    /* ---- round three (API.md); the shell fills gaps with shim3.js ---- */
+    situationsCached: async () => {
+      const v = await asyncCall('situations', [], { cached: true });
+      return Array.isArray(v) ? v.map(normSituation) : [];
+    },
+    cachedThumbnail: (s) => call('cachedThumbnail', null, s),
+    history: () => call('history', null),
+    trackOf: (id) => asyncCall('trackOf', [], id),
+    playback: {
+      play: (o) => {
+        try {
+          engine.playback?.play?.(o);
+        } catch (err) {
+          note(`playback.play(): ${err?.message || err}`);
+        }
+      },
+      stop: () => {
+        try {
+          engine.playback?.stop?.();
+        } catch (err) {
+          note(`playback.stop(): ${err?.message || err}`);
+        }
+      },
+      state: () => {
+        try {
+          return (
+            engine.playback?.state?.() || { playing: false, speed: 1, t: null }
+          );
+        } catch {
+          return { playing: false, speed: 1, t: null };
+        }
+      },
+    },
+    timeline: (o) => {
+      const v = call('timeline', [], o);
+      return Array.isArray(v) ? v : [];
+    },
+    detections: () => {
+      const v = call('detections', []);
+      return Array.isArray(v) ? v.map(normSituation) : [];
+    },
+    moments: async () => {
+      const v = await asyncCall('moments', []);
+      return Array.isArray(v) ? v : [];
+    },
+    moment: (id) => asyncCall('moment', null, id),
+    momentOfTheDay: () => asyncCall('momentOfTheDay', null),
+    playMoment: (m, o) => asyncCall('playMoment', null, m, o),
+    exitMoment: () => call('exitMoment', undefined),
+    activeMoment: () => call('activeMoment', null),
+    seekMoment: (t) => call('seekMoment', undefined, t),
+    entity: (ref) => asyncCall('entity', null, ref),
+    search: async (q) => {
+      const v = await asyncCall('search', [], q);
+      return Array.isArray(v) ? v : [];
+    },
+    graph: (ref) => {
+      const v = call('graph', null, ref);
+      return v && Array.isArray(v.nodes) ? v : { nodes: [], edges: [] };
+    },
+    react: (o) => call('react', undefined, o),
+    attentionHeat: (p) => call('attentionHeat', undefined, p),
+    skyNow: (o) => asyncCall('skyNow', null, o),
+    addClip: (m) => call('_addClip', undefined, m),
   };
 }
 
@@ -196,6 +285,15 @@ export async function mountGlobe(container, opts = {}) {
         opts.quality === 'battery' ? 'low' : opts.quality || 'auto';
       const engine = await create(container, { quality });
       contractReport.engine = 'cesium';
+      contractReport.roundThree = Object.fromEntries(
+        ROUND_THREE.map((m) => [
+          m,
+          typeof engine?.[m] === 'function' ? 'native' : 'shim',
+        ]),
+      );
+      contractReport.roundThree.playback =
+        typeof engine?.playback?.play === 'function' ? 'native' : 'shim';
+      installRound3(engine, { kind: 'cesium' });
       contractReport.missing = REQUIRED.filter(
         (m) => typeof engine?.[m] !== 'function',
       );
@@ -222,6 +320,7 @@ export async function mountGlobe(container, opts = {}) {
     quality: opts.quality || 'auto',
   });
   contractReport.engine = 'stub';
+  contractReport.roundThree = 'stub (shim3 + native stub recorder)';
   contractReport.roundTwo = Object.fromEntries(
     ROUND_TWO.map((m) => [m, typeof engine?.[m] === 'function']),
   );

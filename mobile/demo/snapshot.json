@@ -1,0 +1,1660 @@
+{
+  "capturedAt": "2026-10-23T07:19:58.550Z",
+  "source": "Live God’s Eye feeds through the dev server (see each card’s source)",
+  "note": "Bundled first frame for demos. The shell shows capturedAt and replaces these with live cards as soon as situations() resolves.",
+  "situations": [
+    {
+      "id": "quake-cluster-us6000u43g",
+      "kind": "quake-cluster",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "number",
+      "telemetry": "GROUND · 11 EVENTS · 24 H · MAX M7.0 · 50 KM",
+      "title": "11 earthquakes in 24 h near Nagqu, China",
+      "subtitle": "Largest M7.0 · first 14:33Z · USGS",
+      "place": "184 km ENE of Nagqu, China",
+      "lon": 93.7797,
+      "lat": 32.3805,
+      "camera": {
+        "lon": 93.7797,
+        "lat": 32.3805,
+        "height": 260000,
+        "heading": 0,
+        "pitch": -55
+      },
+      "layers": ["earthquakes"],
+      "time": {
+        "start": 1792679620353,
+        "end": 1792724020661
+      },
+      "metrics": [
+        {
+          "label": "Quakes",
+          "value": 11,
+          "unit": ""
+        },
+        {
+          "label": "Largest",
+          "value": "7.0",
+          "unit": "M"
+        }
+      ],
+      "headline": {
+        "value": 11,
+        "unit": "",
+        "label": "quakes in 24 h"
+      },
+      "series": [
+        {
+          "t": 1792679620353,
+          "v": 7
+        },
+        {
+          "t": 1792681924462,
+          "v": 5.2
+        },
+        {
+          "t": 1792684675210,
+          "v": 4.3
+        },
+        {
+          "t": 1792686093822,
+          "v": 4.9
+        },
+        {
+          "t": 1792687500942,
+          "v": 4.6
+        },
+        {
+          "t": 1792687816850,
+          "v": 4.5
+        },
+        {
+          "t": 1792688273999,
+          "v": 4.7
+        },
+        {
+          "t": 1792692404294,
+          "v": 5
+        },
+        {
+          "t": 1792715057688,
+          "v": 4.4
+        },
+        {
+          "t": 1792715711461,
+          "v": 4.1
+        },
+        {
+          "t": 1792724020661,
+          "v": 4.2
+        }
+      ],
+      "seriesLabel": "magnitude per event",
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=93.30103,31.84151,94.25837,32.91949&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792724020661,
+      "source": "U.S. Geological Survey · cluster detected by God’s Eye",
+      "severity": 6,
+      "detected": true,
+      "thumbFile": "thumbs/quake-cluster-us6000u43g.jpg"
+    },
+    {
+      "id": "cyclone-EONET_25339",
+      "kind": "cyclone",
+      "family": "Hazards",
+      "section": "now",
+      "band": "orbit",
+      "archetype": "sensor",
+      "telemetry": "ORBIT · LW IR · TY CHAMPI · CAT 2 · 90 KT",
+      "title": "Super Typhoon Champi",
+      "subtitle": "167 km/h winds · 345 km SE of Taipei",
+      "place": "Western Pacific",
+      "lon": 123.8,
+      "lat": 22.7,
+      "camera": {
+        "lon": 123.8,
+        "lat": 22.7,
+        "height": 2600000,
+        "heading": 0,
+        "pitch": -75
+      },
+      "layers": ["cyclones", "clouds", "lightning", "wind"],
+      "time": {
+        "start": 1792713600000,
+        "end": 1792713600000
+      },
+      "metrics": [
+        {
+          "label": "Wind",
+          "value": 167,
+          "unit": "km/h"
+        }
+      ],
+      "headline": {
+        "value": 167,
+        "unit": "km/h",
+        "label": "CAT 2"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=118.68787,16.41182,128.91213,28.98818&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868840,
+      "source": "NASA EONET · IR: NOAA nowCOAST",
+      "severity": 8.25,
+      "thumbFile": "thumbs/cyclone-EONET_25339.jpg"
+    },
+    {
+      "id": "squawk-4bb0e8",
+      "kind": "squawk",
+      "family": "Sky",
+      "section": "now",
+      "band": "sky",
+      "archetype": "track",
+      "telemetry": "SKY · FL417 · 539 KT · SQ 7700 · THY4MS",
+      "title": "THY4MS squawking 7700",
+      "subtitle": "General emergency · 41,700 ft · 728 km NW of Istanbul",
+      "place": "728 km NW of Istanbul",
+      "lon": 21.3533,
+      "lat": 44.3994,
+      "camera": {
+        "lon": 21.3533,
+        "lat": 44.3994,
+        "height": 120000,
+        "heading": 132.6,
+        "pitch": -45
+      },
+      "layers": ["squawk", "flights"],
+      "metrics": [
+        {
+          "label": "Squawk",
+          "value": "7700",
+          "unit": ""
+        },
+        {
+          "label": "Altitude",
+          "value": 41725,
+          "unit": "ft"
+        },
+        {
+          "label": "Ground speed",
+          "value": 539,
+          "unit": "kt"
+        }
+      ],
+      "headline": {
+        "value": "7700",
+        "unit": "",
+        "label": "General emergency"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=20.78752,43.86041,21.91908,44.93839&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739887455,
+      "source": "OpenSky Network",
+      "severity": 7,
+      "momentId": "live-squawk-4bb0e8",
+      "thumbFile": "thumbs/squawk-4bb0e8.jpg"
+    },
+    {
+      "id": "cyclone-ep222026",
+      "kind": "cyclone",
+      "family": "Hazards",
+      "section": "now",
+      "band": "orbit",
+      "archetype": "sensor",
+      "telemetry": "ORBIT · LW IR · TS VANCE · 60 KT · 991 HPA",
+      "title": "Tropical storm Vance",
+      "subtitle": "111 km/h winds · moving NW at 11 km/h · 739 km S of Acapulco",
+      "place": "Eastern Pacific",
+      "lon": -101.9,
+      "lat": 10.5,
+      "camera": {
+        "lon": -101.9,
+        "lat": 10.5,
+        "height": 2600000,
+        "heading": 0,
+        "pitch": -75
+      },
+      "layers": ["cyclones", "clouds", "lightning", "wind"],
+      "time": {
+        "start": 1792724400000,
+        "end": 1793156400000
+      },
+      "metrics": [
+        {
+          "label": "Wind",
+          "value": 111,
+          "unit": "km/h"
+        },
+        {
+          "label": "Pressure",
+          "value": 991,
+          "unit": "hPa"
+        },
+        {
+          "label": "Gale radius",
+          "value": 167,
+          "unit": "km"
+        },
+        {
+          "label": "Forecast",
+          "value": 120,
+          "unit": "h"
+        }
+      ],
+      "headline": {
+        "value": 111,
+        "unit": "km/h",
+        "label": "TS"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-106.69645,4.21182,-97.10355,16.78818&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868840,
+      "source": "NOAA NHC · NHC wind radii · IR: NOAA nowCOAST",
+      "severity": 7.5,
+      "thumbFile": "thumbs/cyclone-ep222026.jpg"
+    },
+    {
+      "id": "lightning--22-146",
+      "kind": "lightning",
+      "family": "Weather",
+      "section": "now",
+      "band": "sky",
+      "archetype": "number",
+      "telemetry": "SKY · LIGHTNING · 15 MIN · 147,090 KM² · 06:45Z",
+      "title": "Thunderstorms · 592 km S of Cairns",
+      "subtitle": "41 lightning-active 0.5° cells, intense strike density in the last 15 min",
+      "place": "592 km S of Cairns",
+      "lon": 146.13071682060476,
+      "lat": -22.23122251384317,
+      "camera": {
+        "lon": 146.13071682060476,
+        "lat": -22.23122251384317,
+        "height": 1389278.948409936,
+        "heading": 0,
+        "pitch": -70
+      },
+      "layers": ["lightning", "clouds"],
+      "time": {
+        "start": 1792727100000,
+        "end": 1792737900000
+      },
+      "metrics": [
+        {
+          "label": "Active area",
+          "value": 147090,
+          "unit": "km²"
+        },
+        {
+          "label": "Active cells",
+          "value": 41,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": "147,090",
+        "unit": "km²",
+        "label": "lightning-active area, 15 min"
+      },
+      "series": [
+        {
+          "t": 1792727100000,
+          "v": 110462
+        },
+        {
+          "t": 1792728000000,
+          "v": 119598
+        },
+        {
+          "t": 1792728900000,
+          "v": 112087
+        },
+        {
+          "t": 1792729800000,
+          "v": 121311
+        },
+        {
+          "t": 1792730700000,
+          "v": 135470
+        },
+        {
+          "t": 1792731600000,
+          "v": 131391
+        },
+        {
+          "t": 1792732500000,
+          "v": 140477
+        },
+        {
+          "t": 1792733400000,
+          "v": 139776
+        },
+        {
+          "t": 1792734300000,
+          "v": 139813
+        },
+        {
+          "t": 1792735200000,
+          "v": 151432
+        },
+        {
+          "t": 1792736100000,
+          "v": 144057
+        },
+        {
+          "t": 1792737000000,
+          "v": 153871
+        },
+        {
+          "t": 1792737900000,
+          "v": 147090
+        }
+      ],
+      "seriesLabel": "lightning-active area (km²) per 15 min",
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=143.83260,-25.06760,148.42883,-19.39485&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792737900000,
+      "source": "NOAA nowCOAST lightning density (Vaisala NLDN/GLD360)",
+      "severity": 4.945,
+      "thumbFile": "thumbs/lightning--22-146.jpg"
+    },
+    {
+      "id": "cyclone-EONET_25457",
+      "kind": "cyclone",
+      "family": "Hazards",
+      "section": "now",
+      "band": "orbit",
+      "archetype": "sensor",
+      "telemetry": "ORBIT · LW IR · TC AGUEDA · 50 KT",
+      "title": "Tropical Cyclone Agueda",
+      "subtitle": "93 km/h winds · 1,375 km N of Antananarivo",
+      "place": "South Indian Ocean",
+      "lon": 49.7,
+      "lat": -6.7,
+      "camera": {
+        "lon": 49.7,
+        "lat": -6.7,
+        "height": 2600000,
+        "heading": 0,
+        "pitch": -75
+      },
+      "layers": ["cyclones", "clouds", "lightning", "wind"],
+      "time": {
+        "start": 1792692000000,
+        "end": 1792692000000
+      },
+      "metrics": [
+        {
+          "label": "Wind",
+          "value": 93,
+          "unit": "km/h"
+        }
+      ],
+      "headline": {
+        "value": 93,
+        "unit": "km/h",
+        "label": "TS"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=44.95144,-12.98818,54.44856,-0.41182&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868840,
+      "source": "NASA EONET · IR: NOAA nowCOAST",
+      "severity": 7.25,
+      "thumbFile": "thumbs/cyclone-EONET_25457.jpg"
+    },
+    {
+      "id": "gnss-baltic",
+      "kind": "gnss",
+      "family": "Infra",
+      "section": "now",
+      "band": "sky",
+      "archetype": "number",
+      "telemetry": "SKY · GNSS · 17% DEGRADED · 102 AIRCRAFT · 250 NM",
+      "title": "GNSS interference · Baltic Sea",
+      "subtitle": "17 of 102 aircraft report degraded GPS integrity (low NIC/NACp)",
+      "place": "Baltic Sea",
+      "lon": 21,
+      "lat": 56,
+      "camera": {
+        "lon": 21,
+        "lat": 56,
+        "height": 1100000,
+        "heading": 0,
+        "pitch": -80
+      },
+      "layers": ["gnss", "flights"],
+      "metrics": [
+        {
+          "label": "Degraded aircraft",
+          "value": 17,
+          "unit": ""
+        },
+        {
+          "label": "Sampled aircraft",
+          "value": 102,
+          "unit": ""
+        },
+        {
+          "label": "Anomalous cells",
+          "value": 0,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": 17,
+        "unit": "%",
+        "label": "aircraft with degraded GNSS"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=16.78309,52.85591,25.21691,59.14409&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739888000,
+      "source": "adsb.lol NIC/NACp · gpsjam.org bands (a proxy for jamming, not proof)",
+      "severity": 3.1333333333333333,
+      "thumbFile": "thumbs/gnss-baltic.jpg"
+    },
+    {
+      "id": "quake-us6000u43g",
+      "kind": "earthquake",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "sensor",
+      "telemetry": "GROUND · M7.0 · 18 KM DEEP · 14:33:40Z",
+      "title": "M7.0 earthquake",
+      "subtitle": "Largest in 24 h · 17 h ago · 10 other M2.5+ within 400 km this week",
+      "place": "191 km ENE of Nagqu, China",
+      "lon": 93.7797,
+      "lat": 32.3805,
+      "camera": {
+        "lon": 93.7797,
+        "lat": 32.3805,
+        "height": 450000,
+        "heading": 0,
+        "pitch": -65
+      },
+      "layers": ["earthquakes"],
+      "time": {
+        "start": 1792679620353,
+        "end": 1792739868848
+      },
+      "metrics": [
+        {
+          "label": "Magnitude",
+          "value": 7,
+          "unit": "M"
+        },
+        {
+          "label": "Depth",
+          "value": 18,
+          "unit": "km"
+        },
+        {
+          "label": "M2.5+ in 24 h",
+          "value": 47,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": "7.0",
+        "unit": "M",
+        "label": "magnitude"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=92.82236,31.30253,94.73704,33.45847&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868825,
+      "source": "USGS",
+      "severity": 7,
+      "thumbFile": "thumbs/quake-us6000u43g.jpg"
+    },
+    {
+      "id": "radar-salt-lake-city",
+      "kind": "radar",
+      "family": "Weather",
+      "section": "now",
+      "band": "sky",
+      "archetype": "sensor",
+      "telemetry": "SKY · MRMS · 41 DBZ · SALT LAKE CITY · 07:07Z",
+      "title": "Heavy rain over Salt Lake City",
+      "subtitle": "Radar returns to ~41 dBZ within 45 km · 15 heavy-echo pixels",
+      "place": "Salt Lake City",
+      "lon": -111.89,
+      "lat": 40.76,
+      "camera": {
+        "lon": -111.89,
+        "lat": 40.76,
+        "height": 160000,
+        "heading": 0,
+        "pitch": -55
+      },
+      "layers": ["radar", "lightning"],
+      "time": {
+        "start": 1792736407000,
+        "end": 1792739267000
+      },
+      "metrics": [
+        {
+          "label": "Peak reflectivity",
+          "value": 41,
+          "unit": "dBZ"
+        },
+        {
+          "label": "Frames",
+          "value": 13,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": 41,
+        "unit": "dBZ",
+        "label": "peak reflectivity"
+      },
+      "series": [
+        {
+          "t": 1792736407000,
+          "v": 33
+        },
+        {
+          "t": 1792736649000,
+          "v": 33
+        },
+        {
+          "t": 1792736881000,
+          "v": 41
+        },
+        {
+          "t": 1792737125000,
+          "v": 41
+        },
+        {
+          "t": 1792737351000,
+          "v": 33
+        },
+        {
+          "t": 1792737603000,
+          "v": 41
+        },
+        {
+          "t": 1792737850000,
+          "v": 41
+        },
+        {
+          "t": 1792738079000,
+          "v": 33
+        },
+        {
+          "t": 1792738327000,
+          "v": 41
+        },
+        {
+          "t": 1792738565000,
+          "v": 41
+        },
+        {
+          "t": 1792738809000,
+          "v": 41
+        },
+        {
+          "t": 1792739044000,
+          "v": 41
+        },
+        {
+          "t": 1792739267000,
+          "v": 41
+        }
+      ],
+      "seriesLabel": "peak reflectivity (dBZ) within 45 km",
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-112.42368,40.22101,-111.35632,41.29899&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739267000,
+      "source": "NOAA MRMS base reflectivity via nowCOAST (dBZ read from colour scale)",
+      "severity": 4.1,
+      "thumbFile": "thumbs/radar-salt-lake-city.jpg"
+    },
+    {
+      "id": "aq-jakarta",
+      "kind": "air-quality",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "number",
+      "telemetry": "GROUND · PM2.5 68 µG/M³ · AQI 189 · CAMS",
+      "title": "Unhealthy air · Jakarta",
+      "subtitle": "PM2.5 AQI 189 · worst of 40 major cities (model, not a monitor)",
+      "place": "Jakarta",
+      "lon": 106.85,
+      "lat": -6.21,
+      "camera": {
+        "lon": 106.85,
+        "lat": -6.21,
+        "height": 60000,
+        "heading": 0,
+        "pitch": -45
+      },
+      "layers": ["air-quality", "fires", "wind"],
+      "metrics": [
+        {
+          "label": "PM2.5 AQI",
+          "value": 189,
+          "unit": ""
+        },
+        {
+          "label": "PM2.5",
+          "value": 68,
+          "unit": "µg/m³"
+        }
+      ],
+      "headline": {
+        "value": 189,
+        "unit": "AQI",
+        "label": "US air quality index"
+      },
+      "series": [
+        {
+          "t": 1792648800000,
+          "v": 51
+        },
+        {
+          "t": 1792652400000,
+          "v": 48.5
+        },
+        {
+          "t": 1792656000000,
+          "v": 47.8
+        },
+        {
+          "t": 1792659600000,
+          "v": 50.1
+        },
+        {
+          "t": 1792663200000,
+          "v": 55.2
+        },
+        {
+          "t": 1792666800000,
+          "v": 89.6
+        },
+        {
+          "t": 1792670400000,
+          "v": 125.7
+        },
+        {
+          "t": 1792674000000,
+          "v": 141.1
+        },
+        {
+          "t": 1792677600000,
+          "v": 155.5
+        },
+        {
+          "t": 1792681200000,
+          "v": 163.4
+        },
+        {
+          "t": 1792684800000,
+          "v": 163.9
+        },
+        {
+          "t": 1792688400000,
+          "v": 160.2
+        },
+        {
+          "t": 1792692000000,
+          "v": 155.1
+        },
+        {
+          "t": 1792695600000,
+          "v": 149
+        },
+        {
+          "t": 1792699200000,
+          "v": 143.4
+        },
+        {
+          "t": 1792702800000,
+          "v": 138.3
+        },
+        {
+          "t": 1792706400000,
+          "v": 138.3
+        },
+        {
+          "t": 1792710000000,
+          "v": 147.6
+        },
+        {
+          "t": 1792713600000,
+          "v": 123.9
+        },
+        {
+          "t": 1792717200000,
+          "v": 93.8
+        },
+        {
+          "t": 1792720800000,
+          "v": 78.7
+        },
+        {
+          "t": 1792724400000,
+          "v": 72.6
+        },
+        {
+          "t": 1792728000000,
+          "v": 70.5
+        },
+        {
+          "t": 1792731600000,
+          "v": 62.6
+        },
+        {
+          "t": 1792735200000,
+          "v": 70.1
+        },
+        {
+          "t": 1792738800000,
+          "v": 68
+        }
+      ],
+      "seriesLabel": "PM2.5 (µg/m³), last 24 h",
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=106.64669,-6.47949,107.05331,-5.94051&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792738800000,
+      "source": "Open-Meteo Air Quality API (CAMS forecast model)",
+      "severity": 2.9833333333333334,
+      "thumbFile": "thumbs/aq-jakarta.jpg"
+    },
+    {
+      "id": "lightning--15-130",
+      "kind": "lightning",
+      "family": "Weather",
+      "section": "now",
+      "band": "sky",
+      "archetype": "sensor",
+      "telemetry": "SKY · LIGHTNING · 15 MIN · 79,459 KM² · 06:45Z",
+      "title": "Lightning cell · 254 km S of Darwin",
+      "subtitle": "31 lightning-active 0.5° cells, intense strike density in the last 15 min",
+      "place": "254 km S of Darwin",
+      "lon": 130.24373698308528,
+      "lat": -14.6711709665922,
+      "camera": {
+        "lon": 130.24373698308528,
+        "lat": -14.6711709665922,
+        "height": 1435334.507588173,
+        "heading": 0,
+        "pitch": -70
+      },
+      "layers": ["lightning", "clouds"],
+      "time": {
+        "start": 1792727100000,
+        "end": 1792737900000
+      },
+      "metrics": [
+        {
+          "label": "Active area",
+          "value": 79459,
+          "unit": "km²"
+        },
+        {
+          "label": "Active cells",
+          "value": 31,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": "79,459",
+        "unit": "km²",
+        "label": "lightning-active area, 15 min"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=127.97186,-17.60157,132.51561,-11.74077&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792737900000,
+      "source": "NOAA nowCOAST lightning density (Vaisala NLDN/GLD360)",
+      "severity": 3.74,
+      "thumbFile": "thumbs/lightning--15-130.jpg"
+    },
+    {
+      "id": "quakes-24h",
+      "kind": "earthquake",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "number",
+      "telemetry": "GROUND · USGS · 47 EVENTS M2.5+ · 24 H",
+      "title": "47 earthquakes M2.5+ in 24 h",
+      "subtitle": "Worldwide · largest M7.0 · 191 km ENE of Nagqu, China",
+      "place": "Worldwide",
+      "lon": 93.86139090909091,
+      "lat": 32.43457272727273,
+      "camera": {
+        "lon": 93.86139090909091,
+        "lat": 32.43457272727273,
+        "height": 18000000,
+        "heading": 0,
+        "pitch": -90
+      },
+      "layers": ["earthquakes"],
+      "time": {
+        "start": 1792653468848,
+        "end": 1792739868848
+      },
+      "metrics": [
+        {
+          "label": "M2.5+ in 24 h",
+          "value": 47,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": 47,
+        "unit": "",
+        "label": "quakes M2.5+ · 24 h"
+      },
+      "series": [
+        {
+          "t": 1792657068848,
+          "v": 3
+        },
+        {
+          "t": 1792660668848,
+          "v": 2
+        },
+        {
+          "t": 1792664268848,
+          "v": 2
+        },
+        {
+          "t": 1792667868848,
+          "v": 2
+        },
+        {
+          "t": 1792671468848,
+          "v": 0
+        },
+        {
+          "t": 1792675068848,
+          "v": 1
+        },
+        {
+          "t": 1792678668848,
+          "v": 0
+        },
+        {
+          "t": 1792682268848,
+          "v": 3
+        },
+        {
+          "t": 1792685868848,
+          "v": 4
+        },
+        {
+          "t": 1792689468848,
+          "v": 6
+        },
+        {
+          "t": 1792693068848,
+          "v": 2
+        },
+        {
+          "t": 1792696668848,
+          "v": 2
+        },
+        {
+          "t": 1792700268848,
+          "v": 2
+        },
+        {
+          "t": 1792703868848,
+          "v": 1
+        },
+        {
+          "t": 1792707468848,
+          "v": 3
+        },
+        {
+          "t": 1792711068848,
+          "v": 0
+        },
+        {
+          "t": 1792714668848,
+          "v": 3
+        },
+        {
+          "t": 1792718268848,
+          "v": 2
+        },
+        {
+          "t": 1792721868848,
+          "v": 2
+        },
+        {
+          "t": 1792725468848,
+          "v": 3
+        },
+        {
+          "t": 1792729068848,
+          "v": 0
+        },
+        {
+          "t": 1792732668848,
+          "v": 0
+        },
+        {
+          "t": 1792736268848,
+          "v": 2
+        },
+        {
+          "t": 1792739868848,
+          "v": 2
+        }
+      ],
+      "seriesLabel": "M2.5+ quakes per hour",
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=61.93107,-3.49787,125.79171,68.36702&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868825,
+      "source": "USGS",
+      "severity": 2,
+      "thumbFile": "thumbs/quakes-24h.jpg"
+    },
+    {
+      "id": "launch-7766f3bb-674c-4c71-b986-963bd633fcfe",
+      "kind": "launch",
+      "family": "Orbit",
+      "section": "now",
+      "band": "orbit",
+      "archetype": "sensor",
+      "telemetry": "ORBIT · T+00:06 · ELECTRON · SSO",
+      "title": "Electron | We're Not Hawking Around (3x HawkEye 360)",
+      "subtitle": "Rocket Lab · launched 7 min ago · Rocket Lab Launch Complex 1A",
+      "place": "Rocket Lab Launch Complex 1, Mahia Peninsula, New Zealand",
+      "lon": 177.864469,
+      "lat": -39.262833,
+      "camera": {
+        "lon": 177.864469,
+        "lat": -39.262833,
+        "height": 30000,
+        "heading": 0,
+        "pitch": -40
+      },
+      "layers": ["launches", "iss"],
+      "time": {
+        "start": 1792735860000,
+        "end": 1792743060000
+      },
+      "metrics": [
+        {
+          "label": "NET",
+          "value": "2026-10-23T07:11:00.000Z",
+          "unit": "utc"
+        },
+        {
+          "label": "Orbit",
+          "value": "SSO",
+          "unit": ""
+        },
+        {
+          "label": "Status",
+          "value": "In Flight",
+          "unit": ""
+        }
+      ],
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=176.82026,-40.34081,178.90868,-38.18486&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739870188,
+      "source": "The Space Devs · Launch Library 2 · ascent azimuth indicative",
+      "severity": 3,
+      "thumbFile": "thumbs/launch-7766f3bb-674c-4c71-b986-963bd633fcfe.jpg"
+    },
+    {
+      "id": "eye-tfl-00001.07450",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 07450 · PICCADILLY CIRCUS · 07:18:09Z",
+      "title": "Piccadilly Circus",
+      "subtitle": "London · Transport for London · looking N",
+      "place": "London",
+      "lon": -0.13484,
+      "lat": 51.5096,
+      "camera": {
+        "lon": -0.13484,
+        "lat": 51.5096,
+        "height": 600,
+        "heading": 337.5,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "N",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/tfl-00001.07450?label=Piccadilly+Circus&city=London&lat=51.509600&lon=-0.134840&heading=338&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "tfl-00001.07450",
+        "headingDeg": 337.5,
+        "provider": "Transport for London",
+        "city": "London"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-0.14567,51.50062,-0.12401,51.51858&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739889195,
+      "source": "Transport for London public camera",
+      "severity": 1.7,
+      "thumbFile": "thumbs/eye-tfl-00001.07450.jpg"
+    },
+    {
+      "id": "military--31-116",
+      "kind": "military",
+      "family": "Sky",
+      "section": "now",
+      "band": "sky",
+      "archetype": "sensor",
+      "telemetry": "SKY · MIL · 13 AIRCRAFT · PC21",
+      "title": "Military air activity · Australia",
+      "subtitle": "13 military aircraft · PC21 · 60 km N of Perth",
+      "place": "60 km N of Perth",
+      "lon": 115.9501956923077,
+      "lat": -31.418267230769228,
+      "camera": {
+        "lon": 115.9501956923077,
+        "lat": -31.418267230769228,
+        "height": 900000,
+        "heading": 0,
+        "pitch": -70
+      },
+      "layers": ["military"],
+      "metrics": [
+        {
+          "label": "In area",
+          "value": 13,
+          "unit": ""
+        },
+        {
+          "label": "Tracked worldwide",
+          "value": 125,
+          "unit": ""
+        }
+      ],
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=113.89754,-33.75388,118.00285,-29.08266&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739869930,
+      "source": "adsb.lol",
+      "severity": 2.5,
+      "thumbFile": "thumbs/military--31-116.jpg"
+    },
+    {
+      "id": "eye-tfl-00001.06502",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 06502 · TRAFALGAR SQUARE · 07:18:09Z",
+      "title": "Trafalgar Square",
+      "subtitle": "London · Transport for London · looking SE",
+      "place": "London",
+      "lon": -0.12765,
+      "lat": 51.5074,
+      "camera": {
+        "lon": -0.12765,
+        "lat": 51.5074,
+        "height": 600,
+        "heading": 135,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "SE",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/tfl-00001.06502?label=Trafalgar+Square&city=London&lat=51.507400&lon=-0.127650&heading=135&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "tfl-00001.06502",
+        "headingDeg": 135,
+        "provider": "Transport for London",
+        "city": "London"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-0.13847,51.49842,-0.11683,51.51638&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739889203,
+      "source": "Transport for London public camera",
+      "severity": 1.65,
+      "thumbFile": "thumbs/eye-tfl-00001.06502.jpg"
+    },
+    {
+      "id": "jet--48-144",
+      "kind": "jet",
+      "family": "Weather",
+      "section": "now",
+      "band": "sky",
+      "archetype": "sensor",
+      "telemetry": "SKY · 250 HPA · FL340 · 139 KT · 48.0S 144.0E",
+      "title": "Jet stream core · 258 km/h",
+      "subtitle": "Fastest 250 hPa wind on a 12° global grid · 1,136 km S of Melbourne",
+      "place": "1,136 km S of Melbourne",
+      "lon": 144,
+      "lat": -48,
+      "camera": {
+        "lon": 144,
+        "lat": -48,
+        "height": 7500000,
+        "heading": 0,
+        "pitch": -90
+      },
+      "layers": ["jet", "clouds"],
+      "metrics": [
+        {
+          "label": "Core speed",
+          "value": 258,
+          "unit": "km/h"
+        },
+        {
+          "label": "Level",
+          "value": 250,
+          "unit": "hPa"
+        }
+      ],
+      "headline": {
+        "value": 139,
+        "unit": "kt",
+        "label": "jet core at FL340"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=118.82803,-70.45778,169.17197,-25.54222&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792738800000,
+      "source": "Open-Meteo forecast API · 250 hPa (12° grid)",
+      "severity": 2.475,
+      "thumbFile": "thumbs/jet--48-144.jpg"
+    },
+    {
+      "id": "eye-tfl-00001.03500",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 03500 · TOWER BRIDGE APPROACH · 07:18:09Z",
+      "title": "Tower Bridge approach",
+      "subtitle": "London · Transport for London · looking NE",
+      "place": "London",
+      "lon": -0.07368,
+      "lat": 51.509,
+      "camera": {
+        "lon": -0.07368,
+        "lat": 51.509,
+        "height": 600,
+        "heading": 22.5,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "NE",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/tfl-00001.03500?label=Tower+Bridge+App.%2FEast+Smithfield&city=London&lat=51.509000&lon=-0.073680&heading=23&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "tfl-00001.03500",
+        "headingDeg": 22.5,
+        "provider": "Transport for London",
+        "city": "London"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-0.08450,51.50002,-0.06286,51.51798&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739889341,
+      "source": "Transport for London public camera",
+      "severity": 1.5999999999999999,
+      "thumbFile": "thumbs/eye-tfl-00001.03500.jpg"
+    },
+    {
+      "id": "airport-LHR",
+      "kind": "airport",
+      "family": "Sky",
+      "section": "now",
+      "band": "sky",
+      "archetype": "sensor",
+      "telemetry": "SKY · LHR · 70 AIRCRAFT < FL130 · 50 KM",
+      "title": "Busiest airspace · LHR",
+      "subtitle": "70 aircraft below 4 km within 50 km of London Heathrow",
+      "place": "London Heathrow",
+      "lon": -0.45,
+      "lat": 51.47,
+      "camera": {
+        "lon": -0.45,
+        "lat": 51.47,
+        "height": 60000,
+        "heading": 20,
+        "pitch": -45
+      },
+      "layers": ["flights", "ga", "helicopters"],
+      "metrics": [
+        {
+          "label": "Low aircraft",
+          "value": 70,
+          "unit": ""
+        },
+        {
+          "label": "Airborne worldwide",
+          "value": 5740,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": 70,
+        "unit": "",
+        "label": "aircraft below FL130"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-0.88263,51.11068,-0.01737,51.82932&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739887455,
+      "source": "OpenSky Network",
+      "severity": 1.5,
+      "thumbFile": "thumbs/airport-LHR.jpg"
+    },
+    {
+      "id": "eye-nsw-58472235-c8aa-4ac4-8bbd-10ea610899c8",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 899C8 · SYDNEY HARBOUR BRIDGE · 07:18:09Z",
+      "title": "Sydney Harbour Bridge",
+      "subtitle": "Sydney · Live Traffic NSW · looking SW",
+      "place": "Sydney",
+      "lon": 151.205623,
+      "lat": -33.865088,
+      "camera": {
+        "lon": 151.205623,
+        "lat": -33.865088,
+        "height": 600,
+        "heading": 225,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "SW",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/nsw-58472235-c8aa-4ac4-8bbd-10ea610899c8?label=York+Street+at+Margaret+Street+looking+north+towards+Sydney+Harbour+Bridge.&city=SYD+MET&lat=-33.865088&lon=151.205623&heading=225&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "nsw-58472235-c8aa-4ac4-8bbd-10ea610899c8",
+        "headingDeg": 225,
+        "provider": "Live Traffic NSW",
+        "city": "SYD MET"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=151.19751,-33.87407,151.21374,-33.85610&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739889979,
+      "source": "Live Traffic NSW public camera",
+      "severity": 1.55,
+      "thumbFile": "thumbs/eye-nsw-58472235-c8aa-4ac4-8bbd-10ea610899c8.jpg"
+    },
+    {
+      "id": "starlink-shell",
+      "kind": "starlink",
+      "family": "Orbit",
+      "section": "now",
+      "band": "orbit",
+      "archetype": "number",
+      "telemetry": "ORBIT · STARLINK · 10,651 SATS · 367 WITHIN 2,000 KM",
+      "title": "10,651 Starlink satellites in orbit",
+      "subtitle": "367 within 2,000 km of 1,401 km W of San Francisco right now",
+      "place": "1,401 km W of San Francisco",
+      "lon": -138.3690118858408,
+      "lat": 40,
+      "camera": {
+        "lon": -138.3690118858408,
+        "lat": 40,
+        "height": 9000000,
+        "heading": 0,
+        "pitch": -90
+      },
+      "layers": ["starlink"],
+      "metrics": [
+        {
+          "label": "In orbit",
+          "value": 10651,
+          "unit": ""
+        },
+        {
+          "label": "Within 2,000 km",
+          "value": 367,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": "10,651",
+        "unit": "",
+        "label": "Starlink satellites"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-164.75391,13.05066,-111.98412,66.94934&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868848,
+      "source": "CelesTrak TLE · SGP4",
+      "severity": 1.4,
+      "thumbFile": "thumbs/starlink-shell.jpg"
+    },
+    {
+      "id": "bhote-koshi-2026",
+      "kind": "reconstruction",
+      "family": "Hazards",
+      "section": "reconstruction",
+      "band": "ground",
+      "archetype": "sensor",
+      "telemetry": "GROUND · RECON · 20.7 KM CORRIDOR · 20260826",
+      "title": "Bhote Koshi Outburst Flood",
+      "subtitle": "Reconstruction · 16 evidence beats · 2021 vs 2026 imagery",
+      "place": "Rasuwa, Nepal",
+      "lon": 85.3548,
+      "lat": 28.207,
+      "camera": {
+        "lon": 85.3548,
+        "lat": 28.207,
+        "height": 5412,
+        "heading": 344,
+        "pitch": -39,
+        "targetHeight": 1536
+      },
+      "layers": ["floods"],
+      "time": {
+        "start": 1787702400000,
+        "end": 1787745600000,
+        "at": 1787722200000
+      },
+      "metrics": [
+        {
+          "label": "Corridor",
+          "value": 20.7,
+          "unit": "km"
+        },
+        {
+          "label": "Witness anchors",
+          "value": 1,
+          "unit": ""
+        },
+        {
+          "label": "Field reports",
+          "value": 4,
+          "unit": ""
+        }
+      ],
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=85.28599,28.12615,85.42361,28.28785&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": false,
+      "updatedAt": 1787702400000,
+      "source": "GeoPera · Vantor Open Data · bundled event pack",
+      "severity": 4,
+      "thumbFile": "thumbs/bhote-koshi-2026.jpg"
+    },
+    {
+      "id": "eye-nsw-5e35e07b-beda-4590-b9eb-e3d52705242e",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 05242 · GEORGE STREET, RAILWAY · 07:18:10Z",
+      "title": "George Street, Railway Square",
+      "subtitle": "Sydney · Live Traffic NSW · looking NE",
+      "place": "Sydney",
+      "lon": 151.2041,
+      "lat": -33.88291,
+      "camera": {
+        "lon": 151.2041,
+        "lat": -33.88291,
+        "height": 600,
+        "heading": 45,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "NE",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/nsw-5e35e07b-beda-4590-b9eb-e3d52705242e?label=Railway+Square%2C+George+Street+looking+north+towards+Sydney+CBD.&city=SYD+MET&lat=-33.882910&lon=151.204100&heading=45&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "nsw-5e35e07b-beda-4590-b9eb-e3d52705242e",
+        "headingDeg": 45,
+        "provider": "Live Traffic NSW",
+        "city": "SYD MET"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=151.19598,-33.89189,151.21222,-33.87393&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739890281,
+      "source": "Live Traffic NSW public camera",
+      "severity": 1.5,
+      "thumbFile": "thumbs/eye-nsw-5e35e07b-beda-4590-b9eb-e3d52705242e.jpg"
+    },
+    {
+      "id": "fires-29.7--94.2",
+      "kind": "fires",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "sensor",
+      "telemetry": "GROUND · EONET · WIND 8 KM/H → S · 29.7N 94.2W",
+      "title": "Wildfire Star Lake",
+      "subtitle": "1 open wildfire event nearby · smoke drifting S on 8 km/h winds",
+      "place": "117 km E of Houston",
+      "lon": -94.158617,
+      "lat": 29.664158,
+      "camera": {
+        "lon": -94.158617,
+        "lat": 29.664158,
+        "height": 80000,
+        "heading": 177,
+        "pitch": -45
+      },
+      "layers": ["fires", "wind", "air-quality"],
+      "metrics": [
+        {
+          "label": "Events",
+          "value": 1,
+          "unit": ""
+        },
+        {
+          "label": "Wind",
+          "value": 8,
+          "unit": "km/h"
+        },
+        {
+          "label": "Worldwide",
+          "value": 71,
+          "unit": ""
+        }
+      ],
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-94.39122,29.39466,-93.92601,29.93365&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739868840,
+      "source": "NASA EONET wildfire events · wind: Open-Meteo",
+      "severity": 3.02,
+      "thumbFile": "thumbs/fires-29.7--94.2.jpg"
+    },
+    {
+      "id": "eye-fi-c0167400",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 67400 · RUOHOLAHTI, HELSINKI · 07:18:10Z",
+      "title": "Ruoholahti, Helsinki",
+      "subtitle": "Helsinki · Fintraffic · looking N",
+      "place": "Helsinki",
+      "lon": 24.910959,
+      "lat": 60.16591,
+      "camera": {
+        "lon": 24.910959,
+        "lat": 60.16591,
+        "height": 600,
+        "heading": 0,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "N",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/fi-c0167400?label=kt51+Helsinki+Ruoholahti+%28view+00%29&city=Finland&lat=60.165910&lon=24.910959&heading=0&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "fi-c0167400",
+        "headingDeg": 0,
+        "provider": "Fintraffic",
+        "city": "Finland"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=24.89742,60.15693,24.92450,60.17489&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739890048,
+      "source": "Fintraffic public camera",
+      "severity": 1.45,
+      "thumbFile": "thumbs/eye-fi-c0167400.jpg"
+    },
+    {
+      "id": "transit-translink-seq",
+      "kind": "transit",
+      "family": "Ground",
+      "section": "now",
+      "band": "ground",
+      "archetype": "sensor",
+      "telemetry": "GROUND · GTFS-RT · 1574 VEHICLES · 17:17 LOCAL",
+      "title": "Rush hour · South East Queensland",
+      "subtitle": "1574 TransLink vehicles reporting · 0 moving · 17:17 local time",
+      "place": "South East Queensland, Australia",
+      "lon": 153.0450072176869,
+      "lat": -27.496741579591838,
+      "camera": {
+        "lon": 153.0450072176869,
+        "lat": -27.496741579591838,
+        "height": 18000,
+        "heading": 0,
+        "pitch": -50
+      },
+      "layers": ["transit"],
+      "metrics": [
+        {
+          "label": "Vehicles",
+          "value": 1574,
+          "unit": ""
+        },
+        {
+          "label": "Moving",
+          "value": 0,
+          "unit": ""
+        }
+      ],
+      "headline": {
+        "value": 1574,
+        "unit": "",
+        "label": "vehicles live"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=152.96905,-27.58657,153.12096,-27.40691&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739888623,
+      "source": "TransLink GTFS-realtime · TransLink — Queensland Government (CC BY 4.0)",
+      "severity": 1.6,
+      "thumbFile": "thumbs/transit-translink-seq.jpg"
+    },
+    {
+      "id": "eye-tln-103",
+      "kind": "camera",
+      "family": "Eyes",
+      "section": "now",
+      "band": "ground",
+      "archetype": "eye",
+      "telemetry": "GROUND · CAM 103 · VIRU SQUARE · 07:18:10Z",
+      "title": "Viru Square",
+      "subtitle": "Tallinn · City of Tallinn · looking NE",
+      "place": "Tallinn",
+      "lon": 24.752702,
+      "lat": 59.436563,
+      "camera": {
+        "lon": 24.752702,
+        "lat": 59.436563,
+        "height": 600,
+        "heading": 60.10000000000002,
+        "pitch": -25
+      },
+      "layers": ["cctv"],
+      "metrics": [
+        {
+          "label": "Looking",
+          "value": "NE",
+          "unit": ""
+        }
+      ],
+      "media": {
+        "kind": "image",
+        "url": "/api/cctv/frame/tln-103?label=Viru+v%C3%A4ljak+%28suund+Mere+pst+ja+Narva+mnt%29&city=Tallinn&lat=59.436563&lon=24.752702&heading=60&fov=44&pitch=-18&ts=179273988",
+        "refreshMs": 30000,
+        "cameraId": "tln-103",
+        "headingDeg": 60.10000000000002,
+        "provider": "City of Tallinn",
+        "city": "Tallinn"
+      },
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=24.73945,59.42758,24.76595,59.44555&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": true,
+      "updatedAt": 1792739890561,
+      "source": "City of Tallinn public camera",
+      "severity": 1.4,
+      "thumbFile": "thumbs/eye-tln-103.jpg"
+    },
+    {
+      "id": "volcano-EONET_20710",
+      "kind": "volcano",
+      "family": "Hazards",
+      "section": "now",
+      "band": "ground",
+      "archetype": "sensor",
+      "telemetry": "GROUND · VOLCANO · 36.9S 71.4W · EONET",
+      "title": "Nevados del Chillan Volcano",
+      "subtitle": "Open eruption event since 2026-06-15 · 385 km S of Santiago",
+      "place": "Chile",
+      "lon": -71.378,
+      "lat": -36.868,
+      "camera": {
+        "lon": -71.378,
+        "lat": -36.868,
+        "height": 25000,
+        "heading": 0,
+        "pitch": -40
+      },
+      "layers": ["volcanoes"],
+      "metrics": [],
+      "thumbnail": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-71.47906,-36.97580,-71.27694,-36.76020&bboxSR=4326&imageSR=3857&size=600,800&format=jpg&f=image",
+      "live": false,
+      "updatedAt": 1781481600000,
+      "source": "NASA EONET",
+      "severity": 1.3,
+      "thumbFile": "thumbs/volcano-EONET_20710.jpg"
+    }
+  ]
+}

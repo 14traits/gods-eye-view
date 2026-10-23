@@ -245,3 +245,95 @@ export function describePlace(lat, lon, list) {
   if (p.km < 15) return p.name;
   return `${p.km.toLocaleString('en-US')} km ${p.dir} of ${p.name}`;
 }
+
+/**
+ * Neighbourhoods and landmarks in the cities where helicopters gather
+ * (news, police, tours) — [name, lon, lat, radiusKm]. Public centroids,
+ * rounded. Used to name a detection ("circling Midtown Manhattan").
+ */
+export const NEIGHBORHOODS = Object.freeze([
+  ['Midtown Manhattan', -73.9851, 40.7549, 1.6],
+  ['Lower Manhattan', -74.0091, 40.7075, 1.4],
+  ['Upper East Side', -73.9566, 40.7736, 1.5],
+  ['Upper West Side', -73.9754, 40.787, 1.5],
+  ['Central Park', -73.9654, 40.7829, 1.2],
+  ['Harlem', -73.9465, 40.8116, 1.6],
+  ['Chelsea, Manhattan', -74.0014, 40.7465, 0.9],
+  ['Greenwich Village', -74.0037, 40.7336, 0.9],
+  ['the Lower East Side', -73.9861, 40.715, 1.0],
+  ['Washington Heights', -73.9393, 40.8417, 1.4],
+  ['the South Bronx', -73.9162, 40.8166, 2.0],
+  ['the Bronx', -73.8648, 40.8448, 4.0],
+  ['Downtown Brooklyn', -73.9857, 40.6928, 1.2],
+  ['Williamsburg, Brooklyn', -73.9573, 40.7081, 1.4],
+  ['Brooklyn', -73.9442, 40.6782, 5.0],
+  ['Long Island City', -73.9485, 40.7447, 1.4],
+  ['Queens', -73.7949, 40.7282, 6.0],
+  ['Staten Island', -74.1502, 40.5795, 6.0],
+  ['Jersey City', -74.0776, 40.7282, 2.5],
+  ['Hoboken', -74.0324, 40.744, 1.0],
+  ['Newark', -74.1724, 40.7357, 3.0],
+  ['JFK Airport', -73.7781, 40.6413, 3.0],
+  ['LaGuardia Airport', -73.874, 40.7769, 1.6],
+  ['Newark Airport', -74.1745, 40.6895, 2.5],
+  ['Downtown Los Angeles', -118.2468, 34.0407, 2.0],
+  ['Hollywood', -118.3287, 34.0928, 2.0],
+  ['Koreatown, Los Angeles', -118.3009, 34.0618, 1.5],
+  ['South Los Angeles', -118.2827, 33.9897, 3.5],
+  ['Santa Monica', -118.4912, 34.0195, 2.5],
+  ['Venice, Los Angeles', -118.4695, 33.985, 1.6],
+  ['Long Beach', -118.1937, 33.7701, 4.0],
+  ['Pasadena', -118.1445, 34.1478, 3.0],
+  ['Burbank', -118.309, 34.1808, 3.0],
+  ['the San Fernando Valley', -118.45, 34.2, 8.0],
+  ['Inglewood', -118.3531, 33.9617, 2.5],
+  ['Compton', -118.2201, 33.8958, 2.5],
+  ['LAX', -118.4085, 33.9416, 2.5],
+  ['Anaheim', -117.9145, 33.8366, 3.5],
+  ['Westminster, London', -0.1357, 51.4975, 1.4],
+  ['the City of London', -0.0918, 51.5155, 1.2],
+  ['Canary Wharf', -0.0235, 51.5054, 1.2],
+  ['Camden, London', -0.1426, 51.539, 1.6],
+  ['Hackney, London', -0.0553, 51.545, 2.0],
+  ['Brixton, London', -0.1145, 51.4613, 1.6],
+  ['Stratford, London', -0.0035, 51.5413, 1.6],
+  ['Croydon', -0.0982, 51.3762, 3.0],
+  ['Heathrow', -0.4543, 51.47, 3.0],
+  ['the Loop, Chicago', -87.6298, 41.8837, 1.4],
+  ['the South Side, Chicago', -87.62, 41.78, 5.0],
+  ['the West Side, Chicago', -87.72, 41.88, 4.0],
+  ['Downtown San Francisco', -122.4014, 37.7881, 1.5],
+  ['the Mission, San Francisco', -122.4194, 37.7599, 1.4],
+  ['Oakland', -122.2711, 37.8044, 4.0],
+  ['Downtown Seattle', -122.3321, 47.6062, 1.5],
+  ['Downtown Houston', -95.3698, 29.7604, 2.0],
+  ['Downtown Dallas', -96.797, 32.7767, 2.0],
+  ['Downtown Miami', -80.1918, 25.7743, 1.6],
+  ['Miami Beach', -80.13, 25.7907, 2.5],
+  ['Downtown Atlanta', -84.388, 33.749, 2.0],
+  ['Downtown Phoenix', -112.074, 33.4484, 2.5],
+  ['Las Vegas Strip', -115.1728, 36.1147, 2.5],
+  ['Downtown Toronto', -79.3832, 43.6532, 2.0],
+  ['Central Paris', 2.3488, 48.8534, 2.5],
+  ['La Défense', 2.2385, 48.8918, 1.4],
+  ['Mitte, Berlin', 13.4049, 52.52, 2.5],
+  ['Central Sydney', 151.2093, -33.8688, 2.0],
+  ['Shinjuku, Tokyo', 139.7036, 35.6938, 2.0],
+  ['Chiyoda, Tokyo', 139.7536, 35.6938, 2.0],
+]);
+
+/**
+ * The most local name for a point: a neighbourhood when it is inside one,
+ * else "N km DIR of City". Returns { name, local:boolean }.
+ */
+export function localPlace(lat, lon) {
+  let best = null;
+  for (const [name, plon, plat, r] of NEIGHBORHOODS) {
+    if (Math.abs(plat - lat) > 0.2) continue;
+    const km = haversineKm(lat, lon, plat, plon);
+    if (km <= r * 1.35 && (!best || km / r < best.score))
+      best = { name, score: km / r };
+  }
+  if (best) return { name: best.name, local: true };
+  return { name: describePlace(lat, lon), local: false };
+}

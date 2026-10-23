@@ -59,3 +59,28 @@ if (params.get('labels') !== '0') {
   globe.on('camera', drawLabels);
   setInterval(drawLabels, 1000);
 }
+
+// ?moment=empire-state&speed=30 plays a Moment on load; its events print in the HUD.
+const momentLines = [];
+globe.on('moment', (e) => {
+  if (!showHud) return;
+  const it = e.item || {};
+  const line =
+    e.type === 'chat'
+      ? `💬 ${it.handle}: ${it.text}`
+      : e.type === 'post'
+        ? `▤ ${it.kind} · ${it.handle}: ${it.text}`
+        : e.type === 'capture'
+          ? `◉ ${it.firstEyes ? 'FIRST EYES ' : ''}@${it.handle} · ${it.title}`
+          : e.type === 'beat'
+            ? `● ${it.title}`
+            : `[${e.type}]`;
+  momentLines.push(line);
+  while (momentLines.length > 8) momentLines.shift();
+  hud.textContent = momentLines.join('\n');
+});
+if (params.get('moment'))
+  globe.playMoment(params.get('moment'), {
+    speed: Number(params.get('speed')) || undefined,
+    autoplay: params.get('autoplay') !== '0',
+  });

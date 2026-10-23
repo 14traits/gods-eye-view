@@ -1,0 +1,806 @@
+/* ------------------------------------------------------------------ */
+/* Today: the daily brief (DESIGN.md §12.3)                           */
+/* ------------------------------------------------------------------ */
+
+/* Shared honesty labels */
+.tag-ill,
+.tag-real {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.tag-ill {
+  color: #e9d8ff;
+  background: rgba(179, 157, 255, 0.18);
+  box-shadow: inset 0 0 0 0.5px rgba(179, 157, 255, 0.45);
+}
+
+.tag-real {
+  color: #c9f7d6;
+  background: rgba(48, 209, 88, 0.16);
+  box-shadow: inset 0 0 0 0.5px rgba(48, 209, 88, 0.4);
+}
+
+.glass-card {
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0.025)
+  );
+  box-shadow:
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 0.5px var(--hairline);
+}
+
+/* Header: date kicker, greeting, UTC */
+.today-hero {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+.today-date {
+  flex-basis: 100%;
+  padding: 0 calc(var(--gutter) + var(--safe-r)) 2px
+    calc(var(--gutter) + var(--safe-l));
+  margin-top: -4px;
+  color: var(--b-sky);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.today-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+  margin: 0;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.today-time {
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+.today-hero .feed-clock b {
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.fresh-chip {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 14px;
+  color: #c9f7d6;
+  background: rgba(48, 209, 88, 0.14);
+  box-shadow: inset 0 0 0 0.5px rgba(48, 209, 88, 0.35);
+  font-size: 0.625rem;
+  white-space: nowrap;
+}
+
+.fresh-chip[hidden] {
+  display: none;
+}
+
+.fresh-chip.in {
+  animation: fresh-in 4.2s var(--ease-out) both;
+}
+
+@keyframes fresh-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  8%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The brief */
+.brief {
+  display: grid;
+  gap: 12px;
+  padding: 16px calc(12px + var(--safe-r)) 6px calc(12px + var(--safe-l));
+}
+
+.bf-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 16px 6px;
+}
+
+.bf-h h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-headline);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.bf-h .tele {
+  color: var(--ink-3);
+  font-size: 0.625rem;
+}
+
+.bf-h .chev {
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+.bf-rows,
+[data-tonight],
+[data-watch] {
+  display: grid;
+  padding: 0 4px 6px;
+}
+
+.bf-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  text-align: left;
+  color: var(--ink);
+  transition: background var(--dur-1) linear;
+}
+
+button.bf-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+button.bf-row:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bf-row + .bf-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 34px;
+  right: 12px;
+  height: 0.5px;
+  background: var(--hairline);
+}
+
+.bf-row .bd {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--band, var(--ink-3));
+  box-shadow: 0 0 10px var(--band, transparent);
+}
+
+.bf-row[data-band='orbit'] {
+  --band: var(--b-orbit);
+}
+.bf-row[data-band='sky'] {
+  --band: var(--b-sky);
+}
+.bf-row[data-band='ground'] {
+  --band: var(--b-ground);
+}
+.bf-row[data-band='inside'] {
+  --band: var(--b-inside);
+}
+
+.bf-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bf-main b {
+  font-size: var(--t-sub);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bf-main small {
+  color: var(--ink-3);
+  font-size: var(--t-cap);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bf-when {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 0.5625rem;
+}
+
+.bf-ic {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  color: var(--band, var(--ink-2));
+  background: color-mix(in srgb, var(--band, #fff) 14%, transparent);
+}
+
+.bf-ok {
+  color: var(--ok);
+}
+
+.bf-row .chev {
+  color: var(--ink-4);
+}
+
+.bf-add {
+  color: var(--tint);
+  font-size: var(--t-foot);
+}
+
+.bf-add .i {
+  font-size: 1.05rem;
+}
+
+.bf-calm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  color: var(--ink-2);
+  font-size: var(--t-foot);
+}
+
+.bf-calm .i {
+  color: var(--ok);
+}
+
+.bf-ph i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bf-ph span {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Today's Moment: plays inline */
+.bf-moment {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  border-radius: 22px;
+  overflow: hidden;
+  text-align: left;
+  color: #fff;
+  background: radial-gradient(120% 90% at 50% 30%, #18243a, #07090d);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.16),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+  isolation: isolate;
+  transition: transform var(--dur-2) var(--spring);
+}
+
+.bf-moment:active {
+  transform: scale(0.985);
+}
+
+.bf-mimg,
+.bf-mcanvas,
+.bf-mshade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bf-mimg {
+  object-fit: cover;
+  opacity: 0;
+  filter: saturate(0.6) brightness(0.62) contrast(1.1);
+  transition: opacity 600ms linear;
+}
+
+.bf-mimg.loaded {
+  opacity: 1;
+}
+
+.bf-mshade {
+  background:
+    linear-gradient(180deg, rgba(5, 7, 11, 0.7) 0, rgba(5, 7, 11, 0) 34%),
+    linear-gradient(0deg, rgba(5, 7, 11, 0.92) 0, rgba(5, 7, 11, 0) 52%);
+  pointer-events: none;
+}
+
+.bf-mtop {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.625rem;
+}
+
+.bf-mk {
+  color: var(--b-inside);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.bf-mbody {
+  position: absolute;
+  left: 16px;
+  right: 72px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bf-mtitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 750;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.bf-msub {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--t-cap);
+  line-height: 1.3;
+}
+
+.bf-mplay {
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  color: #050607;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  transition: transform var(--dur-2) var(--spring);
+}
+
+.bf-moment:hover .bf-mplay {
+  transform: scale(1.06);
+}
+
+.bf-mclock {
+  position: absolute;
+  top: 36px;
+  left: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.5625rem;
+}
+
+.bf-moment:not(.ready) .bf-mplay {
+  opacity: 0.4;
+}
+
+/* Your sky now (a button) + Overhead tonight */
+.bf-sky {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px 12px 12px;
+  text-align: left;
+  color: var(--ink);
+  transition:
+    background var(--dur-1) linear,
+    transform var(--dur-2) var(--spring);
+}
+
+.bf-sky:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bf-sky:active {
+  transform: scale(0.99);
+}
+
+.bf-dome {
+  flex: none;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+.bf-dome .dome {
+  width: 92px;
+  height: 92px;
+}
+
+.bf-skytxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bf-skyk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--b-sky);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.bf-skyk .live-dot {
+  --fam: var(--b-sky);
+  width: 5px;
+  height: 5px;
+}
+
+.bf-skyh {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.bf-skytxt small {
+  color: var(--ink-3);
+  font-size: var(--t-cap);
+  line-height: 1.3;
+}
+
+.bf-sky > .chev {
+  flex: none;
+  color: var(--ink-4);
+}
+
+.bf-tonight .bf-when {
+  color: var(--b-orbit);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+/* Sections below the brief */
+.feed-section-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 22px calc(var(--gutter) + var(--safe-r)) 0
+    calc(var(--gutter) + var(--safe-l));
+}
+
+.feed-section-h h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-title3);
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.feed-section-h .tele {
+  color: var(--ink-3);
+  font-size: 0.5625rem;
+}
+
+#view-today .bandbar {
+  margin-top: 6px;
+}
+
+/* Sky dome (shared by the widget and the sheet) */
+.dome .dm-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 0.8;
+}
+
+.dome .dm-horizon {
+  fill: none;
+  stroke: rgba(163, 216, 255, 0.35);
+  stroke-width: 1;
+}
+
+.dome .dm-card {
+  fill: var(--ink-3);
+  font: 600 10px var(--mono);
+  text-anchor: middle;
+}
+
+.dome .dm-card.n {
+  fill: #ff6b61;
+}
+
+.dome .dm-el {
+  fill: var(--ink-4);
+  font: 500 8px var(--mono);
+}
+
+.dome .dm-ac path {
+  fill: var(--b-sky);
+  stroke: #050607;
+  stroke-width: 0.8;
+}
+
+.dome .dm-sat rect {
+  fill: var(--b-orbit);
+}
+
+.dome .dm-iss circle {
+  fill: #fff;
+}
+
+.dome .dm-iss .ring {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.5;
+}
+
+.dome .dm-iss text {
+  fill: #fff;
+  font: 700 9px var(--mono);
+}
+
+.dome .dm-you {
+  fill: var(--b-inside);
+}
+
+/* Your sky now sheet */
+.sky-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 0.625rem;
+  padding-top: 2px;
+}
+
+.sky-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 10px;
+  padding: 8px 0 4px;
+}
+
+.sky-dome .dome {
+  width: min(300px, 78vw);
+  height: auto;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.5));
+}
+
+.sky-count {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  max-width: 420px;
+  gap: 8px;
+}
+
+.sky-count div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sky-count b {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.sky-count span {
+  color: var(--ink-3);
+  font-size: var(--t-cap2);
+}
+
+.sky-iss {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(179, 157, 255, 0.18),
+    rgba(179, 157, 255, 0.05)
+  );
+  box-shadow: inset 0 0 0 0.5px rgba(179, 157, 255, 0.35);
+}
+
+.sky-iss > .i {
+  flex: none;
+  font-size: 1.4rem;
+  color: var(--b-orbit);
+}
+
+.sky-iss div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sky-iss b {
+  font-size: var(--t-sub);
+}
+
+.sky-iss span {
+  color: var(--ink-2);
+  font-size: var(--t-cap);
+}
+
+.sky-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 14px;
+  text-align: left;
+  color: var(--ink);
+  position: relative;
+}
+
+.sky-row + .sky-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 54px;
+  right: 0;
+  height: 0.5px;
+  background: var(--hairline);
+}
+
+.sky-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sky-ic {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+}
+
+.sky-row[data-band='sky'] .sky-ic {
+  color: var(--b-sky);
+  background: rgba(163, 216, 255, 0.12);
+}
+
+.sky-row[data-band='orbit'] .sky-ic {
+  color: var(--b-orbit);
+  background: rgba(179, 157, 255, 0.12);
+}
+
+.sky-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sky-main b {
+  font-family: var(--mono);
+  font-size: var(--t-foot);
+  font-weight: 600;
+}
+
+.sky-main small {
+  color: var(--ink-3);
+  font-size: var(--t-cap);
+}
+
+.sky-el {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--ink-3);
+  font-size: 0.5rem;
+}
+
+.sky-el b {
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.section-h small {
+  font-family: var(--mono);
+}
+
+@media (min-width: 600px) {
+  .bf-mtitle {
+    font-size: 1.375rem;
+  }
+}
+
+.bf-rows,
+[data-tonight],
+[data-watch],
+.brief {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* UTC rides on the date row, right-aligned; never wraps under the title. */
+.today-hero {
+  position: relative;
+}
+
+.today-hero .feed-clock {
+  position: absolute;
+  top: -4px;
+  right: calc(var(--gutter) + var(--safe-r));
+  padding: 0;
+}

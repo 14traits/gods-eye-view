@@ -208,6 +208,11 @@ export function createMilitaryFeed() {
           cls,
           helicopter: cls === 'helicopter',
           military: true,
+          // adsb.lol dbFlags: 4 = PIA, 8 = LADD (owner privacy programmes).
+          pia: Boolean(a.dbFlags & 4),
+          ladd: Boolean(a.dbFlags & 8),
+          seenAt:
+            Date.now() - (finite(a.seen_pos) ?? finite(a.seen) ?? 0) * 1000,
         });
       }
       return {

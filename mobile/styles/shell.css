@@ -91,22 +91,22 @@
 }
 
 /* The Globe tab's leading view only exists on regular widths. */
-#view-globe {
+#view-live {
   display: none;
 }
 
 /* Phone: the Globe tab and an open situation reveal the stage. */
-.app[data-tab='globe'] .lead,
+.app[data-tab='live'] .lead,
 .app.is-world .lead {
   visibility: hidden;
 }
 
-.app[data-tab='globe'] .lead .view,
+.app[data-tab='live'] .lead .view,
 .app.is-world .lead .view {
   pointer-events: none;
 }
 
-.app:not([data-tab='globe']):not(.is-world) .globe-chrome {
+.app:not([data-tab='live']):not(.is-world) .globe-chrome {
   visibility: hidden;
 }
 

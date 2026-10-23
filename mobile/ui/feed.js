@@ -110,16 +110,19 @@ export function createFeed(
   },
 ) {
   view.innerHTML = `
-    <header class="navbar"><span class="nav-title">Now</span>
-      <div class="nav-trailing"><button type="button" class="near-chip" data-act="near" aria-pressed="false">${icon('location')}<span>Near you</span></button><button class="icon-btn" type="button" data-act="refresh" aria-label="Refresh">${icon('refresh')}</button></div>
+    <header class="navbar"><span class="nav-title">Today</span>
+      <div class="nav-trailing"><span class="fresh-chip tele" hidden></span><button type="button" class="near-chip" data-act="near" aria-pressed="false">${icon('location')}<span>Near you</span></button><button class="icon-btn" type="button" data-act="refresh" aria-label="Refresh">${icon('refresh')}</button></div>
     </header>
     <div class="ptr" aria-hidden="true"><div class="ptr-spinner">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<i style="--i:${i}"></i>`).join('')}</div></div>
     <div class="feed-inner">
-      <div class="feed-hero">
-        <h1 class="large-title">Now</h1>
-        <div class="feed-clock tele" aria-hidden="true"><b data-utc></b><span data-date></span></div>
+      <div class="feed-hero today-hero">
+        <div class="today-date tele" data-date></div>
+        <h1 class="large-title today-title"><span>Your world</span><span class="today-time" data-localtime></span></h1>
+        <div class="feed-clock tele" aria-hidden="true"><b data-utc></b></div>
       </div>
       <div class="title-sub tele"><span class="live-dot"></span><span class="feed-count">Acquiring the planet…</span></div>
+      <div class="brief-slot"></div>
+      <div class="feed-section-h"><h2>Around the world</h2><span class="tele">LIVE · EVERY BAND</span></div>
       <div class="bandbar" role="tablist" aria-label="Altitude" data-hscroll>
         <button role="tab" type="button" data-band="all" aria-selected="true"><span class="bb-n">All</span><span class="bb-r tele" data-count="all">—</span></button>
         ${BANDS.map((b) => `<button role="tab" type="button" data-band="${b.id}" aria-selected="false"><span class="bb-n"><i></i>${b.name}</span><span class="bb-r tele"><span data-count="${b.id}">—</span> · ${BAND_RANGE[b.id]}</span></button>`).join('')}
@@ -150,16 +153,24 @@ export function createFeed(
     const now = new Date();
     const u = utc(now);
     const hd = $('[data-utc]', view);
-    if (hd) hd.textContent = `${u} UTC`.replace('Z UTC', ' UTC');
+    if (hd) hd.textContent = u;
     const dt = $('[data-date]', view);
     if (dt)
       dt.textContent = now
         .toLocaleDateString('en-GB', {
-          weekday: 'short',
-          day: '2-digit',
-          month: 'short',
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
         })
         .toUpperCase();
+    const lt = $('[data-localtime]', view);
+    if (lt) {
+      const txt = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+      if (lt.textContent !== txt) lt.textContent = txt;
+    }
     if (view.hidden) return;
     $$('[data-clock]', fbody).forEach((el) => (el.textContent = u));
     $$('[data-since]', fbody).forEach((el) => {
@@ -206,7 +217,12 @@ export function createFeed(
       s,
       archetype: archetypeOf(s),
       band: bandOf(s),
-      prio: (s.severity || 0) * 10 - i * 0.6 + (s.live ? 2 : 0),
+      prio:
+        (s.severity || 0) * 10 -
+        i * 0.6 +
+        (s.live ? 2 : 0) +
+        // Detections from real data (circling, emergency squawks) lead.
+        (/circling|squawk|quake-cluster/.test(s.kind || '') ? 60 : 0),
     }));
     // The street is the most Citizen-like card: one live eye right after
     // the two most severe situations.
@@ -214,6 +230,9 @@ export function createFeed(
     const eye = ranked.find((x) => x.archetype === 'eye');
     if (eye && ranked[1] && ranked.indexOf(eye) > 2)
       eye.prio = ranked[1].prio - 0.1;
+    // A detection is the first card: never shuffled away by diversity.
+    for (const it of items)
+      if (/circling|squawk|quake-cluster/.test(it.s.kind || '')) it.lead = true;
     return items;
   }
 
@@ -294,7 +313,9 @@ export function createFeed(
     let list = [...items, ...roomItems, ...wit];
     if (band !== 'all') list = list.filter((x) => x.band === band);
     list.sort((a, b) => b.prio - a.prio);
-    return near ? list : diversify(list);
+    if (near) return list;
+    const lead = list.filter((x) => x.lead);
+    return [...lead, ...diversify(list.filter((x) => !x.lead))];
   }
 
   /* ---------- layout ---------- */
@@ -763,8 +784,32 @@ export function createFeed(
     if (loc) globe.setViewer?.({ lon: loc.lon, lat: loc.lat });
   }
 
+  /** Instant first frame: paint cached situations before the live call. */
+  function prime(list) {
+    if (!Array.isArray(list) || !list.length || all.length) return false;
+    all = list;
+    render();
+    count.textContent = `${count.textContent} · last good snapshot`;
+    return true;
+  }
+  let freshTimer = 0;
+  function markUpdated() {
+    const chip = $('.fresh-chip', view);
+    chip.textContent = 'Updated just now';
+    chip.hidden = false;
+    chip.classList.remove('in');
+    void chip.offsetWidth;
+    chip.classList.add('in');
+    clearTimeout(freshTimer);
+    freshTimer = setTimeout(() => (chip.hidden = true), 4200);
+  }
+
   return {
     load,
+    prime,
+    markUpdated,
+    briefSlot: $('.brief-slot', view),
+    titleEl: $('.today-title', view),
     refresh,
     render,
     refreshSocial: socialChanged,

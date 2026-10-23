@@ -19,7 +19,7 @@ import {
 import { createSheet } from './sheet.js';
 import { createTimeRibbon } from './timeRibbon.js';
 import { createEyeViewer } from './eyeViewer.js';
-import { BAND_NAME, llShort, mgrs } from './bands.js';
+import { BAND_NAME, BAND_COLOR, llShort, mgrs } from './bands.js';
 
 /** Altitude → band: where the virtual sensor is. */
 const bandAt = (h) => (h > 100e3 ? 'orbit' : h > 2500 ? 'sky' : 'ground');
@@ -79,6 +79,10 @@ export function createGlobeChrome({
   getSituations,
   isTwoPane,
   onPin,
+  onClock,
+  onClip,
+  onTimelineEvent,
+  onPick,
 }) {
   const eyeViewer = createEyeViewer({
     globe,
@@ -174,7 +178,22 @@ export function createGlobeChrome({
 
   const ribbon = createTimeRibbon(bottom, {
     getWindow: () => globe.timeWindow(),
-    onTime: (d) => globe.setTime(d),
+    onTime: (d) => {
+      // A playing Moment owns the clock until it closes.
+      if (globe.activeMoment()) return;
+      globe.setTime(d);
+      onClock?.(d);
+    },
+    playback: globe.playback,
+    getHistory: () => globe.history(),
+    onClip: (r) => onClip?.(r),
+    onPip: (p) => onTimelineEvent?.(p.ev || p),
+  });
+  // While the planet plays, the time machine (and everything else) follows.
+  globe.on('playback', (st) => {
+    if (!st || globe.activeMoment()) return;
+    ribbon.onPlayback(st);
+    onClock?.(ribbon.time);
   });
 
   /* ---------- HTML labels (engine draws none; ≤ 40, DESIGN.md §5) ---------- */
@@ -588,6 +607,7 @@ export function createGlobeChrome({
       if (onPin?.(p)) return;
       if (p.pinKind === 'eye') return nearestEye(p.lon, p.lat, p.title, 1);
     }
+    if (onPick?.(p)) return;
     if (p.kind === 'situation') {
       const s = (await getSituations()).find(
         (x) => String(x.id) === String(p.id),
@@ -729,6 +749,17 @@ export function createGlobeChrome({
     openCredits,
     setPips(p) {
       basePips = p || [];
+      ribbon.setPips([...basePips, ...extraPips]);
+    },
+    /** Timeline events (globe.timeline()) become band-coloured pips. */
+    setTimeline(evts) {
+      basePips = (evts || []).map((ev) => ({
+        at: ev.t,
+        label: ev.title,
+        color: BAND_COLOR[ev.band] || '#fff',
+        severity: ev.severity || 0,
+        ev,
+      }));
       ribbon.setPips([...basePips, ...extraPips]);
     },
     /** Room posts anchored in time (cleared with []). */

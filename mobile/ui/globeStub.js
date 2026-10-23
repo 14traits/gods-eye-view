@@ -14,12 +14,13 @@ import {
   camFrameUrl,
 } from './stubSituations.js';
 import { stubThumbnail } from './stubCompositor.js';
+import { installRound3 } from './shim3.js';
 
 const R_EARTH = 6371008.8;
 const D2R = Math.PI / 180;
 const R2D = 180 / Math.PI;
 const FOV_HALF = Math.tan(20 * D2R);
-const MIN_H = 60e3;
+const MIN_H = 1500;
 const MAX_H = 42000e3;
 const HOME = { lon: 20, lat: 18, height: 15500e3 };
 
@@ -719,7 +720,18 @@ export async function createGlobe(container, options = {}) {
   const radiusPx = (height = cam.height) => {
     const d = R_EARTH + height;
     const tanT = R_EARTH / Math.sqrt(d * d - R_EARTH * R_EARTH);
-    return (tanT / FOV_HALF) * (Math.min(W, H) / 2) * 1.05;
+    const half = Math.min(W, H) / 2;
+    const sil = (tanT / FOV_HALF) * half * 1.05;
+    // Close in, the silhouette fit under-zooms badly (a 2.5 km camera saw
+    // 200 km). Blend toward the true nadir scale below 1,000 km so a city
+    // block reads at street altitude (Moments orbit at 400–700 m).
+    const nadir = (R_EARTH / (Math.max(1, height) * FOV_HALF)) * half;
+    if (nadir <= sil) return sil;
+    const k = Math.min(
+      1,
+      Math.max(0, Math.log(1000e3 / height) / Math.log(1000e3 / 30e3)),
+    );
+    return sil * (nadir / sil) ** k;
   };
   function basis() {
     const lo = cam.lon * D2R;
@@ -1041,7 +1053,17 @@ export async function createGlobe(container, options = {}) {
     }
     drawWeather(ts);
     drawPins(ts);
+    for (const fn of hooks) {
+      try {
+        fn(ctx, { project, t, ts, W, H, cam });
+      } catch (err) {
+        console.warn('[stub] overlay hook failed', err);
+        hooks.delete(fn);
+      }
+    }
   }
+  /** Round three: shell overlays (Moment trails, reactions) draw here. */
+  const hooks = new Set();
 
   /* ---------- weather (simulated look of the engine's weather family) ---------- */
   const wx = (() => {
@@ -1658,12 +1680,85 @@ export async function createGlobe(container, options = {}) {
       }
       return out;
     },
+    /* ---- round three (API.md): native stub pieces; the rest via shim3 ---- */
+    _hook(fn) {
+      hooks.add(fn);
+      kick();
+      return () => hooks.delete(fn);
+    },
+    history() {
+      const n = Date.now();
+      const pts = contacts.length * 720;
+      return {
+        start: n - 6 * 3600e3,
+        end: n,
+        entities: contacts.length,
+        points: pts,
+      };
+    },
+    async trackOf(id) {
+      const raw = String(id).replace(/^[a-z]+:/, '');
+      const c = contacts.find((x) => String(x.id) === raw);
+      if (!c) return [];
+      const t = Math.max(now(), Date.now());
+      const out = [];
+      const probe = { ...c, base: c.base, orbit: c.orbit };
+      // The simulated recorder: six hours at one point a minute.
+      for (let i = 360; i >= 0; i -= 1) {
+        const ti = t - i * 60e3;
+        propagate(probe, t0, ti);
+        out.push({
+          t: ti,
+          lon: probe.lon,
+          lat: probe.lat,
+          altM:
+            c.kind === 'satellite'
+              ? c.altM
+              : Math.max(0, (c.altM || 0) + Math.sin(i / 9) * 90),
+          headingDeg: probe.headingDeg,
+          speed: c.speed,
+        });
+      }
+      propagate(c, t0, t);
+      return out;
+    },
+    /** Next ISS pass over a point: sampled every 30 s for 24 h, el > 10°. */
+    _issPass(lon, lat) {
+      const iss = contacts.find((c) => c.id === 'iss');
+      if (!iss) return null;
+      const probe = { ...iss };
+      const Re = R_EARTH;
+      const elev = (ti) => {
+        propagate(probe, t0, ti);
+        const d = haversine(lon, lat, probe.lon, probe.lat);
+        const th = d / Re;
+        return (
+          Math.atan2(Math.cos(th) - Re / (Re + iss.altM), Math.sin(th)) * R2D
+        );
+      };
+      const start = Date.now();
+      let pass = null;
+      for (let ti = start; ti < start + 24 * 3600e3; ti += 30e3) {
+        const e = elev(ti);
+        if (e > 10 && !pass) pass = { start: ti, max: ti, maxElevationDeg: e };
+        else if (pass && e > 10 && e > pass.maxElevationDeg) {
+          pass.max = ti;
+          pass.maxElevationDeg = e;
+        } else if (pass && e <= 10) {
+          pass.end = ti;
+          break;
+        }
+      }
+      if (pass) pass.maxElevationDeg = Math.round(pass.maxElevationDeg);
+      return pass;
+    },
     destroy() {
       api.pause();
       ro.disconnect();
       root.remove();
     },
   };
+  installRound3(api, { kind: 'stub', historyHours: 6 });
   kick();
   setTimeout(
     () =>

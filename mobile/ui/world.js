@@ -248,7 +248,8 @@ export function createWorld({
         <button role="tab" type="button" data-tab="brief" aria-selected="${tab === 'brief'}">Brief</button>
         <button role="tab" type="button" data-tab="room" aria-selected="${tab === 'room'}">Room<span class="bt-n tele" data-room-n></span></button>
         <span class="bt-here tele" data-room-here></span>
-      </div>`;
+      </div>
+      <div class="brief-asof tele" data-asof hidden></div>`;
   }
 
   function briefHtml(s) {
@@ -673,7 +674,7 @@ export function createWorld({
       originCard && document.contains(originCard) ? originCard : getCard(s.id);
     const T = targetRect();
     const twoPane = isTwoPane();
-    if (!card || twoPane || app.dataset.tab !== 'now') {
+    if (!card || twoPane || app.dataset.tab !== 'today') {
       app.classList.remove('is-world');
       card?.classList.remove('hero-source');
       current = null;
@@ -738,10 +739,29 @@ export function createWorld({
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /** Everything follows the clock: the open sheet says what time it shows. */
+  let clockT = null;
+  function setClock(d) {
+    clockT = d ? +d : null;
+    const el = $('[data-asof]', sheet.head);
+    if (!el) return;
+    el.hidden = clockT == null;
+    if (clockT != null) {
+      const dm = Math.round((clockT - Date.now()) / 60e3);
+      const rel =
+        Math.abs(dm) < 60
+          ? `${dm < 0 ? '−' : '+'}${Math.abs(dm)} MIN`
+          : `${dm < 0 ? '−' : '+'}${Math.floor(Math.abs(dm) / 60)} H ${Math.abs(dm) % 60} MIN`;
+      el.innerHTML = `${icon('clock')}SHOWING ${rel} · ${new Date(clockT).toISOString().slice(11, 19)}Z`;
+    }
+  }
+  ev.on('open', () => setTimeout(() => setClock(clockT), 0));
+
   return {
     open,
     close,
     sheet,
+    setClock,
     get current() {
       return current;
     },

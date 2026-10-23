@@ -24,6 +24,7 @@ import { cctvFrameUrl } from './feeds.js';
 import { aqiColor, sampleField } from './feedsWeather.js';
 import { strikeLevel } from './layers/weather.js';
 import { BLACK_MARBLE_URL } from './imagery.js';
+import { cachedThumbnail, rememberThumbnail } from './cache.js';
 
 const D2R = Math.PI / 180;
 const ESRI_TILE = (z, x, y) =>
@@ -1469,6 +1470,53 @@ const SCENE_DRAW = {
     vignette(g, W, H, 0.5);
   },
 
+  /** Detected circling: each aircraft's real recorded orbit track. */
+  async circling(g, view, sc, dpr) {
+    await base(g, view, 'sky');
+    tint(g, view.W, view.H, 'sky', 0.38);
+    const colors = [
+      'rgba(94,200,255,1)',
+      'rgba(255,209,102,1)',
+      'rgba(255,159,107,1)',
+      'rgba(155,225,93,1)',
+      'rgba(201,167,255,1)',
+    ];
+    const [cx, cy] = view.project(sc.lon, sc.lat);
+    for (const km of [0.5, 1, 1.5]) {
+      g.beginPath();
+      g.arc(cx, cy, km * view.pxPerKm, 0, Math.PI * 2);
+      g.strokeStyle = 'rgba(160,210,255,0.28)';
+      g.setLineDash([2 * dpr, 5 * dpr]);
+      g.lineWidth = 1 * dpr;
+      g.stroke();
+    }
+    g.setLineDash([]);
+    (sc.tracks || []).forEach((tr, i) => {
+      const css = colors[i % colors.length];
+      if (tr.points?.length > 1) {
+        pathLonLat(g, view, tr.points);
+        glowStroke(g, css.replace(',1)', ',0.85)'), 2.2 * dpr, 10 * dpr);
+      }
+      const last = tr.points?.at(-1);
+      if (last) {
+        const [x, y] = view.project(last[0], last[1]);
+        if (tr.helicopter) heliGlyph(g, x, y, 15 * dpr, css);
+        else planeGlyph(g, x, y, tr.heading || 0, 13 * dpr, css);
+      }
+    });
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(
+      glowSprite('rgba(255,209,102,0.9)', 64),
+      cx - 14 * dpr,
+      cy - 14 * dpr,
+      28 * dpr,
+      28 * dpr,
+    );
+    g.restore();
+    vignette(g, view.W, view.H);
+  },
+
   async plain(g, view, sc) {
     await base(g, view, sc.band || 'ground');
     tint(g, view.W, view.H, sc.band || 'ground');
@@ -1556,6 +1604,11 @@ export function createCompositor({ feeds }) {
       const d = Math.max(1, Math.min(3, dpr));
       const W = Math.round(width * d);
       const H = Math.round(height * d);
+      // A cached first-frame card has no scene: hand back its stored JPEG.
+      if (situation.cached && !SCENES.has(situation.id)) {
+        const url = cachedThumbnail(situation);
+        if (url) return Promise.resolve(url);
+      }
       const key = keyFor(situation, W, H, d);
       let p = mem.get(key);
       if (p) return p;
@@ -1571,6 +1624,7 @@ export function createCompositor({ feeds }) {
           }
         }
         const blob = await render(situation, W, H, d);
+        rememberThumbnail(situation.id, blob);
         if (cacheApi)
           caches
             .open(CACHE_NAME)

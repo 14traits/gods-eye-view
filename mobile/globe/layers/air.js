@@ -129,8 +129,12 @@ export class AircraftLayer extends Layer {
   }
 
   onTime(ms, live) {
-    // Aircraft are live-only: away from now they dim to show they are not
+    // Inside the recorded past the history layer draws where everything
+    // actually was, and inside a Moment its stage owns the sky: the live
+    // snapshot hides. Beyond the record, aircraft dim to show they are not
     // a reconstruction of that moment.
+    const mode = this.ctx.timeMode?.(ms, live) || 'none';
+    this.root.show = this.on && mode === 'none';
     this.renderer.setAlpha(live ? 1 : 0.3);
   }
 
