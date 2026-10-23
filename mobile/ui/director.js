@@ -1,8 +1,8 @@
 /**
  * Director (DESIGN.md §12.8): a presenter menu for demos. Press "." (or
  * triple-tap the Today title) to open it; each beat sets up its state
- * deterministically so the demo never depends on luck. Number keys 1–9 jump
- * straight to a beat while the menu is closed and the director is armed.
+ * deterministically so the demo never depends on luck. Number keys 1–9, 0, - and = jump
+ * straight to a beat, whether or not the menu is open.
  */
 
 import { icon } from './icons.js';
@@ -23,7 +23,7 @@ export function createDirector({ beats, onReset }) {
   let current = -1;
 
   function render() {
-    sheet.head.innerHTML = `<div class="dir-kicker tele">${icon('director')}DIRECTOR · DEMO MODE</div><h2 class="sheet-title">The story, beat by beat</h2><div class="sheet-sub">Each beat sets its own state. Keys 1–9 jump; “.” reopens this menu.</div>`;
+    sheet.head.innerHTML = `<div class="dir-kicker tele">${icon('director')}DIRECTOR · DEMO MODE</div><h2 class="sheet-title">The story, beat by beat</h2><div class="sheet-sub">Each beat sets its own state. Keys 1–9, 0, - and = jump; “.” opens this menu.</div>`;
     sheet.body.innerHTML = `<ol class="dir-beats">${beats
       .map(
         (
@@ -71,7 +71,14 @@ export function createDirector({ beats, onReset }) {
       else open();
       return;
     }
-    if (armed && /^[1-9]$/.test(e.key) && !sheet.isOpen) run(Number(e.key) - 1);
+    // 1–9 and 0 jump to beats 1–10, - and = to 11 and 12, menu open or not:
+    // a presenter reads the menu and presses the number.
+    const keyBeat = { 0: 9, '-': 10, '=': 11 }[e.key] ?? Number(e.key) - 1;
+    if (armed && /^[0-9=-]$/.test(e.key)) {
+      e.preventDefault();
+      if (sheet.isOpen) sheet.close();
+      run(keyBeat);
+    }
   });
 
   function open() {

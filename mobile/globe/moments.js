@@ -28,6 +28,22 @@ export function loadHero() {
   return heroPromise;
 }
 
+const WATER_URL = new URL('../demo/midtown-water.json', import.meta.url).href;
+let waterPromise = null;
+
+/** River surfaces drawn over the imagery seam (see build-midtown-water.mjs). */
+export function loadWater(name) {
+  if (name !== 'midtown-water.json') return Promise.resolve(null);
+  if (!waterPromise)
+    waterPromise = fetch(WATER_URL)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => {
+        waterPromise = null;
+        return null;
+      });
+  return waterPromise;
+}
+
 export function loadBuildings(name) {
   if (name !== 'midtown-buildings.json') return Promise.resolve(null);
   if (!buildingsPromise)

@@ -291,9 +291,13 @@ export function createStage({ scene, requestRender, emit }) {
   root.show = false;
   let massing = null; // Primitive (buildings)
   let massingKey = '';
-  const lines = root.add(new Cesium.PolylineCollection());
-  const glyphs = root.add(new Cesium.BillboardCollection());
+  let lines = root.add(new Cesium.PolylineCollection());
+  let glyphs = root.add(new Cesium.BillboardCollection());
   let coneRoot = root.add(new Cesium.PrimitiveCollection());
+  let water = null; // Primitive (river surfaces)
+  let waterKey = '';
+  let gen = 0;
+  let destroyed = false;
 
   let moment = null;
   let groundH = 0;
@@ -310,14 +314,95 @@ export function createStage({ scene, requestRender, emit }) {
   const toCart = (lon, lat, altM, out) =>
     Cesium.Cartesian3.fromDegrees(lon, lat, altM + altOffset, undefined, out);
 
+  /**
+   * Destroy primitives only after the frame that may still be drawing them:
+   * Cesium iterates collections during render, so removing (or destroying a
+   * material) mid-frame can crash sortPolylinesIntoBuckets.
+   */
+  const graveyard = [];
+  let reaper = null;
+  function bury(...prims) {
+    for (const p of prims) {
+      if (!p) continue;
+      p.show = false;
+      graveyard.push(p);
+    }
+    if (reaper) return;
+    const reap = () => {
+      if (reaper?.off) reaper.off();
+      clearTimeout(reaper?.timer);
+      reaper = null;
+      for (const p of graveyard.splice(0))
+        if (!destroyed && root.contains(p)) root.remove(p);
+    };
+    reaper = {
+      off: scene.postRender.addEventListener(() => setTimeout(reap, 0)),
+      timer: setTimeout(reap, 1000),
+    };
+    requestRender();
+  }
+
   function clear() {
-    lines.removeAll();
-    glyphs.removeAll();
-    root.remove(coneRoot);
+    // Swap in fresh collections; the old ones are hidden now, freed later.
+    bury(lines, glyphs, coneRoot);
+    lines = root.add(new Cesium.PolylineCollection());
+    glyphs = root.add(new Cesium.BillboardCollection());
     coneRoot = root.add(new Cesium.PrimitiveCollection());
     tracks = [];
     captures = [];
     subject = null;
+  }
+
+  /** Real river surfaces ({ origin, polys:[[outer, …holes]] }) over the imagery seam. */
+  function buildWater(data) {
+    bury(water);
+    water = null;
+    if (!data?.polys?.length) return;
+    const [olon, olat] = data.origin;
+    const kx = 111_320 * Math.cos(olat * D2R);
+    const ky = 110_574;
+    const ring = (flat) => {
+      const out = [];
+      for (let i = 0; i + 1 < flat.length; i += 2)
+        out.push(olon + flat[i] / kx, olat + flat[i + 1] / ky);
+      return Cesium.Cartesian3.fromDegreesArray(out);
+    };
+    const instances = [];
+    for (const [outer, ...holes] of data.polys) {
+      try {
+        instances.push(
+          new Cesium.GeometryInstance({
+            geometry: new Cesium.PolygonGeometry({
+              polygonHierarchy: new Cesium.PolygonHierarchy(
+                ring(outer),
+                holes.map((h) => new Cesium.PolygonHierarchy(ring(h))),
+              ),
+              // Mean water sits ~15 m below Midtown's streets.
+              height: groundH - 14,
+              vertexFormat:
+                Cesium.PerInstanceColorAppearance.FLAT_VERTEX_FORMAT,
+            }),
+            attributes: {
+              color: Cesium.ColorGeometryInstanceAttribute.fromColor(
+                css('#0B1824', 1),
+              ),
+            },
+          }),
+        );
+      } catch {
+        /* degenerate ring */
+      }
+    }
+    water = root.add(
+      new Cesium.Primitive({
+        geometryInstances: instances,
+        appearance: new Cesium.PerInstanceColorAppearance({
+          flat: true,
+          translucent: false,
+        }),
+        asynchronous: true,
+      }),
+    );
   }
 
   async function sampleGround(lon, lat) {
@@ -340,7 +425,7 @@ export function createStage({ scene, requestRender, emit }) {
   /** Real building massing ({ origin, b:[[roofM, groundM, x0,y0,…]] }). */
   function buildMassing(data, highlightBin) {
     if (massing) {
-      root.remove(massing);
+      bury(massing);
       massing = null;
     }
     if (!data?.b?.length) return;
@@ -701,7 +786,7 @@ export function createStage({ scene, requestRender, emit }) {
 
   /** Move everything to time `t` (epoch ms). Returns true when drawn. */
   function update(t, { realNow = performance.now() } = {}) {
-    if (!moment) return false;
+    if (!moment || destroyed || lines.isDestroyed?.()) return false;
     const rebuildPath = realNow - lastPathRebuild > 250;
     if (rebuildPath) lastPathRebuild = realNow;
     for (const k of tracks) {
@@ -795,12 +880,26 @@ export function createStage({ scene, requestRender, emit }) {
   canvas.addEventListener('wheel', release, { passive: true });
 
   return {
-    async load(m, { buildings = null } = {}) {
+    async load(m, { buildings = null, waterData = null } = {}) {
+      const my = ++gen;
       clear();
       moment = m;
       cinematic = true;
       const s = m.subject || { lon: m.lon, lat: m.lat, altM: 0 };
-      groundH = await sampleGround(s.lon, s.lat);
+      const ground = await sampleGround(s.lon, s.lat);
+      // Unloaded (or another Moment loaded) while we waited: do nothing.
+      if (my !== gen || destroyed) return;
+      groundH = ground;
+      const wkey = m.stage?.water || '';
+      if (waterData && wkey !== waterKey) {
+        waterKey = wkey;
+        buildWater(waterData);
+      } else if (!waterData && water) {
+        bury(water);
+        water = null;
+        waterKey = '';
+      }
+      if (water) water.show = true;
       // Tracks are MSL; draw them relative to the sampled ground.
       altOffset = Number.isFinite(m.groundMslM) ? groundH - m.groundMslM : 0;
       const key = m.stage?.buildings || '';
@@ -808,7 +907,7 @@ export function createStage({ scene, requestRender, emit }) {
         massingKey = key;
         buildMassing(buildings, m.stage?.highlight);
       } else if (!buildings && massing) {
-        root.remove(massing);
+        bury(massing);
         massing = null;
         massingKey = '';
       }
@@ -821,10 +920,12 @@ export function createStage({ scene, requestRender, emit }) {
       update(m.time.start);
     },
     unload() {
+      gen++;
       clear();
       moment = null;
       root.show = false;
       if (massing) massing.show = false;
+      if (water) water.show = false;
       requestRender();
     },
     update,
@@ -856,6 +957,9 @@ export function createStage({ scene, requestRender, emit }) {
           kind: 'track',
           title: k.tr.label,
           detail: `${Math.round((k.state.altM * 3.28084) / 25) * 25} FT · ${Math.round(k.state.speed / 0.514444)} KT`,
+          // Crowded fallback: callsign and altitude only.
+          short: k.tr.label.replace(/\s*\(illustrative\)\s*/i, ''),
+          shortDetail: `${Math.round((k.state.altM * 3.28084) / 50) * 50} FT`,
           lon: k.state.lon,
           lat: k.state.lat,
           altM: k.state.altM + altOffset,
@@ -869,6 +973,8 @@ export function createStage({ scene, requestRender, emit }) {
             kind: 'capture',
             title: `@${k.c.handle}`,
             detail: k.c.firstEyes ? 'FIRST EYES · SEALED' : 'SEALED',
+            short: `@${k.c.handle}`,
+            shortDetail: k.c.firstEyes ? 'FIRST EYES' : '',
             lon: k.c.lon,
             lat: k.c.lat,
             altM: groundH + (k.c.altM || 1.5),
@@ -879,6 +985,7 @@ export function createStage({ scene, requestRender, emit }) {
           id: `moment:${moment.id}:subject`,
           kind: 'subject',
           title: subject.label || moment.place,
+          short: (subject.label || moment.place).split(/[ ,]/)[0],
           lon: subject.lon,
           lat: subject.lat,
           altM: groundH + (subject.antennaM ?? subject.altM ?? 0),
@@ -944,6 +1051,13 @@ export function createStage({ scene, requestRender, emit }) {
       return null;
     },
     destroy() {
+      destroyed = true;
+      gen++;
+      if (reaper) {
+        reaper.off?.();
+        clearTimeout(reaper.timer);
+        reaper = null;
+      }
       canvas.removeEventListener('pointerdown', release);
       canvas.removeEventListener('wheel', release);
       scene.primitives.remove(root);

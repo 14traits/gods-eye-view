@@ -55,10 +55,7 @@ const template = meta.tiles[0];
 const polys = [];
 for (let x = tileX(BBOX.west); x <= tileX(BBOX.east); x++)
   for (let y = tileY(BBOX.north); y <= tileY(BBOX.south); y++) {
-    const url = template
-      .replace('{z}', Z)
-      .replace('{x}', x)
-      .replace('{y}', y);
+    const url = template.replace('{z}', Z).replace('{x}', x).replace('{y}', y);
     const r = await fetch(url);
     if (!r.ok) throw new Error(`tile ${x}/${y} HTTP ${r.status}`);
     const tile = new VectorTile(new Pbf(new Uint8Array(await r.arrayBuffer())));

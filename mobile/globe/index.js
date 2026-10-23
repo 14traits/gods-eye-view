@@ -91,6 +91,7 @@ import { createGhosts } from './ghosts.js';
 import { createStage } from './stage.js';
 import {
   loadBuildings,
+  loadWater,
   loadHero,
   momentFromAircraft,
   momentFromCircling,
@@ -393,6 +394,7 @@ export async function createGlobe(container, options = {}) {
   const recorder = createRecorder({ persist: opts.record !== false });
   const detector = createDetector(recorder);
   let momentState = null; // { moment, idx, prevT, restore }
+  let momentToken = 0;
   function timeMode(ms, isLive) {
     if (momentState) return 'moment';
     if (!isLive && recorder.covers(ms, 90_000)) return 'history';
@@ -1518,9 +1520,12 @@ export async function createGlobe(container, options = {}) {
       idOrMoment,
       { speed, camera = true, autoplay = true, framing } = {},
     ) {
+      // A later playMoment/exitMoment supersedes this call at every await.
+      const token = ++momentToken;
+      stopPlayback();
       const m = await resolveMoment(idOrMoment);
       if (!m) throw new Error(`Unknown moment: ${idOrMoment}`);
-      stopPlayback();
+      if (token !== momentToken) return m;
       const restore = momentState?.restore || {
         destination: camera
           ? Cesium.Cartesian3.clone(scene.camera.positionWC)
@@ -1531,9 +1536,11 @@ export async function createGlobe(container, options = {}) {
         time: timeMs(),
       };
       if (selected) api.select(null);
-      const buildings = m.stage?.buildings
-        ? await loadBuildings(m.stage.buildings)
-        : null;
+      const [buildings, waterData] = await Promise.all([
+        m.stage?.buildings ? loadBuildings(m.stage.buildings) : null,
+        m.stage?.water ? loadWater(m.stage.water) : null,
+      ]);
+      if (token !== momentToken) return m;
       const lists = [
         ['capture', sortedBy(m.captures)],
         ['chat', sortedBy(m.chat)],
@@ -1553,7 +1560,8 @@ export async function createGlobe(container, options = {}) {
       // The Moment owns the scene: every live layer steps aside.
       for (const layer of layers.values())
         if (layer.root) layer.root.show = false;
-      await stage.load(m, { buildings });
+      await stage.load(m, { buildings, waterData });
+      if (token !== momentToken || momentState?.moment !== m) return m;
       if (Number.isFinite(framing)) stage.setFraming(framing);
       stage.setCinematic(camera);
       setClock(m.time.start);
@@ -1574,6 +1582,7 @@ export async function createGlobe(container, options = {}) {
     },
 
     exitMoment({ restoreCamera = true } = {}) {
+      momentToken++;
       if (!momentState) return false;
       const { restore, moment } = momentState;
       stopPlayback();
@@ -1838,6 +1847,13 @@ export async function createGlobe(container, options = {}) {
           x: p.x,
           y: p.y,
           score: l.score,
+          // Shorter forms to try when the full label collides.
+          variants: [
+            ...(l.short
+              ? [{ title: l.short, detail: l.shortDetail || '' }]
+              : []),
+            ...(l.short ? [{ title: l.short, detail: '' }] : []),
+          ],
         });
       }
       if (ghosts.shown)
@@ -1869,26 +1885,42 @@ export async function createGlobe(container, options = {}) {
           !(pick.meta?.magnitude >= 5.5)
         )
           continue;
-        const box = {
-          x0: c.x + 6,
-          x1: c.x + 20 + pick.title.length * 6.2,
-          y0: c.y - 10,
-          y1: c.y + 10,
-        };
-        if (
-          placed.some(
-            (b) =>
-              box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0,
-          )
-        )
-          continue;
+        // Collision-avoid on the label as drawn (title · detail), trying
+        // the shorter forms (callsign + altitude, then callsign) before
+        // giving the spot up.
+        const forms = [
+          { title: pick.title, detail: pick.labelDetail || '' },
+          ...(c.variants || []),
+        ];
+        let chosen = null;
+        let box = null;
+        for (const f of forms) {
+          const chars = f.title.length + (f.detail ? f.detail.length + 3 : 0);
+          const b = {
+            x0: c.x - 4,
+            x1: c.x + 22 + chars * 6.6,
+            y0: c.y - 12,
+            y1: c.y + 12,
+          };
+          if (
+            !placed.some(
+              (o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0,
+            )
+          ) {
+            chosen = f;
+            box = b;
+            break;
+          }
+        }
+        if (!chosen) continue;
         placed.push(box);
         out.push({
           id: pick.id,
           layer: c.layer.id,
           kind: pick.kind,
-          title: pick.title,
-          ...(pick.labelDetail ? { detail: pick.labelDetail } : {}),
+          title: chosen.title,
+          ...(chosen.detail ? { detail: chosen.detail } : {}),
+          ...(chosen.title !== pick.title ? { abbreviated: true } : {}),
           ...(pick.pinKind ? { pinKind: pick.pinKind } : {}),
           x: c.x,
           y: c.y,

@@ -18,7 +18,11 @@
     "antennaM": 443,
     "decks": [320, 373]
   },
-  "stage": { "buildings": "midtown-buildings.json", "highlight": "1015862" },
+  "stage": {
+    "buildings": "midtown-buildings.json",
+    "water": "midtown-water.json",
+    "highlight": "1015862"
+  },
   "wind": { "fromDeg": 290, "kt": 14 },
   "cameraPath": [
     {
@@ -21393,6 +21397,10 @@
     {
       "name": "NYC Open Data · Building Footprints",
       "detail": "Real footprints and roof heights for Midtown (NYC OTI, dataset 5zhs-2jue)."
+    },
+    {
+      "name": "OpenStreetMap water polygons",
+      "detail": "Hudson and East River surfaces (ODbL, via OpenFreeMap)."
     },
     {
       "name": "Esri World Imagery",

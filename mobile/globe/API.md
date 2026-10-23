@@ -223,7 +223,11 @@ Moment = {
 }
 ```
 
-The hero is `mobile/demo/moments/empire-state.json` (id `empire-state`): "Climbers on the Empire State Building", 25 min, 3 helicopters, 8 captures, 120 chat lines and 12 posts. Regenerate it with `node mobile/demo/build-empire-state.mjs`. Its Midtown massing is real NYC Open Data footprints and roof heights in `mobile/demo/midtown-buildings.json` (`node mobile/demo/build-midtown.mjs`).
+`playMoment`, `exitMoment` and `setTime(null)` are safe to call at any time, including mid-playback or while a load is still pending: a later call supersedes an earlier one, and the stage frees its primitives only after the frame in progress.
+
+`labels()` collision-avoids each label as it will be drawn (`title · detail`). When a Moment label collides, it falls back to callsign plus altitude, then to the callsign alone. Such entries carry `abbreviated: true` and the shortened `title` and `detail`.
+
+The hero is `mobile/demo/moments/empire-state.json` (id `empire-state`): "Climbers on the Empire State Building", 25 min, 3 helicopters, 8 captures, 120 chat lines and 12 posts. Regenerate it with `node mobile/demo/build-empire-state.mjs`. Its Midtown massing is real NYC Open Data footprints and roof heights in `mobile/demo/midtown-buildings.json` (`node mobile/demo/build-midtown.mjs`). Its river surfaces are OpenStreetMap water polygons in `mobile/demo/midtown-water.json` (`node mobile/demo/build-midtown-water.mjs`). They are drawn over Esri's mismatched water mosaic across the Hudson.
 
 ## Entities and dossiers
 

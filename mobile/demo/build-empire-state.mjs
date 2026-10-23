@@ -887,7 +887,11 @@ const moment = {
     antennaM: ANTENNA,
     decks: [DECK_86, DECK_102],
   },
-  stage: { buildings: 'midtown-buildings.json', highlight: '1015862' },
+  stage: {
+    buildings: 'midtown-buildings.json',
+    water: 'midtown-water.json',
+    highlight: '1015862',
+  },
   wind: WIND,
   cameraPath,
   beats: BEATS.map(([mmss, title]) => ({ t: at(mmss), title })),
@@ -905,6 +909,10 @@ const moment = {
       name: 'NYC Open Data · Building Footprints',
       detail:
         'Real footprints and roof heights for Midtown (NYC OTI, dataset 5zhs-2jue).',
+    },
+    {
+      name: 'OpenStreetMap water polygons',
+      detail: 'Hudson and East River surfaces (ODbL, via OpenFreeMap).',
     },
     {
       name: 'Esri World Imagery',
