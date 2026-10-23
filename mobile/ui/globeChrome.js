@@ -120,7 +120,7 @@ export function createGlobeChrome({
   const top = h(`<div class="gc-top">
       <div class="gc-readout"><span class="tele gc-alt">—</span><span class="tele gc-ll">—</span></div>
       <div class="gc-buttons">
-        <button class="icon-btn glass-strong liquid" type="button" data-act="lens" aria-label="Visual lens" aria-haspopup="true">${icon('lens')}</button>
+        <button class="icon-btn glass-strong liquid" type="button" data-act="lens" aria-label="Layers" aria-haspopup="dialog">${icon('layers')}</button>
         <button class="icon-btn glass-strong liquid gc-compass" type="button" data-act="home" aria-label="Reset view to the whole planet"><span class="compass-n">${icon('north')}</span></button>
         <button class="icon-btn glass-strong liquid" type="button" data-act="credits" aria-label="Map data attribution">${icon('info')}</button>
       </div>
@@ -409,7 +409,30 @@ export function createGlobeChrome({
     </button>`;
   }
 
+  /** Every family in one sheet, with the visual looks on top. */
+  function renderAllGrid() {
+    const st = familyState();
+    const active = store.get('lens') || 'cinematic';
+    const on = Object.values(st).reduce((a, x) => a + x.on, 0);
+    const count = Object.values(st).reduce((a, x) => a + x.count, 0);
+    grid.sheet.dataset.family = 'all';
+    grid.head.innerHTML = `<div class="grid-head"><span class="grid-ic">${icon('layers')}</span>
+      <div><h2 class="sheet-title">Layers</h2><div class="sheet-sub num">${on} on · ${fmtNum(count)} contacts</div></div></div>`;
+    grid.body.innerHTML = `<div class="section-h">Look</div>
+      <div class="lens-row" data-hscroll>${LENSES.map((l) => `<button type="button" class="lens-card ${l.id === active ? 'on' : ''}" data-lens3="${l.id}"><span class="lens-sw" style="background:${l.sw}"></span>${l.name}</button>`).join('')}</div>
+      ${FAMILIES.map((f) => {
+        const x = st[f.id];
+        const layers = [...x.layers].sort(
+          (a, b) => (b.available !== false) - (a.available !== false),
+        );
+        return `<div class="section-h" data-family="${f.id}"><span class="lead-fam">${icon(FAMILY_ICON[f.id])}${f.name}</span><small class="num">${x.on}/${x.total} · ${fmtNum(x.count)}</small></div>
+        <div class="tiles">${layers.map(tileHtml).join('')}</div>`;
+      }).join('')}
+      <p class="footnote" style="padding:14px 2px 0">Counts are live from each feed; dotted means stale.</p>`;
+  }
+
   function renderGrid(fam) {
+    if (fam === 'all') return renderAllGrid();
     const st = familyState()[fam];
     const f = FAMILIES.find((x) => x.id === fam);
     grid.sheet.dataset.family = fam;
@@ -427,6 +450,15 @@ export function createGlobeChrome({
   }
 
   grid.root.addEventListener('click', (e) => {
+    const look = e.target.closest('[data-lens3]');
+    if (look) {
+      haptic('tick');
+      setLens(look.dataset.lens3);
+      $$('[data-lens3]', grid.root).forEach((b) =>
+        b.classList.toggle('on', b === look),
+      );
+      return;
+    }
     const soon = e.target.closest('[data-soon]');
     if (soon) {
       toast(
@@ -506,8 +538,8 @@ export function createGlobeChrome({
   top.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'lens') {
-      lensPop.hidden = !lensPop.hidden;
       haptic('tick');
+      openGrid('all');
     } else if (act === 'home') {
       haptic('tick');
       hidePick();

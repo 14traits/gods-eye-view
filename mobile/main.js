@@ -159,13 +159,16 @@ function applyTab(tab) {
     else el.hidden = id !== tab && !(two && tab === 'capture' && id === prev);
   }
   tabbar.select(tab);
-  if (tab === 'capture') {
-    globe?.pause();
-    capture?.enter();
-  } else {
-    if (prev === 'capture') capture?.leave();
-    updateGlobeActivity();
+  // A camera or sensor failure must never trap someone in Capture.
+  try {
+    if (tab === 'capture') {
+      globe?.pause();
+      capture?.enter();
+    } else if (prev === 'capture') capture?.leave();
+  } catch (err) {
+    console.warn('capture', err);
   }
+  if (tab !== 'capture') updateGlobeActivity();
   if (tab === 'you') you?.render?.();
   if (tab === 'rooms') threads?.refresh?.();
   if (tab === 'live' && two) chrome?.renderLeadView();
@@ -180,16 +183,14 @@ function selectTab(tab) {
   if (player?.current) player.close();
   if (world?.current && !isTwoPane()) world.close();
   if (narrative?.active) narrative.stop();
-  const vt = document.startViewTransition && !reducedMotion();
-  if (vt) document.startViewTransition(() => applyTab(tab));
-  else {
-    applyTab(tab);
-    const v = views[tab];
-    if (v && !v.hidden) {
-      v.classList.remove('view-enter');
-      void v.offsetWidth;
-      v.classList.add('view-enter');
-    }
+  // Switch synchronously. A View Transition waits on frames the globe and
+  // the camera can hold up, which left taps on the tab bar unanswered.
+  applyTab(tab);
+  const v = views[tab];
+  if (v && !v.hidden && !reducedMotion()) {
+    v.classList.remove('view-enter');
+    void v.offsetWidth;
+    v.classList.add('view-enter');
   }
 }
 
@@ -1298,7 +1299,7 @@ function buildDirector(g) {
 
 // Keyboard: Escape closes the topmost thing.
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
   if (document.querySelector('.sheet-layer.is-modal:not([hidden])')) return;
   if (dossier?.isOpen) return dossier.close();
   if (player?.current) return;

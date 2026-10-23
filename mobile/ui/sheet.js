@@ -19,6 +19,16 @@ const DEFAULT_DETENTS = {
  *   heights?: Record<string,(H:number)=>number>, closeButton?: boolean,
  * }} o
  */
+/** Open dismissible sheets, newest last: Escape closes the top one even
+ * when focus is elsewhere (on the globe, or nowhere after a click). */
+const escStack = [];
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || e.defaultPrevented || !escStack.length) return;
+  if (e.target.closest?.('input, textarea, [contenteditable]')) return;
+  e.preventDefault();
+  escStack[escStack.length - 1]();
+});
+
 export function createSheet(o) {
   const ev = emitter();
   const detents = o.detents || ['peek', 'medium', 'large'];
@@ -89,6 +99,11 @@ export function createSheet(o) {
     measure();
     root.hidden = false;
     isOpen = true;
+    if (o.modal || o.dismissible) {
+      const i = escStack.indexOf(close);
+      if (i >= 0) escStack.splice(i, 1);
+      escStack.push(close);
+    }
     if (!current || root.dataset.closing) {
       y = maxH() + 40;
       apply(false);
@@ -112,6 +127,8 @@ export function createSheet(o) {
   function close() {
     if (!isOpen) return;
     isOpen = false;
+    const i = escStack.indexOf(close);
+    if (i >= 0) escStack.splice(i, 1);
     root.dataset.closing = '1';
     y = maxH() + 40;
     apply(true, false);
@@ -260,6 +277,7 @@ export function createSheet(o) {
   root.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && (o.modal || o.dismissible)) {
       e.stopPropagation();
+      e.preventDefault();
       close();
     }
   });
