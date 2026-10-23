@@ -74,6 +74,7 @@ export function createCapture(
       <div class="cap-level" aria-hidden="true"><i></i></div>
       <div class="cap-top">
         <div class="cap-tape glass-strong"><canvas></canvas><span class="cap-caret"></span></div>
+        <div class="cap-needs" hidden></div>
         <div class="hud glass-strong" aria-live="off">
           <div class="hud-grid">
             <span>LAT</span><b class="num" data-h="lat">—</b><span>LON</span><b class="num" data-h="lon">—</b>
@@ -161,7 +162,7 @@ export function createCapture(
   let dpr = 1;
   let lastCapture = null;
   let netOffset = null;
-  let target = null; // { s, replyTo } — the room this capture answers
+  let target = null; // { s, replyTo, needEyes } — the room this capture answers
   let live = null; // { session, id, t0, pin, frameTimer }
   const VFOV = 62;
   const MODES = ['look', 'witness', 'live', 'upload'];
@@ -222,6 +223,7 @@ export function createCapture(
   function enter() {
     active = true;
     resize();
+    setTimeout(() => needsLoop(), 0);
     let seen = false;
     try {
       seen = sessionStorage.getItem(GATE_KEY) === '1';
@@ -1001,7 +1003,7 @@ export function createCapture(
         <dt>Heading</dt><dd>${bundle.session.heading ? `${Math.round(bundle.session.heading.deg)}° · ${esc(bundle.session.heading.source)}` : '—'}</dd>
         <dt>Media</dt><dd>${esc(bundle.media.type)} · ${(bundle.media.bytes / 1024).toFixed(0)} KB</dd>
       </dl>
-      <div class="seal-actions"><button class="pill-btn primary" type="button" data-seal="post">${icon('sendUp')}${target ? 'Post to the room' : 'Post to a room'}</button><button class="pill-btn seal" type="button" data-seal="verify">${icon('seal')}Verify</button><button class="pill-btn plain" type="button" data-seal="done">Keep private</button></div>`,
+      <div class="seal-actions"><button class="pill-btn primary" type="button" data-seal="post">${icon(target?.needEyes ? 'eyes' : 'sendUp')}${target?.needEyes ? 'Answer the request' : target ? 'Post to the room' : 'Post to a room'}</button><button class="pill-btn seal" type="button" data-seal="verify">${icon('seal')}Verify</button><button class="pill-btn plain" type="button" data-seal="done">Keep private</button></div>`,
     );
   }
 
@@ -1038,7 +1040,11 @@ export function createCapture(
         headingDeg: bundle.session?.heading?.deg ?? null,
         segments: bundle.session?.segments?.length || 0,
       },
-      { preset: target?.s || null, replyTo: target?.replyTo || null },
+      {
+        preset: target?.s || null,
+        replyTo: target?.replyTo || null,
+        needEyes: target?.needEyes || null,
+      },
     );
   }
 
@@ -1333,7 +1339,11 @@ export function createCapture(
           isVideo,
           headingDeg: exif?.headingDeg ?? null,
         },
-        { preset: target?.s || null, replyTo: target?.replyTo || null },
+        {
+          preset: target?.s || null,
+          replyTo: target?.replyTo || null,
+          needEyes: target?.needEyes || null,
+        },
       );
     };
   }
@@ -1347,15 +1357,76 @@ export function createCapture(
   }
 
   /* ---------- reply target ---------- */
-  function attachTo(s, { replyTo = null } = {}) {
-    target = s ? { s, replyTo } : null;
+  function attachTo(s, { replyTo = null, needEyes = null } = {}) {
+    target = s ? { s, replyTo, needEyes } : null;
     targetChip.hidden = !target;
+    targetChip.classList.toggle('is-need', !!needEyes);
     if (target) {
-      targetChip.innerHTML = `${icon('reply')}<span>Answering in <b>${esc(s.title)}</b>${replyTo ? ` · ${esc(replyTo.author.handle)}` : ''}</span>${icon('close')}`;
-      if (mode === 'look') setMode('witness');
+      targetChip.innerHTML = needEyes
+        ? `${icon('eyes')}<span>Need eyes · <b>${esc(needEyes.question.length > 46 ? `${needEyes.question.slice(0, 45)}…` : needEyes.question)}</b></span>${icon('close')}`
+        : `${icon('reply')}<span>Answering in <b>${esc(s.title)}</b>${replyTo ? ` · ${esc(replyTo.author.handle)}` : ''}</span>${icon('close')}`;
+      if (mode === 'look' || mode === 'upload') setMode('witness');
     }
+    renderNeeds();
   }
   targetChip.addEventListener('click', () => attachTo(null));
+
+  /* ---------- Need eyes near you (top of Capture) ---------- */
+  const needsEl = $('.cap-needs', view);
+  let needs = [];
+  let needsOpen = false;
+  async function refreshNeeds() {
+    try {
+      const m = await import('./social.js');
+      const o = observer();
+      const ll = o.simulated ? getLocation?.() || m.socialCore().myLoc() : o;
+      needs = m
+        .needEyesNear({ lat: ll.lat, lon: ll.lon }, 30)
+        .filter((r) => r.status === 'open');
+    } catch {
+      needs = [];
+    }
+    renderNeeds();
+  }
+  function renderNeeds() {
+    const list = needs.filter((r) => r.id !== target?.needEyes?.id);
+    needsEl.hidden = !list.length || mode === 'live';
+    if (needsEl.hidden) return;
+    const r0 = list[0];
+    needsEl.innerHTML = `<button type="button" class="cn-pill glass-strong" data-cn="toggle" aria-expanded="${needsOpen}">${icon('eyes')}<span><b>${list.length} Need eyes near you</b><small>“${esc(r0.question.length > 44 ? `${r0.question.slice(0, 43)}…` : r0.question)}” · ${esc(r0.distLabel || '')}</small></span>${icon(needsOpen ? 'chevronUp' : 'chevronDown')}</button>${
+      needsOpen
+        ? `<div class="cn-list glass-strong">${list
+            .slice(0, 4)
+            .map(
+              (r) =>
+                `<button type="button" class="cn-row" data-cn="answer" data-id="${esc(r.id)}"><span><b>“${esc(r.question)}”</b><small class="tele">${esc(r.distLabel || '')} · ${esc(r.by)} · +40 SIGNAL${r.example ? ' · EXAMPLE' : ''}</small></span><em>Answer</em></button>`,
+            )
+            .join('')}</div>`
+        : ''
+    }`;
+  }
+  needsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cn]');
+    if (!b) return;
+    haptic('tick');
+    if (b.dataset.cn === 'toggle') {
+      needsOpen = !needsOpen;
+      renderNeeds();
+      return;
+    }
+    const r = needs.find((x) => x.id === b.dataset.id);
+    if (!r) return;
+    needsOpen = false;
+    attachTo(r.situation, { needEyes: r });
+    showStatus('Seal a photo from inside the radius to answer', 3200);
+  });
+  let needsTimer = 0;
+  const needsLoop = () => {
+    clearTimeout(needsTimer);
+    if (!active) return;
+    refreshNeeds();
+    needsTimer = setTimeout(needsLoop, 30000);
+  };
 
   return {
     enter,

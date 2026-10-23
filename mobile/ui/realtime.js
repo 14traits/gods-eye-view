@@ -97,6 +97,11 @@ export function createRealtime() {
     else if (m.t === 'react')
       ev.emit('react', { room: m.room, kind: m.kind, remote: true });
     else if (m.t === 'rate') ev.emit('rate', m);
+    else if (m.t === 'chat')
+      ev.emit('chat', { room: m.room, msg: { ...m.msg, remote: true } });
+    else if (m.t === 'corro')
+      ev.emit('corro', { room: m.room, id: m.id, w: m.w, remote: true });
+    else if (m.t === 'need') ev.emit('need', m.req);
     else if (m.t === 'live') {
       const cur = lives.get(m.live.id);
       lives.set(m.live.id, {
@@ -161,6 +166,10 @@ export function createRealtime() {
     post: (post) => send({ t: 'post', post }),
     react: (r, kind) => send({ t: 'react', room: r, kind }),
     rate: (payload) => send({ t: 'rate', ...payload }),
+    /** Live lane: one chat line to every other tab in the same room. */
+    chat: (r, msg) => send({ t: 'chat', room: r, msg }),
+    corro: (r, id, w) => send({ t: 'corro', room: r, id, w }),
+    need: (req) => send({ t: 'need', req }),
     /* live broadcasts */
     liveTick: (live, frame) => send({ t: 'live', live, frame }),
     liveEnd: (id) => send({ t: 'live-end', id }),

@@ -52,10 +52,10 @@ export function createComposer({
 
   function render() {
     const s = ctx.s;
-    const r = ctx.replyTo;
-    sheet.head.innerHTML = `<div class="c-band tele" data-band="inside"><i class="bd"></i>Room<b>·</b>${esc(s.title)}</div>
-      <h2 class="sheet-title">${r ? 'Reply' : 'Post to the room'}</h2>
-      ${r ? `<div class="cmp-quote"><b class="tele">${esc(KIND[r.kind]?.name || '')} · ${esc(r.author.handle)}</b>${esc(r.text.slice(0, 140))}${r.text.length > 140 ? '…' : ''}</div>` : ''}`;
+    const r = ctx.replyTo || ctx.quote;
+    sheet.head.innerHTML = `<div class="c-band tele" data-band="inside"><i class="bd"></i>Record<b>·</b>${esc(s.title)}</div>
+      <h2 class="sheet-title">${ctx.quote ? 'Quote post' : r ? 'Reply' : 'Post to the Record'}</h2>
+      ${r ? `<div class="cmp-quote ${ctx.quote ? 'is-quote' : ''}"><b class="tele">${ctx.quote ? 'Quoting · ' : ''}${esc(KIND[r.kind]?.name || '')} · ${esc(r.author.handle)}</b>${esc(r.text.slice(0, 140))}${r.text.length > 140 ? '…' : ''}</div>` : ''}`;
     const places = placeOptions();
     const t = getTime();
     sheet.body.innerHTML = `
@@ -76,7 +76,7 @@ export function createComposer({
         <div class="ca-h tele">${icon('clock')}Anchor in time</div>
         <div class="seg-chips" data-anchor="time"><button type="button" data-v="none" aria-pressed="${ctx.time === 'none'}">No time</button><button type="button" data-v="now" aria-pressed="${ctx.time === 'now'}">Now<small>${esc(utc(new Date(), { seconds: false }))}</small></button>${t ? `<button type="button" data-v="ribbon" aria-pressed="${ctx.time === 'ribbon'}">Ribbon time<small>${esc(utc(t, { seconds: false }))}</small></button>` : ''}</div>
       </div>
-      <div class="cmp-foot"><span class="tele">Stored on this device · shared live with your other open tabs</span><button class="pill-btn primary" type="button" data-act="post">Post</button></div>`;
+      <div class="cmp-foot"><span class="tele">On the record · hash-chained in the room ledger · shared with your other open tabs</span><button class="pill-btn primary" type="button" data-act="post">Post</button></div>`;
   }
 
   function placeholder(kind) {
@@ -89,10 +89,11 @@ export function createComposer({
     }[kind];
   }
 
-  function open(s, { replyTo = null, kind } = {}) {
+  function open(s, { replyTo = null, kind, quote = null } = {}) {
     ctx = {
       s,
       replyTo,
+      quote,
       kind:
         kind ||
         (replyTo
@@ -158,6 +159,7 @@ export function createComposer({
         kind: ctx.kind,
         text,
         replyTo: ctx.replyTo?.id || null,
+        quoteOf: ctx.quote?.id || null,
         anchor,
         evidence: {},
       });
@@ -170,5 +172,5 @@ export function createComposer({
     }
   });
 
-  return { open, close: () => sheet.close() };
+  return { open, close: () => sheet.close(), root: sheet.root };
 }

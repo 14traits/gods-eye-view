@@ -76,8 +76,9 @@ const [HARBOR, MET, PILOT, MEDIC, RIVER, SKEPTIC, ORBIT, LENA, DATA] = EX;
  * text(s, v) → string, w was-there, sl sealed, re reply-to index,
  * note {text, r: 'AA+B+…'}, up/dn votes, an anchor offset {dLat,dLon}.
  */
-function genre(s) {
+export function genre(s) {
   const k = `${s.kind || ''} ${s.archetype || ''}`;
+  if (s.momentId || /circling|moment/.test(k)) return 'circling';
   if (/cyclone|typhoon|hurricane/.test(k)) return 'cyclone';
   if (/quake/.test(k)) return 'quake';
   if (/fire/.test(k)) return 'fire';
@@ -93,6 +94,67 @@ function genre(s) {
 }
 
 const T = {
+  circling: [
+    {
+      k: 'witness',
+      a: RIVER,
+      m: 16,
+      w: 1,
+      sl: 1,
+      up: 47,
+      dn: 2,
+      d: [0.002, -0.003],
+      text: (s, v) =>
+        `${v(0) ? `${v(0)} overhead` : 'Helicopters overhead'} for about fifteen minutes now. Two are holding high and steady, one is lower and tighter with a searchlight. Sealed clip from street level, looking up.`,
+      note: {
+        text: 'The clip’s heading points at the orbit centre and its seal time falls inside the detection window. ADS-B shows the same three tracks.',
+        r: 'A+A+A+B+B+',
+      },
+    },
+    {
+      k: 'question',
+      a: LENA,
+      m: 13,
+      up: 22,
+      text: () =>
+        'Does anyone know why they’re circling? Nothing on local news yet and the street is blocked at the corner.',
+    },
+    {
+      k: 'context',
+      a: PILOT,
+      m: 11,
+      re: 1,
+      up: 39,
+      text: () =>
+        'The low one is flying a tight left-hand orbit, which is what police aviation does over a scene. The two higher ones at about 1,500 ft are holding still for camera shots. That pattern means something on the ground, not an aircraft in trouble.',
+      note: {
+        text: 'Consistent with the tracks: one orbit at ~400 m radius and ~1,000 ft, two at ~650 m and ~1,500 ft.',
+        r: 'A+A+B+B+B+',
+      },
+    },
+    {
+      k: 'correction',
+      a: SKEPTIC,
+      m: 8,
+      up: 26,
+      dn: 4,
+      text: () =>
+        'A post going around says it’s a shooting. Nothing in this room supports that, and the “scanner audio” people are quoting has no source. Wait for a sealed capture or an official statement.',
+      note: {
+        text: 'No sealed capture or official source here mentions a shooting.',
+        r: 'A+A+B+B+',
+      },
+    },
+    {
+      k: 'prediction',
+      a: DATA,
+      m: 4,
+      up: 9,
+      dn: 3,
+      text: () =>
+        'The news helicopters leave within thirty minutes of police clearing the scene; the police one stays longest.',
+    },
+  ],
   cyclone: [
     {
       k: 'witness',
@@ -705,7 +767,43 @@ function metricText(s) {
   };
 }
 
+/** Posts a Moment ships with (engine `moment.posts`), as example seeds. */
+function momentSeeds(s) {
+  const caps = s.momentCaptures || [];
+  return s.momentPosts.map((mp, i) => {
+    const at = Number(mp.t) || Date.now();
+    const cap = caps.find((c) => c.handle === mp.handle);
+    const there = mp.kind === 'witness' && !!cap;
+    const votes = mp.votes || {};
+    return {
+      id: `${s.id}~mp${i + 1}`,
+      room: String(s.id),
+      kind: KIND[mp.kind] ? mp.kind : 'context',
+      text: String(mp.text || ''),
+      at,
+      author: { handle: mp.handle, example: true, cluster: i % 2 ? 'B' : 'A' },
+      example: true,
+      evidence: {
+        wasThere: there,
+        sealed: there || !!cap?.sealed,
+        example: true,
+        distanceKm: cap ? 0.3 : null,
+      },
+      votes: {
+        up: typeof votes === 'number' ? votes : votes.up || 0,
+        dn: votes.dn || 0,
+      },
+      replyTo: null,
+      anchor: cap
+        ? { lat: cap.lat, lon: cap.lon, t: Number(cap.t) || at }
+        : null,
+      notes: [],
+    };
+  });
+}
+
 function seedPosts(s) {
+  if (s.momentPosts?.length) return momentSeeds(s);
   const tpl = T[genre(s)] || T.default;
   const v = metricText(s);
   const base = Number(new Date(s.updatedAt)) || Date.now();
@@ -1075,20 +1173,26 @@ export function createRooms({ rt }) {
 
   async function post(s, draft) {
     const m = await mineMap();
-    const id = `${s.id}~${rt.tab}~${Date.now().toString(36)}`;
+    const id = draft.id || `${s.id}~${rt.tab}~${Date.now().toString(36)}`;
+    const dup = (m.get(String(s.id)) || []).find((x) => x.id === id);
+    if (dup) return dup;
     const p = {
       id,
       room: String(s.id),
       kind: draft.kind || 'witness',
       text: String(draft.text || '').slice(0, 2000),
-      at: Date.now(),
-      author: {
+      at: draft.at || Date.now(),
+      author: draft.author || {
         handle: rt.me.handle,
         self: true,
         local: !!(rt.me.home && distKm(rt.me.home, s) < 50),
       },
       evidence: draft.evidence || {},
-      votes: { up: 0, dn: 0 },
+      quoteOf: draft.quoteOf || null,
+      promotedFrom: draft.promotedFrom || null,
+      needEyes: draft.needEyes || null,
+      momentId: draft.momentId || s.momentId || null,
+      votes: draft.votes || { up: 0, dn: 0 },
       replyTo: draft.replyTo || null,
       anchor: draft.anchor || null,
       hologram: !!draft.hologram,

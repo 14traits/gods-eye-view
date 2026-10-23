@@ -1,6 +1,8 @@
 /**
- * You: your sealed captures and live bundles, unverified uploads, your room
- * posts and holograms, followed situations, home area, and settings.
+ * You (DESIGN.md §12.2, §12.7): Signal with its receipts, First eyes
+ * bylines, your sealed captures and uploads, your posts and holograms,
+ * what you watch, calm-by-default notifications, location precision, the
+ * privacy line we don't cross, and settings.
  */
 
 import { icon, FAMILY_ICON } from './icons.js';
@@ -8,7 +10,51 @@ import { $, $$, esc, ago, haptic, store, applyMotionPref } from './dom.js';
 import { all, get } from '../capture/db.js';
 import { deviceKey } from '../capture/provenance.js';
 import { KIND, badgesFor } from './rooms.js';
-import { llShort } from './bands.js';
+import { llShort, utc } from './bands.js';
+import { RULES, tierOf, TIERS } from './signal.js';
+
+/** Shown, dimmed and labelled, until the person has receipts of their own. */
+const EXAMPLE_LEDGER = [
+  {
+    delta: 40,
+    text: 'Fulfilled Need eyes: “Is the 7th St underpass flooded?”',
+    m: 1440,
+  },
+  { delta: 50, text: 'First eyes on Heavy rain cell over Houston', m: 1440 },
+  {
+    delta: 20,
+    text: 'ADS-B: 4 aircraft within 8 km at the sealed time',
+    m: 1441,
+  },
+  {
+    delta: 5,
+    text: '@wxdan (Corroborated, ×1.9) corroborated your capture',
+    m: 1420,
+  },
+  {
+    delta: -25,
+    text: 'A bridged correction: your “Cat 5” claim used the wrong scale',
+    m: 4320,
+  },
+];
+
+const NOTIFY = [
+  {
+    id: 'severe',
+    label: 'Severe, near me',
+    sub: 'Only things that can hurt people, inside your alert radius',
+  },
+  {
+    id: 'notable',
+    label: 'Notable',
+    sub: 'Plus wonder: ISS passes, launches, aurora over you',
+  },
+  {
+    id: 'all',
+    label: 'Everything',
+    sub: 'Every situation inside the radius. Not recommended.',
+  },
+];
 
 export function createYou(
   view,
@@ -22,8 +68,14 @@ export function createYou(
     rt,
     onOpenRoom,
     onLocate,
+    core: coreIn,
   },
 ) {
+  let core = coreIn || null;
+  const getCore = async () =>
+    (core =
+      core ||
+      (await import('./social.js')).socialCore({ rooms, rt, getSituations }));
   let urls = [];
   view.addEventListener(
     'scroll',
@@ -42,6 +94,28 @@ export function createYou(
       all('uploads').catch(() => []),
       rooms.myPosts().catch(() => []),
     ]);
+    const c = await getCore();
+    const [score, receipts] = await Promise.all([
+      c.signal.score(),
+      c.signal.receipts(),
+    ]);
+    const tier = tierOf(score);
+    const firsts = receipts.filter((r) => r.rule === 'first');
+    const exampleLedger = !receipts.length;
+    const ledger = exampleLedger
+      ? EXAMPLE_LEDGER.map((x) => ({
+          ...x,
+          at: Date.now() - x.m * 60e3,
+          example: true,
+        }))
+      : receipts;
+    const loc = c.myLoc();
+    const needs = c.needs.near(loc, 60).filter((x) => x.status === 'open');
+    const notify = store.get('notifyLevel') || 'severe';
+    const asks = store.get('needAsks') || 'daily';
+    const quiet = store.get('quietHours') ?? true;
+    const prec = store.get('precisionDefault') || '100m';
+    const watchSummary = c.ctx.watch?.summary?.() || null;
     uploads.sort((a, b) => b.addedAt - a.addedAt);
     posts.sort((a, b) => b.at - a.at);
     const sitOf = (id) => sits.find((x) => String(x.id) === id);
@@ -77,6 +151,40 @@ export function createYou(
       <div class="you-id"><span class="avatar">${icon('you')}</span><div><b>${esc(rt.me.handle)} · this device</b>
         <span>${key ? `Signing key <span class="mono">${esc(key.keyId)}</span> · P-256 · ${key.extractable ? 'extractable' : 'non-extractable'}` : 'Signing key unavailable (needs a secure context)'}</span>
         <span>${captures.length} sealed capture${captures.length === 1 ? '' : 's'} · ${uploads.length} upload${uploads.length === 1 ? '' : 's'} · ${posts.length} post${posts.length === 1 ? '' : 's'} · ${followed.length} followed</span></div></div>
+
+      <section class="sig-card" style="--tc:${tier.color}" aria-label="Signal">
+        <div class="sig-top"><span class="tele">${icon('sparkles')}Signal</span><span class="sig-tier">${esc(tier.name)}</span></div>
+        <div class="sig-score"><b class="num">${score.toLocaleString()}</b><span class="sig-w tele">votes weigh ×${tier.weight.toFixed(1)}</span></div>
+        <div class="sig-bar"><i style="--p:${Math.round(tier.progress * 100)}%"></i>${TIERS.map((t) => `<em style="--at:${Math.min(100, (t.min / 1500) * 100)}%" title="${esc(t.name)}"></em>`).join('')}</div>
+        <div class="sig-next tele">${tier.next ? `${(tier.next.min - score).toLocaleString()} to ${esc(tier.next.name)}` : 'Top tier'} · ${receipts.length} receipt${receipts.length === 1 ? '' : 's'} · ${firsts.length} first eyes</div>
+        <p class="sig-why">Signal rises when your sealed captures are corroborated by people and by sensors, and falls when your claims are corrected. It weighs your votes and notes. <b>No follower counts, ever.</b></p>
+        <details class="sig-rules"><summary>How Signal is calculated</summary><ul>${RULES.map((r) => `<li><b class="num ${r.delta < 0 ? 'neg' : ''}">${r.delta > 0 ? '+' : ''}${r.delta}</b><span>${esc(r.text)}</span></li>`).join('')}</ul><p>Tiers: ${TIERS.map((t) => `<span style="color:${t.color}">${esc(t.name)} ${t.min}+ (×${t.weight})</span>`).join(' · ')}</p></details>
+      </section>
+
+      ${
+        firsts.length
+          ? `<div class="section-h">First eyes <small>permanent bylines on the record</small></div><div class="bylines">${firsts
+              .map(
+                (r) =>
+                  `<button type="button" class="byline" data-ref-room="${esc(r.ref?.room || '')}" data-ref-post="${esc(r.ref?.post || '')}"><span class="by-seal">${icon('sealFill')}</span><span><b class="tele">FIRST EYES · ${esc(rt.me.handle)} · ${esc(utc(new Date(r.at)))}</b><small>${esc(r.text.replace(/^First eyes on /, ''))}</small></span></button>`,
+              )
+              .join('')}</div>`
+          : ''
+      }
+
+      <div class="section-h">Receipts <small>${exampleLedger ? 'example until you earn your own' : 'every change, with its reason'}</small></div>
+      <div class="group ledger ${exampleLedger ? 'is-example' : ''}">${ledger
+        .slice(0, 14)
+        .map(
+          (r) =>
+            `<div class="row rx ${r.ref?.room ? 'tap' : ''}" ${r.ref?.room ? `data-ref-room="${esc(r.ref.room)}" data-ref-post="${esc(r.ref.post || '')}"` : ''}><b class="rx-d num ${r.delta < 0 ? 'neg' : ''}">${r.delta > 0 ? '+' : ''}${r.delta}</b><span class="row-main"><span class="row-title">${esc(r.text)}</span><span class="row-sub">${esc(ago(r.at))}${r.source ? ` · ${esc(r.source)}` : ''}${r.sim ? ' · simulated' : ''}${r.example ? ' · <span class="badge-example">Example</span>' : ''}</span></span></div>`,
+        )
+        .join('')}</div>
+      ${
+        exampleLedger
+          ? `<div class="sig-cta">${icon('eyes')}<span><b>${needs.length ? `${needs.length} Need eyes request${needs.length === 1 ? '' : 's'} near you` : 'Earn your first receipt'}</b>Answer one with a sealed capture: +40 Signal and the First eyes byline.</span>${needs[0] ? `<button type="button" class="pill-btn primary sm" data-need-act="fulfil" data-need="${esc(needs[0].id)}">Answer</button>` : ''}</div>`
+          : ''
+      }
 
       <div class="section-h">Captures <small>tap to verify</small></div>
       ${
@@ -118,7 +226,7 @@ export function createYou(
           : '<div class="empty">Nothing posted yet. Every situation has a room: open one and reply with evidence.</div>'
       }
 
-      <div class="section-h">Following</div>
+      <div class="section-h">Watching <small>${watchSummary ? esc(watchSummary) : 'places and things you follow'}</small>${c.ctx.watch?.open ? '<button type="button" class="linkish" data-act="watch">Alerts</button>' : ''}</div>
       ${
         fol.length || contacts.length
           ? `<div class="group">${fol
@@ -141,6 +249,42 @@ export function createYou(
 
       <div class="section-h">Home area</div>
       <div class="group"><button class="row" type="button" data-act="home"><span class="row-icon" style="--fam:var(--b-ground)">${icon('home')}</span><span class="row-main"><span class="row-title">${home ? `Set near ${esc(llShort(home.lat, home.lon, 1))}` : 'Set your home area'}</span><span class="row-sub">Earns the Local badge on posts within 50 km. Stored on this device at 10 km precision.</span></span>${icon('chevronRight', { cls: 'chev' })}</button></div>
+
+      <div class="section-h">Notifications <small>calm by default</small></div>
+      <div class="group">
+        <div class="row"><span class="row-icon" style="--fam:var(--b-ground)">${icon('hazards')}</span><span class="row-main"><span class="row-title">Tell me about</span><span class="row-sub">${esc(NOTIFY.find((x) => x.id === notify).sub)}</span></span></div>
+        <div class="seg-row"><div class="segmented" data-set="notifyLevel">${NOTIFY.map((v) => `<button type="button" data-v="${v.id}" aria-pressed="${notify === v.id}">${v.label}</button>`).join('')}<span class="seg-thumb"></span></div></div>
+        <div class="row"><span class="row-icon" style="--fam:var(--eyes)">${icon('eyes')}</span><span class="row-main"><span class="row-title">Need eyes asks</span><span class="row-sub">At most one quiet ask a day, only when you’re inside a request’s radius</span></span></div>
+        <div class="seg-row"><div class="segmented" data-set="needAsks">${[
+          ['daily', 'One a day'],
+          ['off', 'Off'],
+        ]
+          .map(
+            ([v, l]) =>
+              `<button type="button" data-v="${v}" aria-pressed="${asks === v}">${l}</button>`,
+          )
+          .join('')}<span class="seg-thumb"></span></div></div>
+        <div class="row"><span class="row-icon" style="--fam:var(--orbit)">${icon('clock')}</span><span class="row-main"><span class="row-title">Quiet hours</span><span class="row-sub">22:00–07:00 · severe and local only</span></span><button class="switch" type="button" role="switch" aria-checked="${quiet}" aria-label="Quiet hours" data-switch="quietHours"></button></div>
+        <div class="row calm-now"><span class="row-icon" style="--fam:var(--ok)">${icon('checkmark')}</span><span class="row-main"><span class="row-title">Nothing unusual near you</span><span class="row-sub">That’s a valid state. No alarm feed, no upsell.</span></span></div>
+      </div>
+
+      <div class="section-h">Location you share <small>default for new captures</small></div>
+      <div class="group">
+        <div class="seg-row"><div class="segmented" data-set="precisionDefault">${[
+          ['exact', 'Exact'],
+          ['100m', '100 m'],
+          ['1km', '1 km'],
+        ]
+          .map(
+            ([v, l]) =>
+              `<button type="button" data-v="${v}" aria-pressed="${prec === v}">${l}</button>`,
+          )
+          .join('')}<span class="seg-thumb"></span></div></div>
+        <div class="row"><span class="row-icon" style="--fam:var(--seal)">${icon('lock')}</span><span class="row-main"><span class="row-sub">The seal still proves the exact position to verifiers without publishing it. You can change it per capture.</span></span></div>
+      </div>
+
+      <div class="section-h">The line we don’t cross</div>
+      <div class="privacy-card">${icon('eyes')}<div><b>We track things that broadcast, never people.</b><span>Trackable entities are transponders, AIS, orbital elements, public infrastructure and events. Contributors are pseudonymous. There is no face recognition and no person search, and aircraft on owner-privacy lists (LADD/PIA) are never named.</span></div></div>
 
       <div class="section-h">Settings</div>
       <div class="group">
@@ -171,6 +315,22 @@ export function createYou(
   }
 
   view.addEventListener('click', async (e) => {
+    const nd = e.target.closest('[data-need-act]');
+    if (nd) {
+      (await getCore()).needs.act(nd.dataset.needAct, nd.dataset.need);
+      return;
+    }
+    if (e.target.closest('[data-act="watch"]')) {
+      (await getCore()).ctx.watch?.open?.();
+      return;
+    }
+    const ref = e.target.closest('[data-ref-room]');
+    if (ref && ref.dataset.refRoom) {
+      const sits = await getSituations();
+      const st = sits.find((x) => String(x.id) === ref.dataset.refRoom);
+      if (st) onOpenRoom(st, ref.dataset.refPost || undefined);
+      return;
+    }
     const cap = e.target.closest('[data-cap]');
     if (cap) {
       const c = (await all('captures')).find((x) => x.id === cap.dataset.cap);
@@ -194,6 +354,7 @@ export function createYou(
       placeThumb(seg);
       store.set(seg.dataset.set, segBtn.dataset.v);
       if (seg.dataset.set === 'reduceMotion') applyMotionPref();
+      if (seg.dataset.set === 'notifyLevel') render();
       haptic('tick');
       return;
     }
@@ -240,5 +401,13 @@ export function createYou(
   new ResizeObserver(() => $$('.segmented', view).forEach(placeThumb)).observe(
     view,
   );
+  // Signal changes (a corroboration, a fulfilled request) refresh You live.
+  getCore()
+    .then((c) =>
+      c.signal.on('change', () => {
+        if (view.isConnected && !view.hidden) render();
+      }),
+    )
+    .catch(() => {});
   return { render };
 }

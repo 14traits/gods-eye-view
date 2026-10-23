@@ -7,7 +7,7 @@
  */
 
 import { icon } from './icons.js';
-import { $, $$, esc, haptic, toast } from './dom.js';
+import { $, $$, esc, haptic, toast, store } from './dom.js';
 import { createSheet } from './sheet.js';
 import { KINDS, KIND, wasThere } from './rooms.js';
 import {
@@ -152,8 +152,8 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
         <span class="att-thumb ${it.unverified ? 'un' : ''}">${it.previewUrl ? (it.isVideo ? `<video src="${esc(it.previewUrl)}#t=0.1" muted playsinline preload="metadata"></video>` : `<img src="${esc(it.previewUrl)}" alt=""/>`) : ''}<span>${icon(it.unverified ? 'upload' : 'sealFill')}</span></span>
         <div><div class="tele att-tele">${esc(head)}</div>
         <div class="tele att-sub">${it.fix ? `${esc(llShort(it.fix.lat, it.fix.lon, 4))}${Number.isFinite(it.fix.acc) ? ` ±${Math.round(it.fix.acc)} M` : ''}` : 'NO POSITION'} · ${esc(utc(new Date(it.at), { seconds: false }))}</div>
-        <h2 class="sheet-title">Where does this belong?</h2></div>
-      </div>`;
+        <h2 class="sheet-title">${ctx.needEyes ? 'Answer the request' : 'Where does this belong?'}</h2></div>
+      </div>${ctx.needEyes ? `<div class="att-need">${icon('eyes')}<span><b>Need eyes</b> “${esc(ctx.needEyes.question)}”<small class="tele">${esc(ctx.needEyes.by || '')} · ${it.unverified ? 'uploads can’t fulfil a request' : 'first sealed answer gets the byline'}</small></span></div>` : ''}`;
     sheet.body.innerHTML = `
       <div class="att-list" role="radiogroup" aria-label="Situation">
         ${ctx.list.map(row).join('')}
@@ -172,7 +172,10 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
       <button class="pill-btn primary att-post" type="button" data-act="post">${icon('sendUp')}Post to the room</button>`;
   }
 
-  async function open(item, { preset = null, replyTo = null } = {}) {
+  async function open(
+    item,
+    { preset = null, replyTo = null, needEyes = null } = {},
+  ) {
     ctx = {
       item,
       list: [],
@@ -182,12 +185,15 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
           ? 'witness'
           : 'correction'
         : 'witness',
-      precision: item.unverified ? '100m' : 'exact',
+      precision: item.unverified
+        ? '100m'
+        : store.get('precisionDefault') || '100m',
       hologram: false,
       replyTo,
-      preset,
+      preset: preset || needEyes?.situation || null,
+      needEyes,
     };
-    ctx.list = await suggestions(item, preset);
+    ctx.list = await suggestions(item, ctx.preset);
     if (!ctx.list.length) ctx.sel = 'new';
     render();
     sheet.open('large');
@@ -274,10 +280,15 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
     const p = PRECISION.find((x) => x.id === ctx.precision);
     const round = (v) => (p.round == null ? v : Number(v.toFixed(p.round)));
     const fix = it.fix;
-    const there =
+    let there =
       it.sealed && fix
         ? wasThere(s, fix, it.at)
         : { there: false, km: fix ? distKm(fix, s) : NaN };
+    // Answering a Need eyes request: "there" means inside its radius.
+    if (ctx.needEyes && it.sealed && fix) {
+      const nk = distKm(fix, ctx.needEyes);
+      if (nk <= (ctx.needEyes.radiusKm || 2)) there = { there: true, km: nk };
+    }
     const text = $('.att-note', sheet.body).value.trim() || defaultText(it, s);
     const postRec = await rooms.post(s, {
       kind: ctx.kind,
@@ -292,6 +303,10 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
             precision: ctx.precision,
           }
         : { t: it.at },
+      needEyes:
+        ctx.needEyes && !it.unverified
+          ? { id: ctx.needEyes.id, question: ctx.needEyes.question }
+          : null,
       evidence: {
         captureId: it.unverified ? undefined : it.id,
         uploadId: it.unverified ? it.id : undefined,
@@ -318,10 +333,16 @@ export function createAttach({ rooms, globe, getSituations, onPosted }) {
       });
     haptic('success');
     sheet.close();
+    const need = ctx.needEyes && !it.unverified ? ctx.needEyes : null;
+    if (need && s.adhoc) await rooms.addPlace(s);
     toast(`Posted to ${s.title}${there.there ? ' · Was there' : ''}`, {
       icon: icon(it.unverified ? 'upload' : 'sealFill'),
     });
     onPosted?.(s, postRec);
+    // Signal, First eyes, Need eyes and the Moment timeline (social layer).
+    import('./social.js')
+      .then((m) => m.socialCore().afterPost(s, postRec, it, { needEyes: need }))
+      .catch((err) => console.warn('social afterPost failed', err));
   }
 
   function defaultText(it, s) {
