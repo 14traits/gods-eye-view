@@ -552,6 +552,7 @@ export function createTimeRibbon(
   function goLive() {
     haptic('tick');
     stopPlay();
+    if (clipMode) setClipMode(false);
     if (custom) {
       animateTo(custom.start, () => emit(true));
       return;

@@ -85,6 +85,14 @@ export function normMoment(m) {
       media: c.media || c.kind || 'photo',
       live: c.live || c.kind === 'live',
       distanceM: c.distanceM ?? c.rangeM ?? Math.round(dist(c)),
+      headingDeg: Number.isFinite(c.headingDeg)
+        ? c.headingDeg
+        : (Math.atan2(
+            (subject.lon - c.lon) * Math.cos((c.lat * Math.PI) / 180),
+            subject.lat - c.lat,
+          ) *
+            180) /
+          Math.PI,
     })),
     chat: (m.chat || []).map((c) => ({ ...c, handle: at(c.handle) })),
     posts: (m.posts || []).map((p) => ({
@@ -556,7 +564,21 @@ export function createMomentPlayer({
     if (!m) return;
     cancelAnimationFrame(raf);
     raf = 0;
-    globe.exitMoment();
+    // Stop the clock and let a frame render before the engine tears the
+    // Moment's primitives down (exiting mid-frame can stop Cesium's render).
+    globe.playback.stop();
+    const leaving = m;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (m === null || m === leaving) globe.exitMoment();
+      }),
+    );
+    try {
+      ext?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    ext = null;
     offOwn?.();
     offOwn = null;
     const was = m;

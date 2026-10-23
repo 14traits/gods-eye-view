@@ -678,12 +678,21 @@ globeReady
         }
         const subj = s.moment?.subject;
         const c = subj
-          ? { lon: subj.lon, lat: subj.lat - 0.004, height: 4200 }
+          ? { lon: subj.lon, lat: subj.lat, height: 4200 }
           : s.camera || {};
+        const height = Math.max(2500, Math.min(c.height || 3000, 6000));
+        // On a phone the room sheet covers the lower half: lift the place
+        // into the visible top of the map so the hearts rise in view.
+        let lat = c.lat ?? s.lat;
+        if (!isTwoPane()) {
+          const r = stage.getBoundingClientRect();
+          const mPerPx = (height * 0.364) / (Math.min(r.width, r.height) / 2);
+          lat -= (mPerPx * r.height * 0.27) / 111320;
+        }
         g.flyTo({
           lon: c.lon ?? s.lon,
-          lat: c.lat ?? s.lat,
-          height: Math.max(2500, Math.min(c.height || 3000, 6000)),
+          lat,
+          height,
           pitch: -40,
           duration: 1.8,
         });
@@ -1003,7 +1012,22 @@ function buildDirector(g) {
         run: async () => {
           closeAll();
           const m = await hero();
-          const ok = (await callSocial('openRoom', m, { lane: 'live' })).ok;
+          // Show the globe first, then the Live lane over it.
+          const sit =
+            (await getSituations()).find((x) => x.momentId === m.id) || m;
+          if (!isTwoPane()) selectTab('live');
+          await g.flyTo({
+            lon: m.lon,
+            lat: m.lat - 0.004,
+            height: 4200,
+            duration: 1.2,
+          });
+          const ok = (
+            await callSocial('openRoom', sit, {
+              lane: 'live',
+              detent: 'medium',
+            })
+          ).ok;
           if (!ok) await openRoom(m, { lane: 'live' });
           for (let i = 0; i < 6; i += 1)
             setTimeout(

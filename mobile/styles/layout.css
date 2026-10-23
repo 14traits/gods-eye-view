@@ -170,7 +170,7 @@
   }
 
   .mp-pops {
-    width: 230px;
+    width: min(230px, calc(46% - 14px));
   }
 
   .app.is-moment .gc-attr {
@@ -178,7 +178,7 @@
   }
 
   .mp-legend {
-    width: 250px;
+    width: min(250px, calc(50% - 14px));
   }
 
   .mp-title {
