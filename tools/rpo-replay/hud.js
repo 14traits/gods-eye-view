@@ -14,14 +14,15 @@ export function createHud(ctx) {
   const CHAPTERS = [
     { key: 'climb', label: 'Climb', s0: 4.4, s1: 12.5 },
     { key: 'drop', label: 'Drop in', s0: 12.5, s1: 22.0 },
-    { key: 'stalk', label: 'Stalk', s0: 22.0, s1: 35.6 },
+    { key: 'close', label: 'Close in', s0: 22.0, s1: 29.7 },
+    { key: 'closest', label: 'Closest', s0: 29.7, s1: 35.6 },
     { key: 'leave', label: 'Leave', s0: 35.6, s1: 41.2 },
   ];
   const CAPTIONS = [
     {
-      s0: 0.0, s1: 4.4, hook: true,
-      title: `A Russian satellite stalked a U.S. radar satellite — to <span class="c-cos">~${CA_M} m</span>`,
-      body: 'How <b class="c-cos">Cosmos 2612</b> hunted <b class="c-x36">ICEYE-X36</b> for 22 days, rebuilt from public tracking data.',
+      s0: -1, s1: 4.4, hook: true,
+      title: `A Russian military satellite shadowed a U.S.-registered one — to <span class="c-cos">~${CA_M} m</span>`,
+      body: 'How <b class="c-cos">Cosmos 2612</b> matched <b class="c-x36">ICEYE-X36</b>\'s orbit over 22 days, rebuilt from public tracking data.',
     },
     {
       s0: 4.4, s1: 12.5,
@@ -29,19 +30,29 @@ export function createHud(ctx) {
       body: 'A higher orbit is slower. Lifted <b>47 km</b>, it drifts back and laps its target.',
     },
     {
-      s0: 12.5, s1: 22.0,
+      s0: 12.5, s1: 17.2,
       title: 'Drop into the same orbit',
-      body: 'Oct 12: it dives 47 km, lands <b>480 km behind</b> — then closes ~350 km a day.',
+      body: 'Oct 12: it dives 47 km and lands about <b>480 km behind</b>.',
+    },
+    {
+      s0: 17.2, s1: 22.0,
+      title: 'Speed up, then brake',
+      body: 'Oct 15: a 2 km dip makes it faster — closing <b>~350 km a day</b> — then it brakes 3 km behind.',
     },
     {
       s0: 22.0, s1: 29.7,
       title: 'Park behind it. Creep closer.',
-      body: 'From 3 km back it loops <b>1.6 km</b> every orbit, inching in for two days.',
+      body: 'Each orbit its path loops <b>1.6 km</b>, inching in for two days.',
     },
     {
-      s0: 29.7, s1: 35.6,
-      title: `Closest pass: <span class="c-cos">~${CA_M} meters</span>`,
-      body: 'In Earth\'s shadow, at walking pace — while both fly at <b>27,000 km/h</b>.',
+      s0: 29.7, s1: 32.3,
+      title: 'Into Earth\'s shadow',
+      body: 'Closing at strolling pace (<b>0.9 m/s</b>) — while both fly at 27,000 km/h.',
+    },
+    {
+      s0: 32.3, s1: 35.6,
+      title: `Closest pass: <span class="c-cos">~${CA_M} m</span>`,
+      body: 'Shown at true size. Published estimates: <b>150–650 m</b>.',
     },
     {
       s0: 35.6, s1: 41.2,
@@ -66,8 +77,8 @@ export function createHud(ctx) {
     })),
     { t: sec('2026-10-05T11:55:00Z'), kind: 'note', title: 'Passes overhead', sub: '~50 km above its target' },
     { t: sec('2026-10-12T00:10:00Z'), kind: 'note', title: 'Directly overhead', sub: '47 km above its target' },
-    { t: VANTOR_T, kind: 'vantor', title: 'Vantor photographs the pair', sub: `from another satellite · ~${D.vantor.km.toFixed(0)} km apart` },
-    { t: CA_T, kind: 'ca', title: 'Closest approach', sub: `${D.ca.t.slice(11, 16)} UTC Oct 18 · est. 150–650 m` },
+    { t: VANTOR_T, kind: 'vantor', title: 'Vantor photographs the pair', sub: `from its own satellite · ~${D.vantor.km.toFixed(0)} km apart · Oct 17` },
+    { t: CA_T, kind: 'ca', title: 'Closest approach', sub: `${D.ca.t.slice(11, 16)} UTC, Oct 18` },
   ].map((e) => ({ ...e, s: sOfTau(e.t) })).sort((a, b) => a.s - b.s);
 
   // -------------------------------------------------------------------------
@@ -103,7 +114,7 @@ export function createHud(ctx) {
       for (let i = Math.floor(ta / D.dt); i <= Math.ceil(tb / D.dt); i++) mn = Math.min(mn, D.sep_km[Math.min(Math.max(i, 0), NS - 1)]);
       lo += `${c ? 'L' : 'M'}${(padL + c * 2).toFixed(1)},${y(Math.max(mn, CH.lo)).toFixed(1)}`;
     }
-    const fs = 24 * U;
+    const fs = (PORTRAIT ? 24 : 26) * U;
     const grid = [[10000, '10,000 km'], [100, '100 km'], [1, '1 km']]
       .map(([v, lab]) => `<line x1="${padL}" x2="${cw}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(238,242,246,0.14)" stroke-width="${1.5 * U}"/>
         <text x="${padL - 14 * U}" y="${y(v) + fs * 0.35}" text-anchor="end" font-size="${fs}" fill="rgba(238,242,246,0.6)">${lab}</text>`).join('');
@@ -127,6 +138,7 @@ export function createHud(ctx) {
       el = document.createElement('div');
       el.id = id;
       el.className = 'tag';
+      el.dataset.meta = meta;
       el.innerHTML = `<div class="name ${cls}">${name}</div><div class="meta">${meta}</div>`;
       tagsEl.appendChild(el);
     }
@@ -186,8 +198,6 @@ export function createHud(ctx) {
     $('#clock .date').textContent = `${mon} ${d.getUTCDate()}`;
     $('#clock .time').textContent = `${d.toISOString().slice(11, 16)} UTC`;
     $('#clock .rate').innerHTML = `1 sec = ${perSecond(rate(s))}`;
-    const inShadow = st.lx < 0.5 && st.sep < 5e3;
-    $('#clock .shadow').style.opacity = inShadow ? 1 : 0;
     $('#clock').style.opacity = live;
 
     // Distance readout
@@ -196,18 +206,19 @@ export function createHud(ctx) {
     ro.querySelector('.val').innerHTML = fmtSep(st.sep);
     const [r, tt] = st.rel;
     let ctxLine;
-    if (st.sep < 1500) ctxLine = `≈ ${Math.max(1, Math.round(st.sep / 100))} football fields`;
+    const caS = EVENTS.find((e) => e.kind === 'ca').s;
+    if (st.sep < 1500) ctxLine = `≈ ${Math.max(1, Math.round(st.sep / 100))} football fields${s > caS && s < 36.5 ? ` · closest ${CA_M} m` : ''}`;
     else if (st.sep < 2e6) ctxLine = `${Math.abs(tt) >= 1e4 ? fmtNum(Math.abs(tt) / 1000) + ' km' : (Math.abs(tt) / 1000).toFixed(1) + ' km'} ${tt < 0 ? 'behind' : 'ahead'}${Math.abs(r) > 20e3 ? ` · ${fmtNum(Math.abs(r) / 1000)} km ${r > 0 ? 'higher' : 'lower'}` : ''}`;
     else ctxLine = `${Math.abs(r) > 20e3 ? `${fmtNum(Math.abs(r) / 1000)} km higher · ` : ''}far side of the orbit`;
     ro.querySelector('.ctx').textContent = ctxLine;
 
-    // Scale note
+    // Scale chip: amber when enlarged, white at true size.
     const magEl = $('#mag');
-    const showMag = st.mag > 1.5 || (st.camDistX < 200 && st.sep < 2e3);
-    magEl.style.opacity = showMag ? live : 0;
-    magEl.textContent = st.mag > 1.5
-      ? `Satellites drawn ${Math.round(st.mag / 5) * 5}× actual size`
-      : 'Actual scale · Cosmos 2612 shape is illustrative';
+    const enlarged = st.mag > 1.5;
+    const trueSize = !enlarged && st.camDistX < 200;
+    magEl.style.opacity = (enlarged || trueSize) ? fade(s, 4.4, 41.2, 0.3) : 0;
+    magEl.classList.toggle('enlarged', enlarged);
+    magEl.textContent = enlarged ? `Satellites enlarged ${Math.round(st.mag)}×` : 'True size';
 
     // Chart
     const px = chart.x(Math.min(Math.max(t, CH.t0), CH.t1));
@@ -223,6 +234,7 @@ export function createHud(ctx) {
 
     // Event toasts (max two, newest on top)
     let html = '';
+    if (st.lx < 0.5 && st.sep < 5e3 && s < 41.2) html += '<div class="event shadow"><i></i><div><div class="t">In Earth\'s shadow</div><div class="sub">orbital night · sunrise in minutes</div></div></div>';
     const active = EVENTS.map((e) => ({ e, a: fade(s, e.s, e.s + (e.kind === 'ca' ? 3.6 : e.kind === 'vantor' ? 2.8 : 2.0), 0.2) }))
       .filter((x) => x.a > 0).slice(-2).reverse();
     for (const { e, a } of active) {
@@ -233,7 +245,7 @@ export function createHud(ctx) {
     // Satellite tags + in-scene dimension line
     const pX = project(st.x36W);
     const pC = project(st.cosW);
-    const tX = tag('tagX', 'ICEYE-X36', 'U.S. radar satellite', 'c-x36');
+    const tX = tag('tagX', 'ICEYE-X36', 'U.S.-registered radar satellite', 'c-x36');
     const tC = tag('tagC', 'COSMOS 2612', 'Russian military', 'c-cos');
     const tagA = fade(s, 4.0, 41.2, 0.4);
     const onScreen = (p) => p && p.x > -40 && p.y > -40 && p.x < W + 40 && p.y < H + 40;
@@ -254,8 +266,9 @@ export function createHud(ctx) {
         el.style.opacity = 0;
         return;
       }
-      const a = tagA * (p.hidden ? 0.4 : 1);
+      const a = tagA;
       el.style.opacity = a;
+      el.querySelector('.meta').textContent = p.hidden ? 'far side of Earth' : el.dataset.meta;
       const w = el.offsetWidth;
       const h = el.offsetHeight;
       const quads = [prefer, [prefer[0], -prefer[1]], [-prefer[0], prefer[1]], [-prefer[0], -prefer[1]]];
@@ -287,6 +300,34 @@ export function createHud(ctx) {
       svg += `<line x1="${p.x + best.sx * 12 * U}" y1="${p.y + best.sy * 12 * U}" x2="${best.lx}" y2="${best.ly}" stroke="${color}" stroke-opacity="${a * 0.85}" stroke-width="${2.5 * U}"/>`;
       svg += `<circle cx="${p.x}" cy="${p.y}" r="${15 * U}" fill="none" stroke="${color}" stroke-opacity="${a * 0.9}" stroke-width="${2.5 * U}"/>`;
     };
+    // Dimension line + pill (offset perpendicular so it clears the line's ends).
+    const dim = $('#dim');
+    const gap = onScreen(pX) && onScreen(pC) ? Math.hypot(pC.x - pX.x, pC.y - pX.y) : 0;
+    const dimA = st.sep < 60e3 && gap > 160 * U ? tagA : 0;
+    if (dimA > 0) {
+      svg += `<line x1="${pX.x}" y1="${pX.y}" x2="${pC.x}" y2="${pC.y}" stroke="#fff" stroke-opacity="${0.75 * dimA}" stroke-width="${2.5 * U}" stroke-dasharray="${10 * U} ${8 * U}"/>`;
+      const nx = -(pC.y - pX.y) / gap;
+      const ny = (pC.x - pX.x) / gap;
+      const side = ny > 0 ? -1 : 1; // put the pill above the line
+      dim.innerHTML = fmtSep(st.sep).replace(/<\/?small>/g, ' ').trim();
+      const mx = (pX.x + pC.x) / 2 + side * nx * 40 * U;
+      const my = (pX.y + pC.y) / 2 + side * ny * 40 * U;
+      dim.style.left = `${mx}px`;
+      dim.style.top = `${my}px`;
+      const w = dim.offsetWidth;
+      const h = dim.offsetHeight;
+      obstacles.push({ left: mx - w / 2, right: mx + w / 2, top: my - h / 2, bottom: my + h / 2 });
+    }
+    dim.style.opacity = dimA;
+    // Pulse rings on both satellites at the closest moment.
+    const caS2 = EVENTS.find((e) => e.kind === 'ca').s;
+    const k = (s - caS2) / 1.2;
+    if (k > 0 && k < 1) {
+      for (const p of [pX, pC]) {
+        if (!onScreen(p)) continue;
+        svg += `<circle cx="${p.x}" cy="${p.y}" r="${(18 + 90 * k) * U}" fill="none" stroke="#fff" stroke-opacity="${(1 - k) * 0.9}" stroke-width="${4 * U}"/>`;
+      }
+    }
     let pX0 = [1, -1];
     let pC0 = [-1, 1];
     if (onScreen(pX) && onScreen(pC)) {
@@ -298,17 +339,6 @@ export function createHud(ctx) {
     place(tX, pX, pX0, '#5ce1e6');
     place(tC, pC, pC0, '#ff5a3c');
 
-    // Dimension line with a distance pill, when the pair is close and both visible.
-    const dim = $('#dim');
-    const gap = onScreen(pX) && onScreen(pC) ? Math.hypot(pC.x - pX.x, pC.y - pX.y) : 0;
-    const dimA = st.sep < 60e3 && gap > 160 * U ? tagA : 0;
-    if (dimA > 0) {
-      svg += `<line x1="${pX.x}" y1="${pX.y}" x2="${pC.x}" y2="${pC.y}" stroke="#fff" stroke-opacity="${0.75 * dimA}" stroke-width="${2.5 * U}" stroke-dasharray="${10 * U} ${8 * U}"/>`;
-      dim.style.left = `${(pX.x + pC.x) / 2}px`;
-      dim.style.top = `${(pX.y + pC.y) / 2}px`;
-      dim.innerHTML = fmtSep(st.sep).replace(/<\/?small>/g, ' ').trim();
-    }
-    dim.style.opacity = dimA;
     leaders.innerHTML = svg;
 
     // Burn flash ring on Cosmos
@@ -327,13 +357,13 @@ export function createHud(ctx) {
       ec.dataset.built = '1';
       ec.innerHTML = `<div class="panel">
         <div class="big">~${CA_M} m</div>
-        <div class="lead">Russia's Cosmos 2612 got within about ${CA_M} meters of the U.S. radar satellite ICEYE-X36.</div>
+        <div class="range">estimated · published range 150–650 m</div>
+        <div class="lead">Closest pass between Cosmos 2612 and ICEYE-X36 · Oct 18, in Earth's shadow</div>
         <div class="stats">
-          <div><b>22</b><span>days of stalking</span></div>
+          <div><b>22</b><span>days in pursuit</span></div>
           <div><b>8</b><span>engine burns</span></div>
-          <div><b>0.9 m/s</b><span>closest-pass speed</span></div>
+          <div><b>0.9 m/s</b><span>speed at closest pass</span></div>
         </div>
-        <div class="why">Tracking firm LeoLabs says maneuvers like these could support spying, inspection, interference — or preparing future attacks.</div>
       </div>`;
     }
     $('#endlogo').style.opacity = endA;

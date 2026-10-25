@@ -188,15 +188,15 @@ const CAM = [
   { s: 15.4, dist: 1.6e6, f: 2.8, az: 32, el: 36, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 8 },
   { s: 18.0, dist: 1.4e6, f: 2.8, az: 26, el: 34, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 12 },
   { s: 20.4, dist: 4.0e4, f: 2.8, az: 40, el: 32, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 10 },
-  { s: 22.4, dist: 6.5e3, f: 2.4, az: 58, el: 34, look: 0.45, earth: 0, fov: 36, mag: 1, trail: 9 },
-  { s: 26.0, dist: 4.6e3, f: 2.4, az: 76, el: 30, look: 0.5, earth: 0, fov: 36, mag: 1, trail: 9 },
-  { s: 28.8, dist: 2.2e3, f: 2.4, az: 100, el: 22, look: 0.4, earth: 0, fov: 36, mag: 1, trail: 4 },
-  { s: 29.9, dist: 12, f: 0, az: 96, el: 16, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3 },
-  { s: 30.8, dist: 13, f: 0, az: 122, el: 14, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3 },
-  { s: 31.6, dist: 18, f: 0, az: 168, el: 9, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3, aimRel: [0, -60, 0] },
-  { s: 32.6, dist: 1.0e3, f: 0, az: 112, el: 26, look: 0.5, earth: 0, fov: 36, mag: 1, trail: 1.2 },
-  { s: 35.0, dist: 1.3e3, f: 0, az: 96, el: 18, look: 0.5, earth: 0, fov: 36, mag: 1, trail: 1.6 },
-  { s: 36.6, dist: 1.2e4, f: 2.8, az: 110, el: 30, look: 0.4, earth: 0, fov: 36, mag: 1, trail: 4 },
+  { s: 22.4, dist: 6.5e3, f: 2.4, az: 58, el: 34, look: 0.45, earth: 0, fov: 36, mag: 1, mx: 40, trail: 9 },
+  { s: 26.0, dist: 4.6e3, f: 2.4, az: 76, el: 30, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 40, trail: 9 },
+  { s: 29.7, dist: 2.0e3, f: 2.2, az: 104, el: 24, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 4 },
+  { s: 31.9, dist: 1.0e3, f: 2.2, az: 116, el: 22, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 3 },
+  { s: 31.9, cut: true, dist: 25, f: 0, az: 165, el: 8, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, aimRel: [0, -60, 0] },
+  { s: 33.9, dist: 22, f: 0, az: 170, el: 7, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, aimRel: [0, -70, 0] },
+  { s: 33.9, cut: true, dist: 1.3e3, f: 2.2, az: 96, el: 18, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 1.6 },
+  { s: 35.6, dist: 1.6e3, f: 2.4, az: 100, el: 22, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 2 },
+  { s: 37.0, dist: 1.2e4, f: 2.8, az: 110, el: 30, look: 0.4, earth: 0, fov: 36, mag: 1, mx: 40, trail: 4 },
   { s: 39.0, dist: 9.0e5, f: 2.8, az: 60, el: 30, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 30 },
   { s: 41.2, dist: 2.0e6, f: 2.8, az: 44, el: 30, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 60 },
   { s: 41.2, cut: true, ...WIDE, dist: 4.8e7, az: 80, el: 34, trail: 60 },
@@ -227,6 +227,7 @@ function camAt(s) {
     earth: lerp(a.earth, b.earth),
     fov: lerp(a.fov, b.fov),
     mag: lerp(a.mag, b.mag),
+    mx: Math.exp(lerp(Math.log(a.mx || 1), Math.log(b.mx || 1))),
     trail: Math.exp(lerp(Math.log(a.trail), Math.log(b.trail))),
     aimRel: [0, 1, 2].map((k) => lerp(ar[k], br[k])),
     sun: lerp(a.sun || 0, b.sun || 0),
@@ -489,11 +490,11 @@ async function frame(s) {
   const pxPerRad = (PORTRAIT ? W : W) / (2 * Math.tan(scene.camera.frustum.fov / 2));
   const targetPx = 110 * U; // magnified apparent size
   const magFor = (d, size) => Math.max(1, (targetPx * d) / (pxPerRad * size));
-  const magX = 1 + (magFor(camDistX, 3.25) - 1) * cam.mag;
-  const magC = 1 + (magFor(camDistC, 3.6) - 1) * cam.mag;
-  const MAG_MAX = 150; // beyond this, a glyph is more honest than a giant model
-  const rawMag = Math.max(1, Math.min(magX, magC));
-  const mag = rawMag > MAG_MAX ? 1 : rawMag;
+  // One fixed enlargement per beat (keyed), so the on-screen factor holds still.
+  const rawMag = cam.mag > 0.5 ? cam.mx : 1;
+  const MAG_MAX = 150;
+  const mag = rawMag;
+  void magFor;
   const nearScale = Math.min(1, Math.max(0, cam.mag * 2));
   mX36.show = (cam.mag > 0.01 && rawMag <= MAG_MAX) || camDistX < 3000;
   mCos.show = (cam.mag > 0.01 && rawMag <= MAG_MAX) || camDistC < 6000;
