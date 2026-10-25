@@ -192,8 +192,8 @@ const CAM = [
   { s: 26.0, dist: 4.6e3, f: 2.4, az: 76, el: 30, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 40, trail: 9 },
   { s: 29.7, dist: 2.0e3, f: 2.2, az: 104, el: 24, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 4 },
   { s: 31.9, dist: 1.0e3, f: 2.2, az: 116, el: 22, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 3 },
-  { s: 31.9, cut: true, dist: 25, f: 0, az: 165, el: 8, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, aimRel: [0, -60, 0] },
-  { s: 33.9, dist: 22, f: 0, az: 170, el: 7, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, aimRel: [0, -70, 0] },
+  { s: 31.9, cut: true, dist: 26, f: 0, az: 160, el: 0, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, comp: 0, pairD: 26, pairTh: 22 },
+  { s: 33.9, dist: 22, f: 0, az: 163, el: 0, look: 0.0, earth: 0, fov: 34, mag: 0, trail: 0.5, comp: 0, pairD: 22, pairTh: 18 },
   { s: 33.9, cut: true, dist: 1.3e3, f: 2.2, az: 96, el: 18, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 1.6 },
   { s: 35.6, dist: 1.6e3, f: 2.4, az: 100, el: 22, look: 0.5, earth: 0, fov: 36, mag: 1, mx: 25, trail: 2 },
   { s: 37.0, dist: 1.2e4, f: 2.8, az: 110, el: 30, look: 0.4, earth: 0, fov: 36, mag: 1, mx: 40, trail: 4 },
@@ -227,6 +227,9 @@ function camAt(s) {
     earth: lerp(a.earth, b.earth),
     fov: lerp(a.fov, b.fov),
     mag: lerp(a.mag, b.mag),
+    comp: lerp(a.comp ?? 1, b.comp ?? 1),
+    pairD: lerp(a.pairD || 0, b.pairD || 0),
+    pairTh: lerp(a.pairTh || 0, b.pairTh || 0),
     mx: Math.exp(lerp(Math.log(a.mx || 1), Math.log(b.mx || 1))),
     trail: Math.exp(lerp(Math.log(a.trail), Math.log(b.trail))),
     aimRel: [0, 1, 2].map((k) => lerp(ar[k], br[k])),
@@ -453,6 +456,18 @@ async function frame(s) {
     v3.normalize(v3.add(v3.multiplyByScalar(off, 1 - cam.sun, off), v3.multiplyByScalar(sunW, cam.sun, new v3()), off), off);
   }
   const camPos = v3.add(pivot, v3.multiplyByScalar(off, dist, new v3()), new v3());
+  if (cam.pairD > 0) {
+    // Pair-locked: camera just off X36, angled pairTh from the X36->Cosmos line
+    // (sideways, in the orbit's horizontal), aimed at the bisector of the two.
+    const u = v3.normalize(v3.subtract(cosW, x36W, new v3()), new v3());
+    const perp = v3.normalize(v3.subtract(NW, v3.multiplyByScalar(u, v3.dot(NW, u), new v3()), new v3()), new v3());
+    const th = Cesium.Math.toRadians(cam.pairTh);
+    v3.add(x36W, v3.multiplyByScalar(u, -cam.pairD * Math.cos(th), new v3()), camPos);
+    v3.add(camPos, v3.multiplyByScalar(perp, cam.pairD * Math.sin(th), new v3()), camPos);
+    const a1 = v3.normalize(v3.subtract(x36W, camPos, new v3()), new v3());
+    const a2 = v3.normalize(v3.subtract(cosW, camPos, new v3()), new v3());
+    v3.add(camPos, v3.add(a1, a2, new v3()), aim);
+  }
   const minR = 6.371e6 + 1.2e5;
   if (v3.magnitude(camPos) < minR) v3.multiplyByScalar(v3.normalize(camPos, camPos), minR, camPos);
   const dir = v3.normalize(v3.subtract(aim, camPos, new v3()), new v3());
@@ -465,8 +480,8 @@ async function frame(s) {
     const aspect = W / H;
     const tanH = PORTRAIT ? Math.tan(fovR / 2) * aspect : Math.tan(fovR / 2);
     const tanV = PORTRAIT ? Math.tan(fovR / 2) : Math.tan(fovR / 2) / aspect;
-    const ndcX = PORTRAIT ? 0 : 0.2;
-    const ndcY = PORTRAIT ? -0.02 : -0.06;
+    const ndcX = (PORTRAIT ? 0 : 0.2) * cam.comp;
+    const ndcY = (PORTRAIT ? -0.02 : -0.06) * cam.comp;
     v3.normalize(v3.add(v3.add(dir, v3.multiplyByScalar(right, -ndcX * tanH, new v3()), new v3()),
       v3.multiplyByScalar(up, -ndcY * tanV, new v3()), new v3()), dir);
     right = v3.normalize(v3.cross(dir, RW, new v3()), new v3());

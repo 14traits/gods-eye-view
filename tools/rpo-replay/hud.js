@@ -21,7 +21,7 @@ export function createHud(ctx) {
   const CAPTIONS = [
     {
       s0: -1, s1: 4.4, hook: true,
-      title: `A Russian military satellite shadowed a U.S.-registered one — to <span class="c-cos">~${CA_M} m</span>`,
+      title: `A Russian military satellite shadowed a U.S.-registered one — to <span class="c-cos" style="white-space:nowrap">~${CA_M} m</span>`,
       body: 'How <b class="c-cos">Cosmos 2612</b> matched <b class="c-x36">ICEYE-X36</b>\'s orbit over 22 days, rebuilt from public tracking data.',
     },
     {
@@ -207,9 +207,10 @@ export function createHud(ctx) {
     const [r, tt] = st.rel;
     let ctxLine;
     const caS = EVENTS.find((e) => e.kind === 'ca').s;
-    if (st.sep < 1500) ctxLine = `≈ ${Math.max(1, Math.round(st.sep / 100))} football fields${s > caS && s < 36.5 ? ` · closest ${CA_M} m` : ''}`;
+    if (st.sep < 1500) ctxLine = `≈ ${Math.max(1, Math.round(st.sep / 100))} football fields`;
     else if (st.sep < 2e6) ctxLine = `${Math.abs(tt) >= 1e4 ? fmtNum(Math.abs(tt) / 1000) + ' km' : (Math.abs(tt) / 1000).toFixed(1) + ' km'} ${tt < 0 ? 'behind' : 'ahead'}${Math.abs(r) > 20e3 ? ` · ${fmtNum(Math.abs(r) / 1000)} km ${r > 0 ? 'higher' : 'lower'}` : ''}`;
     else ctxLine = `${Math.abs(r) > 20e3 ? `${fmtNum(Math.abs(r) / 1000)} km higher · ` : ''}far side of the orbit`;
+    if (s > caS && s < 36.5) ctxLine += ` · closest ${CA_M} m`;
     ro.querySelector('.ctx').textContent = ctxLine;
 
     // Scale chip: amber when enlarged, white at true size.
@@ -234,10 +235,11 @@ export function createHud(ctx) {
 
     // Event toasts (max two, newest on top)
     let html = '';
-    if (st.lx < 0.5 && st.sep < 5e3 && s < 41.2) html += '<div class="event shadow"><i></i><div><div class="t">In Earth\'s shadow</div><div class="sub">orbital night · sunrise in minutes</div></div></div>';
+    const quiet = s > 31.85 && s < 33.95; // true-size shot: headline + pulse carry it
+    if (!quiet && st.lx < 0.5 && st.sep < 5e3 && s < 41.2) html += '<div class="event shadow"><i></i><div><div class="t">In Earth\'s shadow</div><div class="sub">orbital night · sunrise in minutes</div></div></div>';
     const active = EVENTS.map((e) => ({ e, a: fade(s, e.s, e.s + (e.kind === 'ca' ? 3.6 : e.kind === 'vantor' ? 2.8 : 2.0), 0.2) }))
       .filter((x) => x.a > 0).slice(-2).reverse();
-    for (const { e, a } of active) {
+    for (const { e, a } of quiet ? [] : active) {
       html += `<div class="event ${e.kind}" style="opacity:${a * live}"><i></i><div><div class="t">${e.title}</div><div class="sub">${e.sub}</div></div></div>`;
     }
     evEl.innerHTML = html;
