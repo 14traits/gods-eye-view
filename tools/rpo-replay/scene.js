@@ -3,6 +3,8 @@
 // window.rpo.frame(seconds) sets every piece of state for one video instant,
 // renders, and resolves once imagery and models have settled.
 
+import { createHud } from './hud.js';
+
 const params = new URLSearchParams(location.search);
 const W = Number(params.get('w') || 1920);
 const H = Number(params.get('h') || 1080);
@@ -17,6 +19,7 @@ const DT = D.dt;
 const NS = D.sep_km.length;
 const sec = (iso) => (Date.parse(iso) - T0) / 1000;
 const DUR = 45;
+const SETTLE = Number(params.get('settle') || 4);
 
 // ---------------------------------------------------------------------------
 // Interpolation
@@ -171,67 +174,7 @@ function sOfTau(t) {
 // ---------------------------------------------------------------------------
 // Story: captions, events, camera
 // ---------------------------------------------------------------------------
-const fmtKm = (km) => (km >= 100 ? `${Math.round(km).toLocaleString('en-US')}` : km >= 10 ? km.toFixed(0) : km.toFixed(1));
-
-const CAPTIONS = [
-  {
-    s0: 0.2, s1: 4.3,
-    kicker: 'Low Earth orbit · 540 km · <b>Sep 30 – Oct 21, 2026</b>',
-    title: 'Hunting a radar satellite',
-    body: 'Over three weeks, Russia\'s military satellite <em class="c-cos">Cosmos 2612</em> stalked <em class="c-x36">ICEYE-X36</em>, a U.S.-registered radar imager whose pictures help Ukraine — and closed to a few hundred meters.',
-  },
-  {
-    s0: 4.5, s1: 12.3,
-    kicker: '<b>1</b> · Phasing',
-    title: 'Climb high, fall behind',
-    body: 'Two burns lift Cosmos 2612 <em>47 km</em> above its target. A higher orbit is slower, so it drifts back <em>~6,500 km a day</em> and laps X36 — while Earth\'s equatorial bulge slowly swings its orbit plane into line.',
-  },
-  {
-    s0: 12.6, s1: 21.9,
-    kicker: '<b>2</b> · Descent',
-    title: 'Drop into the same orbit',
-    body: 'Directly overhead on Oct 12, it drops 47 km into X36\'s orbit, <em>480 km behind</em>. On Oct 15 a 2 km dip makes it slightly faster: it closes <em>~350 km a day</em> — then brakes 3 km behind.',
-  },
-  {
-    s0: 22.1, s1: 29.6,
-    kicker: '<b>3</b> · Proximity',
-    title: 'Close enough to inspect',
-    body: 'For two days it holds station behind X36, its path looping <em>1.6 km</em> each orbit as it creeps forward. These are the maneuvers of an inspector: they need fuel, planning, and sensors that can find the target.',
-  },
-  {
-    s0: 29.8, s1: 35.6,
-    kicker: '<b>3</b> · Closest approach',
-    title: 'In Earth\'s shadow',
-    body: 'Early on Oct 18, during orbital night, it passes about <em>%CA% m</em> behind X36 at under 1 m/s. Published estimates range from <em>150 to 650 m</em>. Nine minutes later, the sun comes up.',
-  },
-  {
-    s0: 35.8, s1: 41.0,
-    kicker: '<b>4</b> · Departure',
-    title: 'Back off, and wait',
-    body: 'A 1.3 m/s burn lifts it 2.4 km and it falls away at <em>~350 km a day</em>. On Oct 19 it matches orbits again — and today it is still parked <em>480 km behind</em>.',
-  },
-];
-
 const BURNS = D.burns.map((b) => ({ ...b, t: sec(b.t) }));
-const BURN_NOTES = {
-  'Phasing raise': '+46 km',
-  'Plane trim': 'out-of-plane',
-  'Descent to X36 orbit': '−47 km',
-  'Closing burn': '−2.3 km',
-  'Braking burn': '+2.5 km',
-  'Back-off': '+0.13 km',
-  'Departure burn': '+2.4 km',
-  'Re-match orbit': '−2.6 km',
-};
-const EVENTS = [
-  ...BURNS.map((b) => ({ t: b.t, kind: 'burn', title: `BURN · Δv ${b.dv < 1 ? b.dv.toFixed(2) : b.dv.toFixed(1)} m/s`, sub: `${b.label} · ${BURN_NOTES[b.label] || ''}`, at: 'cosmos' })),
-  { t: sec('2026-10-05T11:55:00Z'), kind: 'note', title: 'OVERHEAD PASS', sub: '~50 km above X36', at: 'cosmos' },
-  { t: sec('2026-10-12T00:10:00Z'), kind: 'note', title: 'OVERHEAD PASS', sub: '47 km directly above', at: 'cosmos' },
-  { t: VANTOR_T, kind: 'vantor', title: 'VANTOR IMAGES THE PAIR', sub: `from orbit · ~${D.vantor.km.toFixed(1)} km apart · Oct 17`, at: 'mid' },
-  { t: CA_T, kind: 'ca', title: `CLOSEST APPROACH · ~${Math.round(D.ca.m / 5) * 5} m`, sub: `${D.ca.t.slice(11, 16)} UTC Oct 18 · est. range 150–650 m`, at: 'mid' },
-].map((e) => ({ ...e, s: sOfTau(e.t) }));
-// Two burns that land in the same instant only show once.
-EVENTS.sort((a, b) => a.s - b.s);
 
 // Camera keys, in X36's local frame (R up, T velocity, N orbit normal).
 // dist: metres (or auto = f * separation, floored at min). az: 0 = behind X36
@@ -245,9 +188,9 @@ const CAM = [
   { s: 15.4, dist: 1.6e6, f: 2.8, az: 32, el: 36, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 8 },
   { s: 18.0, dist: 1.4e6, f: 2.8, az: 26, el: 34, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 12 },
   { s: 20.4, dist: 4.0e4, f: 2.8, az: 40, el: 32, look: 0.5, earth: 0, fov: 34, mag: 0, trail: 10 },
-  { s: 22.4, dist: 6.5e3, f: 0, az: 58, el: 34, look: 0.45, earth: 0, fov: 36, mag: 1, trail: 9 },
-  { s: 26.0, dist: 4.6e3, f: 0, az: 76, el: 30, look: 0.5, earth: 0, fov: 36, mag: 1, trail: 9 },
-  { s: 28.8, dist: 2.2e3, f: 0, az: 100, el: 22, look: 0.4, earth: 0, fov: 36, mag: 1, trail: 4 },
+  { s: 22.4, dist: 6.5e3, f: 2.4, az: 58, el: 34, look: 0.45, earth: 0, fov: 36, mag: 1, trail: 9 },
+  { s: 26.0, dist: 4.6e3, f: 2.4, az: 76, el: 30, look: 0.5, earth: 0, fov: 36, mag: 1, trail: 9 },
+  { s: 28.8, dist: 2.2e3, f: 2.4, az: 100, el: 22, look: 0.4, earth: 0, fov: 36, mag: 1, trail: 4 },
   { s: 29.9, dist: 12, f: 0, az: 96, el: 16, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3 },
   { s: 30.8, dist: 13, f: 0, az: 122, el: 14, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3 },
   { s: 31.6, dist: 18, f: 0, az: 168, el: 9, look: 0.0, earth: 0, fov: 40, mag: 0, trail: 0.3, aimRel: [0, -60, 0] },
@@ -295,7 +238,7 @@ function camAt(s) {
 // ---------------------------------------------------------------------------
 const esri = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
   'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
-  { enablePickFeatures: false, maximumLevel: 11 },
+  { enablePickFeatures: false, maximumLevel: 9 },
 );
 const viewer = new Cesium.Viewer('globe', {
   baseLayer: new Cesium.ImageryLayer(esri, { brightness: 0.92, contrast: 1.08, gamma: 1.05 }),
@@ -345,7 +288,7 @@ globe.lightingFadeOutDistance = 1;
 globe.lightingFadeInDistance = 2;
 globe.nightFadeOutDistance = 1e10;
 globe.nightFadeInDistance = 1e10;
-globe.maximumScreenSpaceError = 1.6;
+globe.maximumScreenSpaceError = 2.2;
 globe.tileCacheSize = 1500;
 globe.preloadSiblings = false;
 globe.baseColor = Cesium.Color.fromCssColorString('#04070d');
@@ -360,7 +303,7 @@ scene.backgroundColor = Cesium.Color.BLACK;
 scene.screenSpaceCameraController.enableInputs = false;
 scene.camera.frustum.near = 0.5;
 scene.camera.frustum.far = 1e9;
-viewer.resolutionScale = 1;
+viewer.resolutionScale = Number(params.get('rs') || 1);
 const bloom = scene.postProcessStages.bloom;
 bloom.enabled = false;
 bloom.uniforms.contrast = 119;
@@ -425,113 +368,6 @@ function polyline(positions, colors, width) {
 // ---------------------------------------------------------------------------
 // HUD
 // ---------------------------------------------------------------------------
-const $ = (q) => document.querySelector(q);
-const capEl = $('#caption');
-const tagsEl = $('#tags');
-const leaders = $('#leaders');
-const callEl = $('#callouts');
-leaders.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-function fade(s, s0, s1, ramp = 0.45) {
-  return Math.min(1, Math.max(0, (s - s0) / ramp), Math.max(0, (s1 - s) / ramp));
-}
-
-function fmtRate(r) {
-  const p = 10 ** Math.floor(Math.log10(r) - 1);
-  const rr = Math.round(r / p) * p;
-  const real = rr;
-  let per;
-  if (real < 60) per = `${real.toFixed(0)} s`;
-  else if (real < 3600) per = `${(real / 60).toFixed(real < 600 ? 1 : 0)} min`;
-  else if (real < 86400) per = `${(real / 3600).toFixed(real < 36000 ? 1 : 0)} h`;
-  else per = `${(real / 86400).toFixed(1)} days`;
-  return `<span>×</span>${rr.toLocaleString('en-US')} <span>· 1 s = ${per}</span>`;
-}
-
-// Separation chart (log scale), drawn once and revealed by a clip.
-const CH = { t0: sec('2026-09-30T00:00:00Z'), t1: sec('2026-10-21T18:00:00Z'), lo: 0.1, hi: 20000 };
-const chartBox = $('#chart');
-function buildChart() {
-  const cw = chartBox.clientWidth;
-  const ch = chartBox.clientHeight;
-  const padL = 70 * U;
-  const padT = 34 * U;
-  const padB = 26 * U;
-  const x = (t) => padL + ((t - CH.t0) / (CH.t1 - CH.t0)) * (cw - padL);
-  const y = (km) => padT + (1 - (Math.log10(km) - Math.log10(CH.lo)) / (Math.log10(CH.hi) - Math.log10(CH.lo))) * (ch - padT - padB);
-  const cols = Math.round(cw - padL);
-  let lo = '';
-  let hi = '';
-  const ptsHi = [];
-  for (let c = 0; c <= cols; c++) {
-    const ta = CH.t0 + (c / cols) * (CH.t1 - CH.t0);
-    const tb = CH.t0 + ((c + 1) / cols) * (CH.t1 - CH.t0);
-    let mn = Infinity;
-    let mx = 0;
-    for (let i = Math.floor(ta / DT); i <= Math.ceil(tb / DT); i++) {
-      const v = D.sep_km[Math.min(Math.max(i, 0), NS - 1)];
-      mn = Math.min(mn, v);
-      mx = Math.max(mx, v);
-    }
-    mn = Math.max(mn, CH.lo);
-    lo += `${c ? 'L' : 'M'}${(padL + c).toFixed(1)},${y(mn).toFixed(1)}`;
-    ptsHi.push(`${(padL + c).toFixed(1)},${y(mx).toFixed(1)}`);
-  }
-  hi = 'L' + ptsHi.reverse().join('L');
-  const grid = [0.1, 1, 10, 100, 1000, 10000]
-    .map((v) => {
-      const lab = v < 1 ? '100 m' : v < 1000 ? `${v} km` : `${(v).toLocaleString('en-US')} km`;
-      return `<line x1="${padL}" x2="${cw}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(238,242,246,0.10)" stroke-width="1"/>
-        <text x="${padL - 10 * U}" y="${y(v) + 4 * U}" text-anchor="end" font-size="${12 * U}" fill="rgba(238,242,246,0.45)">${lab}</text>`;
-    })
-    .join('');
-  const days = [];
-  for (let d = 0; d <= 21; d++) {
-    const t = sec(`2026-${d < 1 ? '09-30' : `10-${String(d).padStart(2, '0')}`}T00:00:00Z`);
-    const major = d === 0 || d % (PORTRAIT ? 7 : 3) === 0;
-    days.push(`<line x1="${x(t)}" x2="${x(t)}" y1="${ch - padB}" y2="${ch - padB + (major ? 6 : 3) * U}" stroke="rgba(238,242,246,0.35)"/>`);
-    if (major) {
-      days.push(`<text x="${x(t)}" y="${ch - padB + 20 * U}" text-anchor="middle" font-size="${12 * U}" fill="rgba(238,242,246,0.5)">${d === 0 ? 'SEP 30' : `OCT ${d}`}</text>`);
-    }
-  }
-  const burns = BURNS.map(
-    (b) => `<g class="burn" data-t="${b.t}"><path d="M${x(b.t)},${padT - 12 * U} l${-5 * U},${-9 * U} h${10 * U} z" fill="#ffb547"/>
-      <line x1="${x(b.t)}" x2="${x(b.t)}" y1="${padT - 10 * U}" y2="${ch - padB}" stroke="rgba(255,181,71,0.22)" stroke-dasharray="${2 * U} ${3 * U}"/></g>`,
-  ).join('');
-  const caX = x(CA_T);
-  const caY = y(D.ca.m / 1000);
-  chartBox.innerHTML = `<svg viewBox="0 0 ${cw} ${ch}">
-    <defs><clipPath id="past"><rect id="pastRect" x="0" y="-40" width="0" height="${ch + 80}"/></clipPath></defs>
-    <text x="${padL}" y="${padT - 26 * U}" font-size="${12 * U}" letter-spacing="0.14em" fill="rgba(238,242,246,0.62)">DISTANCE BETWEEN THE SATELLITES · LOG SCALE</text>
-    <text x="${cw}" y="${padT - 26 * U}" text-anchor="end" font-size="${12 * U}" letter-spacing="0.1em" fill="rgba(255,181,71,0.85)">▼ BURN</text>
-    ${grid}${days.join('')}${burns}
-    <path d="${lo}${hi}Z" fill="rgba(255,90,60,0.07)"/>
-    <path d="${lo}" fill="none" stroke="rgba(255,90,60,0.22)" stroke-width="${1.4 * U}"/>
-    <g clip-path="url(#past)">
-      <path d="${lo}${hi}Z" fill="rgba(255,90,60,0.28)"/>
-      <path d="${lo}" fill="none" stroke="#ff5a3c" stroke-width="${2 * U}"/>
-    </g>
-    <g id="caMark" opacity="0"><circle cx="${caX}" cy="${caY}" r="${5 * U}" fill="none" stroke="#fff" stroke-width="${1.5 * U}"/>
-      <text x="${caX - 10 * U}" y="${caY + 4 * U}" text-anchor="end" font-size="${12 * U}" fill="#fff">~${Math.round(D.ca.m / 5) * 5} m</text></g>
-    <line id="playhead" x1="0" x2="0" y1="${padT - 4 * U}" y2="${ch - padB}" stroke="#fff" stroke-width="${1.2 * U}"/>
-    <circle id="playdot" r="${4.5 * U}" fill="#fff"/>
-  </svg>`;
-  return { x, y };
-}
-const chart = buildChart();
-
-function tag(id, cls) {
-  let el = document.getElementById(id);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = id;
-    el.className = `tag ${cls}`;
-    el.innerHTML = '<div class="name"></div><div class="meta"></div>';
-    tagsEl.appendChild(el);
-  }
-  return el;
-}
-
 function project(world) {
   const p = Cesium.SceneTransforms.worldToWindowCoordinates(scene, world);
   if (!p) return null;
@@ -544,6 +380,9 @@ function project(world) {
   if (hit && hit.start * 1.0005 < v3.magnitude(d)) return { ...p, hidden: true };
   return p;
 }
+const hud = createHud({
+  D, W, H, U, PORTRAIT, sec, rate, sOfTau, sepAt, CA_T, VANTOR_T, BURNS, CUTS, project,
+});
 
 // ---------------------------------------------------------------------------
 // Frame
@@ -602,7 +441,7 @@ async function frame(s) {
   v3.add(aim, v3.multiplyByScalar(RW, cam.aimRel[0], new v3()), aim);
   v3.add(aim, v3.multiplyByScalar(TW, cam.aimRel[1], new v3()), aim);
   v3.add(aim, v3.multiplyByScalar(NW, cam.aimRel[2], new v3()), aim);
-  const dist = Math.max(cam.dist, cam.f * sep);
+  const dist = Math.max(cam.dist, cam.f * sep) * (PORTRAIT && cam.earth > 0.5 ? 0.74 : 1);
   const az = Cesium.Math.toRadians(cam.az);
   const el = Cesium.Math.toRadians(cam.el);
   const off = new v3();
@@ -616,8 +455,22 @@ async function frame(s) {
   const minR = 6.371e6 + 1.2e5;
   if (v3.magnitude(camPos) < minR) v3.multiplyByScalar(v3.normalize(camPos, camPos), minR, camPos);
   const dir = v3.normalize(v3.subtract(aim, camPos, new v3()), new v3());
-  const right = v3.normalize(v3.cross(dir, RW, new v3()), new v3());
-  const up = v3.cross(right, dir, new v3());
+  let right = v3.normalize(v3.cross(dir, RW, new v3()), new v3());
+  let up = v3.cross(right, dir, new v3());
+  {
+    // Composition: put the aim point right of centre in 16:9 (the caption
+    // column is on the left); portrait keeps it centred between the text bands.
+    const fovR = Cesium.Math.toRadians(PORTRAIT ? cam.fov * 1.55 : cam.fov);
+    const aspect = W / H;
+    const tanH = PORTRAIT ? Math.tan(fovR / 2) * aspect : Math.tan(fovR / 2);
+    const tanV = PORTRAIT ? Math.tan(fovR / 2) : Math.tan(fovR / 2) / aspect;
+    const ndcX = PORTRAIT ? 0 : 0.2;
+    const ndcY = PORTRAIT ? -0.02 : -0.06;
+    v3.normalize(v3.add(v3.add(dir, v3.multiplyByScalar(right, -ndcX * tanH, new v3()), new v3()),
+      v3.multiplyByScalar(up, -ndcY * tanV, new v3()), new v3()), dir);
+    right = v3.normalize(v3.cross(dir, RW, new v3()), new v3());
+    up = v3.cross(right, dir, new v3());
+  }
   scene.camera.setView({ destination: camPos, orientation: { direction: dir, up } });
   scene.camera.frustum.fov = Cesium.Math.toRadians(PORTRAIT ? cam.fov * 1.55 : cam.fov);
   {
@@ -663,8 +516,8 @@ async function frame(s) {
   const pxC = (3.6 * mag * pxPerRad) / camDistC;
   bX36.position = x36W;
   bCos.position = cosW;
-  bX36.scale = (pxX > 24 ? 0.12 : 0.28) * U;
-  bCos.scale = (pxC > 24 ? 0.12 : 0.28) * U;
+  bX36.scale = (pxX > 24 ? 0.14 : 0.42) * U;
+  bCos.scale = (pxC > 24 ? 0.14 : 0.42) * U;
   bX36.color = Cesium.Color.WHITE.withAlpha(pxX > 40 ? 0 : 1);
   bCos.color = Cesium.Color.WHITE.withAlpha(pxC > 40 ? 0 : 1);
 
@@ -741,11 +594,12 @@ async function frame(s) {
     void ax;
   }
 
-  updateHud(s, t, b, { x36W, cosW, RW, TW, NW, rel, sep, mag, gridA, lx, camDistX, jd });
+  hud.update(s, t, b, { x36W, cosW, RW, TW, NW, rel, sep, mag, gridA, lx, camDistX, jd });
   // Render; re-render only while imagery is still streaming in.
   scene.render(jd);
-  for (let k = 0; k < 60 && !(globe.tilesLoaded && mX36.ready && mCos.ready); k++) {
-    await new Promise((r) => setTimeout(r, 30));
+  // Bounded: parents stand in for children still streaming; sequential frames converge.
+  for (let k = 0; k < SETTLE && !(globe.tilesLoaded && mX36.ready && mCos.ready); k++) {
+    await new Promise((r) => setTimeout(r, 60));
     scene.render(jd);
   }
   const gl = scene.context._gl;
@@ -758,156 +612,6 @@ const sOfTauMemo = new Map();
 function sOfTauCached(t) {
   if (!sOfTauMemo.has(t)) sOfTauMemo.set(t, sOfTau(t));
   return sOfTauMemo.get(t);
-}
-
-function fmtSep(m) {
-  if (m >= 10e3) return `${fmtKm(m / 1000)}<small>km</small>`;
-  if (m >= 1000) return `${(m / 1000).toFixed(2)}<small>km</small>`;
-  return `${Math.round(m)}<small>m</small>`;
-}
-function fmtComp(m) {
-  const a = Math.abs(m);
-  return a >= 10e3 ? `${fmtKm(a / 1000)} km` : a >= 1000 ? `${(a / 1000).toFixed(2)} km` : `${Math.round(a)} m`;
-}
-
-function updateHud(s, t, b, st) {
-  // Caption
-  let cap = null;
-  let capA = 0;
-  for (const c of CAPTIONS) {
-    const a = fade(s, c.s0, c.s1);
-    if (a > capA) {
-      cap = c;
-      capA = a;
-    }
-  }
-  if (cap) {
-    capEl.querySelector('.kicker').innerHTML = cap.kicker;
-    capEl.querySelector('h1').innerHTML = cap.title;
-    capEl.querySelector('p').innerHTML = cap.body.replace('%CA%', String(Math.round(D.ca.m / 5) * 5));
-  }
-  capEl.style.opacity = capA;
-  capEl.style.transform = `translateY(${(1 - capA) * 10 * U}px)`;
-
-  // Clock
-  const d = new Date(T0 + t * 1000);
-  const mon = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }).toUpperCase();
-  $('#clock .date').textContent = `${mon} ${d.getUTCDate()}, 2026`;
-  $('#clock .time').textContent = `${d.toISOString().slice(11, 16)} UTC`;
-  $('#clock .rate').innerHTML = fmtRate(rate(s));
-  const inShadow = st.lx < 0.5 && st.sep < 5e3;
-  $('#clock .shadow').textContent = inShadow ? '● IN EARTH\'S SHADOW' : '';
-  const endA = fade(s, 41.2, 60, 0.6);
-  $('#clock').style.opacity = 1 - endA;
-
-  // Readout
-  const ro = $('#readout');
-  ro.style.opacity = fade(s, 0.6, 41.2, 0.5);
-  ro.querySelector('.val').innerHTML = fmtSep(st.sep);
-  const [r, tt, n] = st.rel;
-  if (st.sep < 2e6) {
-    ro.querySelector('.ric').innerHTML =
-      `<b>${fmtComp(tt)}</b> ${tt < 0 ? 'behind' : 'ahead'} · <b>${fmtComp(r)}</b> ${r >= 0 ? 'above' : 'below'} · <b>${fmtComp(n)}</b> aside`;
-  } else {
-    const deg = (Math.abs(((tt / Cesium.Cartesian3.magnitude(x36Teme(b).r)) * 180) / Math.PI) % 360);
-    ro.querySelector('.ric').innerHTML = `<b>${(deg > 180 ? 360 - deg : deg).toFixed(0)}°</b> apart along the orbit · <b>${fmtComp(r)}</b> ${r >= 0 ? 'higher' : 'lower'}`;
-  }
-
-  // Magnification note
-  const magEl = $('#mag');
-  magEl.style.opacity = st.mag > 1.5 ? fade(s, 0, 41, 0.4) : st.mag <= 1.05 && st.camDistX < 200 ? fade(s, 0, 41, 0.4) : 0;
-  magEl.innerHTML = st.mag > 1.5
-    ? `Spacecraft drawn ${Math.round(st.mag / 5) * 5 || 1}× actual size<br>Rings: 500 m · 1 km · 2 km in X36's orbit plane`
-    : 'Spacecraft at true scale<br>Cosmos 2612 model is illustrative — no public design imagery';
-
-  // Chart
-  const px = chart.x(Math.min(Math.max(t, CH.t0), CH.t1));
-  const sepKm = Math.max(sepAt(t), CH.lo);
-  document.getElementById('pastRect').setAttribute('width', px);
-  const ph = document.getElementById('playhead');
-  ph.setAttribute('x1', px);
-  ph.setAttribute('x2', px);
-  const pd = document.getElementById('playdot');
-  pd.setAttribute('cx', px);
-  pd.setAttribute('cy', chart.y(sepKm));
-  document.getElementById('caMark').setAttribute('opacity', t > CA_T ? 1 : 0);
-  for (const g of chartBox.querySelectorAll('.burn')) g.style.opacity = Number(g.dataset.t) <= t ? 1 : 0.28;
-  chartBox.style.opacity = fade(s, 0.6, 41.2, 0.5);
-
-  // Satellite tags
-  const pX = project(st.x36W);
-  const pC = project(st.cosW);
-  const tX = tag('tagX', 'x36');
-  const tC = tag('tagC', 'cos');
-  tX.querySelector('.name').innerHTML = '<span class="c-x36">ICEYE-X36</span>';
-  tX.querySelector('.meta').textContent = 'SAR imager · U.S.-registered';
-  tC.querySelector('.name').innerHTML = '<span class="c-cos">COSMOS 2612</span>';
-  tC.querySelector('.meta').textContent = 'Russian military · launched Apr 2026';
-  const tagA = fade(s, 0.8, 41.2, 0.5);
-  let lines = '';
-  const place2 = (el, p, dx, dy, color) => {
-    if (!p || p.x < -50 || p.y < -50 || p.x > W + 50 || p.y > H + 50) {
-      el.style.opacity = 0;
-      return;
-    }
-    const a = tagA * (p.hidden ? 0.35 : 1);
-    el.style.opacity = a;
-    const lx = p.x + dx;
-    const ly = p.y + dy;
-    el.style.left = `${dx >= 0 ? lx + 8 * U : lx - 8 * U}px`;
-    el.style.top = `${ly}px`;
-    el.style.transform = dx >= 0 ? 'translate(0,-50%)' : 'translate(-100%,-50%)';
-    el.style.textAlign = dx >= 0 ? 'left' : 'right';
-    lines += `<polyline points="${p.x + Math.sign(dx) * 9 * U},${p.y + Math.sign(dy) * 9 * U} ${lx},${ly}" fill="none" stroke="${color}" stroke-opacity="${a * 0.7}" stroke-width="${1.2 * U}"/>`;
-  };
-  let dX = [46 * U, -40 * U];
-  let dC = [-46 * U, 40 * U];
-  if (pX && pC) {
-    // Put each label on the side away from the other satellite.
-    const vx = pC.x - pX.x;
-    const vy = pC.y - pX.y;
-    const sx = vx >= 0 ? -1 : 1;
-    dX = [sx * 46 * U, (vy >= 0 ? -1 : 1) * 40 * U];
-    dC = [-sx * 46 * U, (vy >= 0 ? 1 : -1) * 40 * U];
-  }
-  place2(tX, pX, dX[0], dX[1], '#5ce1e6');
-  place2(tC, pC, dC[0], dC[1], '#ff5a3c');
-  leaders.innerHTML = lines;
-
-  // Event log under the caption: never collides with the scene labels.
-  let html = '';
-  for (const e of EVENTS) {
-    const hold = e.kind === 'ca' ? 4.4 : e.kind === 'vantor' ? 2.8 : 1.9;
-    const a = fade(s, e.s, e.s + hold, 0.25);
-    if (a <= 0) continue;
-    const color = e.kind === 'burn' ? '#ffb547' : e.kind === 'ca' ? '#ffffff' : e.kind === 'vantor' ? '#c9b8ff' : '#eef2f6';
-    html += `<div class="event" style="opacity:${a};color:${color}"><i style="background:${color}"></i>${e.title}<div class="sub">${e.sub}</div></div>`;
-  }
-  callEl.innerHTML = html;
-
-  // Short dip through black at hard cuts.
-  let dip = 0;
-  for (const c of CUTS) dip = Math.max(dip, 1 - Math.abs(s - c) / 0.14);
-  $('#dip').style.opacity = Math.max(0, dip);
-
-  // End card
-  const ec = $('#endcard');
-  ec.style.opacity = endA;
-  ec.style.background = `rgba(2,4,8,${0.78 * endA})`;
-  if (!ec.dataset.built) {
-    ec.dataset.built = '1';
-    ec.innerHTML = `<div class="panel">
-      <h2>22 days, 8 burns, and a pass of about <span class="c-cos">${Math.round(D.ca.m / 5) * 5} m</span></h2>
-      <div class="stats">
-        <div class="stat"><div class="n mono">~${Math.round(D.total_dv)} m/s</div><div class="l">total Δv spent by Cosmos 2612 (est.)</div></div>
-        <div class="stat"><div class="n mono">35+ h</div><div class="l">within ~3 km of ICEYE-X36</div></div>
-        <div class="stat"><div class="n mono">0.002°</div><div class="l">final difference in orbit planes</div></div>
-        <div class="stat"><div class="n mono">480 km</div><div class="l">behind X36 today, matched orbit</div></div>
-      </div>
-      <div class="src"><b>Reconstruction, not tracking data.</b> ICEYE-X36: SGP4 on public CelesTrak element sets (NORAD 59103). Cosmos 2612 (68762): relative-orbit model with burns timed to published analyses by KeepTrack, LeoLabs and Marco Langbroek, pinned to today's elements. Closest-approach estimates range 150–650 m.
-      Earth: Esri World Imagery; the Earth below is slowed during time-lapse. Vantor image: Axios, Oct 22. Spacecraft models: ICEYE to published dimensions; Cosmos 2612 illustrative.</div>
-    </div>`;
-  }
 }
 
 await document.fonts.ready;

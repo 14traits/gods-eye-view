@@ -4,124 +4,170 @@
 <meta charset="utf-8">
 <title>Cosmos 2612 / ICEYE-X36 replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=block" rel="stylesheet">
 <link href="/cesium/Widgets/widgets.css" rel="stylesheet">
 <style>
+  /* Sizes are in --u: 1 px at 1920x1080 (landscape) or 1080x1920 (portrait).
+     Phone playback is ~0.2x (16:9 in a feed) to ~0.36x (9:16 full screen);
+     nothing that must be read is smaller than 24u. */
   :root {
     --x36: #5ce1e6;
     --cosmos: #ff5a3c;
     --burn: #ffb547;
-    --ink: #eef2f6;
-    --ink-2: rgba(238, 242, 246, 0.66);
-    --ink-3: rgba(238, 242, 246, 0.38);
-    --rule: rgba(238, 242, 246, 0.16);
-    --u: 1px; /* layout unit, scaled per format */
+    --ink: #f4f7fa;
+    --ink-2: rgba(244, 247, 250, 0.78);
+    --ink-3: rgba(244, 247, 250, 0.42);
+    --u: 1px;
+    --pad: calc(56 * var(--u));
   }
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body { font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
   #globe { position: absolute; inset: 0; }
   .cesium-viewer-bottom, .cesium-widget-credits { display: none !important; }
   #hud { position: absolute; inset: 0; pointer-events: none; }
-  #vignette { position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.55) 100%); }
-  #topshade { position: absolute; left: 0; right: 0; top: 0; height: calc(380 * var(--u));
-    background: linear-gradient(rgba(0,0,0,0.55), transparent); }
-  #botshade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(420 * var(--u));
-    background: linear-gradient(transparent, rgba(0,0,0,0.72)); }
-  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum' 1, 'zero' 0; }
-
-  #caption { position: absolute; left: calc(64 * var(--u)); top: calc(56 * var(--u)); width: calc(760 * var(--u)); }
-  #caption .kicker { font: 600 calc(15 * var(--u))/1.2 'JetBrains Mono', monospace; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--ink-2); margin-bottom: calc(14 * var(--u)); }
-  #caption .kicker b { color: var(--ink); font-weight: 600; }
-  #caption h1 { margin: 0 0 calc(14 * var(--u)); font: 700 calc(46 * var(--u))/1.04 Inter, sans-serif; letter-spacing: -0.02em; }
-  #caption p { margin: 0; font: 400 calc(21 * var(--u))/1.42 Inter, sans-serif; color: var(--ink-2); }
-  #caption p em { font-style: normal; color: var(--ink); font-weight: 500; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum' 1; }
   .c-x36 { color: var(--x36) !important; }
   .c-cos { color: var(--cosmos) !important; }
-  .c-burn { color: var(--burn) !important; }
+  .shadow-text { text-shadow: 0 calc(2 * var(--u)) calc(14 * var(--u)) rgba(0,0,0,0.85), 0 0 calc(3 * var(--u)) rgba(0,0,0,0.6); }
 
-  #clock { position: absolute; right: calc(64 * var(--u)); top: calc(56 * var(--u)); text-align: right; }
-  #clock .date { font: 600 calc(30 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: -0.01em; }
-  #clock .time { font: 400 calc(22 * var(--u))/1 'JetBrains Mono', monospace; color: var(--ink-2); margin-top: calc(10 * var(--u)); }
-  #clock .rate { margin-top: calc(18 * var(--u)); display: inline-flex; gap: calc(10 * var(--u)); align-items: baseline;
-    font: 500 calc(17 * var(--u))/1 'JetBrains Mono', monospace; color: var(--ink); padding: calc(8 * var(--u)) calc(12 * var(--u));
-    border: 1px solid var(--rule); border-radius: calc(4 * var(--u)); background: rgba(0,0,0,0.28); }
-  #clock .rate span { color: var(--ink-2); }
-  #clock .shadow { margin-top: calc(12 * var(--u)); font: 600 calc(14 * var(--u))/1 'JetBrains Mono', monospace;
-    letter-spacing: 0.12em; color: #9fb4ff; }
+  #topshade { position: absolute; left: 0; right: 0; top: 0; height: calc(520 * var(--u));
+    background: linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.35) 55%, transparent); }
+  #botshade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(420 * var(--u));
+    background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
 
-  #readout { position: absolute; right: calc(64 * var(--u)); bottom: calc(262 * var(--u)); text-align: right; }
-  #readout .label { font: 600 calc(13 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: 0.16em; color: var(--ink-2); }
-  #readout .val { font: 600 calc(64 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: -0.03em; margin-top: calc(8 * var(--u)); }
-  #readout .val small { font-size: 0.45em; color: var(--ink-2); margin-left: 0.15em; letter-spacing: 0; }
-  #readout .ric { margin-top: calc(10 * var(--u)); font: 400 calc(15 * var(--u))/1.5 'JetBrains Mono', monospace; color: var(--ink-2); }
-  #readout .ric b { color: var(--ink); font-weight: 500; }
+  /* Brand */
+  #logo, #endlogo { position: absolute; display: flex; align-items: center; gap: calc(14 * var(--u)); }
+  #logo { left: var(--pad); top: calc(44 * var(--u)); }
+  #logo img { height: calc(58 * var(--u)); }
+  #logo span, #endlogo span { font: 800 calc(26 * var(--u))/1 Inter, sans-serif; letter-spacing: 0.16em; }
 
-  #chart { position: absolute; left: calc(64 * var(--u)); right: calc(64 * var(--u)); bottom: calc(44 * var(--u)); height: calc(190 * var(--u)); }
-  #chart svg { width: 100%; height: 100%; overflow: visible; }
-  #chart text { font-family: 'JetBrains Mono', monospace; }
+  /* Chapters */
+  #chapters { position: absolute; left: calc(520 * var(--u)); right: calc(440 * var(--u)); top: calc(58 * var(--u));
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(12 * var(--u)); }
+  .ch i { display: block; height: calc(6 * var(--u)); background: rgba(255,255,255,0.22); border-radius: calc(3 * var(--u)); overflow: hidden; }
+  .ch b { display: block; height: 100%; width: 0; background: #fff; }
+  .ch span { display: block; margin-top: calc(10 * var(--u)); font: 700 calc(24 * var(--u))/1 Inter, sans-serif;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+  .ch.on span { color: var(--ink); }
 
-  .tag { position: absolute; transform: translate(0, -50%); white-space: nowrap; }
-  .tag .name { font: 600 calc(17 * var(--u))/1.1 Inter, sans-serif; letter-spacing: 0.01em; }
-  .tag .meta { font: 400 calc(13 * var(--u))/1.3 'JetBrains Mono', monospace; color: var(--ink-2); margin-top: calc(3 * var(--u)); }
+  /* Caption */
+  #caption { position: absolute; left: var(--pad); top: calc(150 * var(--u)); width: calc(1000 * var(--u)); }
+  #caption h1 { margin: 0 0 calc(14 * var(--u)); font: 800 calc(66 * var(--u))/1.04 Inter, sans-serif; letter-spacing: -0.025em; }
+  #caption p { margin: 0; font: 500 calc(36 * var(--u))/1.28 Inter, sans-serif; color: var(--ink-2); max-width: calc(900 * var(--u)); }
+  #caption p b { color: var(--ink); font-weight: 700; }
+  #caption.hook { top: calc(170 * var(--u)); width: calc(1240 * var(--u)); }
+  #caption.hook h1 { font-size: calc(84 * var(--u)); }
+  #caption.hook p { font-size: calc(38 * var(--u)); max-width: calc(1100 * var(--u)); }
+
+  /* Events */
+  #events { position: absolute; left: var(--pad); top: calc(420 * var(--u)); width: calc(900 * var(--u)); }
+  .event { display: flex; gap: calc(16 * var(--u)); align-items: flex-start; margin-bottom: calc(18 * var(--u)); }
+  .event i { flex: none; width: calc(18 * var(--u)); height: calc(18 * var(--u)); border-radius: 50%; margin-top: calc(8 * var(--u)); background: var(--burn);
+    box-shadow: 0 0 calc(16 * var(--u)) var(--burn); }
+  .event .t { font: 800 calc(32 * var(--u))/1.1 Inter, sans-serif; letter-spacing: 0.02em; text-transform: uppercase; color: var(--burn); }
+  .event .sub { font: 500 calc(28 * var(--u))/1.25 Inter, sans-serif; color: var(--ink-2); margin-top: calc(4 * var(--u)); }
+  .event.note i { background: #fff; box-shadow: 0 0 calc(12 * var(--u)) #fff; }
+  .event.note .t { color: #fff; }
+  .event.vantor i { background: #c9b8ff; box-shadow: 0 0 calc(12 * var(--u)) #c9b8ff; }
+  .event.vantor .t { color: #c9b8ff; }
+  .event.ca i { background: #fff; }
+  .event.ca .t { color: #fff; }
+
+  /* Clock */
+  #clock { position: absolute; right: var(--pad); top: calc(40 * var(--u)); text-align: right; }
+  #clock .date { font: 700 calc(48 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+  #clock .time { font: 500 calc(28 * var(--u))/1 'JetBrains Mono', monospace; color: var(--ink-2); margin-top: calc(10 * var(--u)); }
+  #clock .rate { display: inline-block; margin-top: calc(16 * var(--u)); padding: calc(10 * var(--u)) calc(16 * var(--u));
+    font: 800 calc(30 * var(--u))/1 Inter, sans-serif; letter-spacing: 0.02em; color: #000; background: #fff; border-radius: calc(8 * var(--u)); }
+  #clock .shadow { margin-top: calc(14 * var(--u)); font: 700 calc(26 * var(--u))/1 Inter, sans-serif; letter-spacing: 0.04em; color: #b9c8ff; }
+
+  /* Readout */
+  #readout { position: absolute; right: var(--pad); bottom: calc(250 * var(--u)); text-align: right; }
+  #readout .label { font: 800 calc(26 * var(--u))/1 Inter, sans-serif; letter-spacing: 0.14em; color: var(--ink-2); }
+  #readout .val { font: 700 calc(132 * var(--u))/0.95 'JetBrains Mono', monospace; letter-spacing: -0.05em; margin-top: calc(8 * var(--u)); }
+  #readout .val small { font-size: 0.42em; color: var(--ink-2); margin-left: 0.12em; letter-spacing: 0; }
+  #readout .ctx { margin-top: calc(10 * var(--u)); font: 600 calc(32 * var(--u))/1.2 Inter, sans-serif; color: var(--ink); }
+
+  #mag { position: absolute; left: var(--pad); bottom: calc(262 * var(--u)); font: 600 calc(24 * var(--u))/1.3 Inter, sans-serif; color: var(--ink-3); }
+
+  /* Chart */
+  #chartwrap { position: absolute; left: var(--pad); right: var(--pad); bottom: calc(58 * var(--u)); }
+  #chartwrap .lab { font: 700 calc(22 * var(--u))/1 Inter, sans-serif; letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: calc(10 * var(--u)); }
+  #chart { height: calc(160 * var(--u)); }
+  #chart svg { width: 100%; height: 100%; overflow: visible; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Tags + dimension */
   #leaders { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tag { position: absolute; white-space: nowrap; }
+  .tag .name { font: 800 calc(34 * var(--u))/1.05 Inter, sans-serif; letter-spacing: 0.01em; }
+  .tag .meta { font: 600 calc(24 * var(--u))/1.2 Inter, sans-serif; color: var(--ink-2); margin-top: calc(4 * var(--u)); }
+  #dim { position: absolute; transform: translate(-50%, -50%); padding: calc(6 * var(--u)) calc(14 * var(--u));
+    font: 700 calc(30 * var(--u))/1 'JetBrains Mono', monospace; color: #000; background: #fff; border-radius: calc(6 * var(--u)); }
 
-  #callouts { position: absolute; left: calc(64 * var(--u)); top: calc(330 * var(--u)); width: calc(700 * var(--u)); }
-  .event { position: relative; padding-left: calc(22 * var(--u)); margin-bottom: calc(14 * var(--u));
-    font: 600 calc(16 * var(--u))/1.2 'JetBrains Mono', monospace; letter-spacing: 0.08em; }
-  .event i { position: absolute; left: 0; top: calc(4 * var(--u)); width: calc(9 * var(--u)); height: calc(9 * var(--u)); border-radius: 50%; }
-  .event .sub { font-weight: 400; letter-spacing: 0.02em; color: var(--ink-2); margin-top: calc(5 * var(--u)); font-size: calc(14 * var(--u)); }
-  #mag { position: absolute; left: calc(64 * var(--u)); bottom: calc(262 * var(--u));
-    font: 400 calc(14 * var(--u))/1.4 'JetBrains Mono', monospace; color: var(--ink-3); }
+  /* Attribution: present, deliberately quiet */
+  #credits { position: absolute; left: var(--pad); right: var(--pad); bottom: calc(16 * var(--u));
+    font: 400 calc(15 * var(--u))/1.3 Inter, sans-serif; color: rgba(244,247,250,0.36); white-space: nowrap; overflow: hidden; }
 
+  /* End card */
   #endcard { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-  #endcard .panel { width: calc(1180 * var(--u)); }
-  #endcard h2 { margin: 0 0 calc(28 * var(--u)); font: 700 calc(44 * var(--u))/1.1 Inter, sans-serif; letter-spacing: -0.02em; }
-  #endcard .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(24 * var(--u)); margin-bottom: calc(36 * var(--u)); }
-  #endcard .stat .n { font: 600 calc(48 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: -0.03em; }
-  #endcard .stat .l { margin-top: calc(10 * var(--u)); font: 400 calc(16 * var(--u))/1.35 Inter, sans-serif; color: var(--ink-2); }
-  #endcard .src { font: 400 calc(14 * var(--u))/1.6 'JetBrains Mono', monospace; color: var(--ink-3); border-top: 1px solid var(--rule); padding-top: calc(18 * var(--u)); }
-  #endcard .src b { color: var(--ink-2); font-weight: 500; }
+  #endcard .panel { width: calc(1300 * var(--u)); text-align: center; }
+  #endcard .big { font: 800 calc(190 * var(--u))/0.9 'JetBrains Mono', monospace; letter-spacing: -0.05em; color: var(--cosmos); }
+  #endcard .lead { margin: calc(26 * var(--u)) auto 0; max-width: calc(1100 * var(--u)); font: 700 calc(44 * var(--u))/1.2 Inter, sans-serif; letter-spacing: -0.01em; }
+  #endcard .stats { display: flex; justify-content: center; gap: calc(80 * var(--u)); margin: calc(44 * var(--u)) 0; }
+  #endcard .stats b { display: block; font: 700 calc(64 * var(--u))/1 'JetBrains Mono', monospace; letter-spacing: -0.03em; }
+  #endcard .stats span { display: block; margin-top: calc(10 * var(--u)); font: 600 calc(28 * var(--u))/1.2 Inter, sans-serif; color: var(--ink-2); }
+  #endcard .why { max-width: calc(1100 * var(--u)); margin: 0 auto; font: 500 calc(32 * var(--u))/1.35 Inter, sans-serif; color: var(--ink-2); }
+  #endlogo { left: 50%; top: calc(70 * var(--u)); transform: translateX(-50%); }
+  #endlogo img { height: calc(84 * var(--u)); }
+  #endlogo span { font-size: calc(36 * var(--u)); }
 
-  /* Portrait */
-  body.portrait #caption { left: calc(56 * var(--u)); right: calc(56 * var(--u)); top: calc(170 * var(--u)); width: auto; }
-  body.portrait #caption h1 { font-size: calc(54 * var(--u)); }
-  body.portrait #caption p { font-size: calc(25 * var(--u)); }
-  body.portrait #clock { left: calc(56 * var(--u)); right: auto; top: calc(64 * var(--u)); text-align: left; display: flex; gap: calc(22 * var(--u)); align-items: baseline; flex-wrap: wrap; width: calc(968 * var(--u)); }
-  body.portrait #clock .time { margin-top: 0; }
-  body.portrait #clock .rate { margin-top: 0; margin-left: auto; }
-  body.portrait #clock .shadow { margin-top: 0; width: 100%; text-align: right; }
-  body.portrait #callouts { left: calc(56 * var(--u)); top: calc(560 * var(--u)); }
-  body.portrait #readout { right: auto; left: calc(56 * var(--u)); bottom: calc(400 * var(--u)); text-align: left; }
-  body.portrait #readout .val { font-size: calc(76 * var(--u)); }
-  body.portrait #mag { left: auto; right: calc(56 * var(--u)); bottom: calc(400 * var(--u)); text-align: right; }
-  body.portrait #chart { left: calc(56 * var(--u)); right: calc(56 * var(--u)); bottom: calc(110 * var(--u)); height: calc(250 * var(--u)); }
-  body.portrait #topshade { height: calc(820 * var(--u)); }
-  body.portrait #botshade { height: calc(880 * var(--u)); }
-  body.portrait #endcard .panel { width: calc(940 * var(--u)); }
-  body.portrait #endcard .stats { grid-template-columns: repeat(2, 1fr); gap: calc(34 * var(--u)); }
-  body.portrait #endcard h2 { font-size: calc(52 * var(--u)); }
-  body.portrait #endcard .stat .n { font-size: calc(60 * var(--u)); }
-  body.portrait #endcard .stat .l { font-size: calc(20 * var(--u)); }
-  body.portrait #endcard .src { font-size: calc(17 * var(--u)); }
+  /* ---------------- Portrait ---------------- */
+  body.portrait { --pad: calc(52 * var(--u)); }
+  body.portrait #logo { top: calc(64 * var(--u)); }
+  body.portrait #clock { top: calc(56 * var(--u)); }
+  body.portrait #clock .date { font-size: calc(44 * var(--u)); }
+  body.portrait #chapters { left: var(--pad); right: var(--pad); top: calc(236 * var(--u)); }
+  body.portrait #caption, body.portrait #caption.hook { top: calc(316 * var(--u)); width: auto; right: var(--pad); }
+  body.portrait #caption h1 { font-size: calc(70 * var(--u)); }
+  body.portrait #caption.hook h1 { font-size: calc(80 * var(--u)); }
+  body.portrait #caption p, body.portrait #caption.hook p { font-size: calc(38 * var(--u)); max-width: none; }
+  body.portrait #events { top: calc(640 * var(--u)); width: auto; right: var(--pad); }
+  body.portrait #readout { right: auto; left: var(--pad); bottom: calc(590 * var(--u)); text-align: left; }
+  body.portrait #readout .val { font-size: calc(140 * var(--u)); }
+  body.portrait #mag { left: auto; right: var(--pad); bottom: calc(600 * var(--u)); text-align: right; max-width: calc(380 * var(--u)); }
+  body.portrait #chartwrap { bottom: calc(340 * var(--u)); }
+  body.portrait #chart { height: calc(190 * var(--u)); }
+  body.portrait #topshade { height: calc(900 * var(--u)); }
+  body.portrait #botshade { height: calc(1100 * var(--u)); background: linear-gradient(transparent, rgba(0,0,0,0.78) 45%, rgba(0,0,0,0.85)); }
+  body.portrait #credits { white-space: normal; bottom: calc(250 * var(--u)); font-size: calc(17 * var(--u)); }
+  body.portrait #endcard .panel { width: calc(960 * var(--u)); }
+  body.portrait #endcard .big { font-size: calc(200 * var(--u)); }
+  body.portrait #endcard .lead { font-size: calc(48 * var(--u)); }
+  body.portrait #endcard .stats { gap: calc(40 * var(--u)); }
+  body.portrait #endcard .stats b { font-size: calc(58 * var(--u)); }
+  body.portrait #endcard .why { font-size: calc(36 * var(--u)); }
+  body.portrait #endlogo { top: calc(170 * var(--u)); }
 </style>
 </head>
 <body>
 <div id="globe"></div>
 <div id="hud">
-  <div id="vignette"></div>
   <div id="topshade"></div>
   <div id="botshade"></div>
   <svg id="leaders"></svg>
-  <div id="tags"></div>
-  <div id="callouts"></div>
-  <div id="caption"><div class="kicker"></div><h1></h1><p></p></div>
-  <div id="clock"><div class="date mono"></div><div class="time mono"></div><div class="rate"></div><div class="shadow"></div></div>
-  <div id="readout"><div class="label">SEPARATION</div><div class="val"></div><div class="ric"></div></div>
-  <div id="mag"></div>
-  <div id="chart"></div>
+  <div id="tags" class="shadow-text"></div>
+  <div id="dim"></div>
+  <div id="logo" class="shadow-text"><img src="logo.svg" alt=""><span>GOD'S EYE VIEW</span></div>
+  <div id="chapters" class="shadow-text"></div>
+  <div id="caption" class="shadow-text"><h1></h1><p></p></div>
+  <div id="events" class="shadow-text"></div>
+  <div id="clock" class="shadow-text"><div class="date"></div><div class="time"></div><div class="rate"></div><div class="shadow">● IN EARTH'S SHADOW</div></div>
+  <div id="readout" class="shadow-text"><div class="label">DISTANCE APART</div><div class="val"></div><div class="ctx"></div></div>
+  <div id="mag" class="shadow-text"></div>
+  <div id="chartwrap"><div class="lab">DISTANCE OVER 22 DAYS · LOG SCALE</div><div id="chart"></div></div>
   <div id="endcard"></div>
+  <div id="endlogo"><img src="logo.svg" alt=""><span>GOD'S EYE VIEW</span></div>
+  <div id="credits">Reconstruction from public data (CelesTrak elements; burn timeline: KeepTrack, LeoLabs, M. Langbroek) · Imagery: Esri, Maxar, Earthstar Geographics; NASA Black Marble · Stars: Yale BSC, ESO/S. Brunier (CC BY 4.0) · Not tracking data</div>
   <div id="dip" style="position:absolute;inset:0;background:#000;opacity:0"></div>
 </div>
 <script src="/cesium/Cesium.js"></script>

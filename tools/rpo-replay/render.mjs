@@ -37,7 +37,9 @@ const [W, H] = FORMATS[format];
 const FPS = Number(args.fps || 30);
 const DUR = 45;
 const total = Math.round(DUR * FPS);
-const outDir = join(ROOT, 'output/rpo-replay', format);
+const TAG = args.tag ? String(args.tag) : '';
+const RS = Number(args.rs || 1);
+const outDir = join(ROOT, 'output/rpo-replay', TAG, format);
 const frameDir = join(outDir, 'frames');
 
 const MIME = {
@@ -80,7 +82,7 @@ async function exists(p) {
 }
 
 function encode() {
-  const out = join(outDir, `cosmos2612-iceye-x36-${format}.mp4`);
+  const out = join(outDir, `cosmos2612-iceye-x36-${TAG ? TAG + '-' : ''}${format}.mp4`);
   const r = spawnSync('ffmpeg', [
     '-y', '-framerate', String(FPS), '-i', join(frameDir, '%05d.jpg'),
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
@@ -106,7 +108,7 @@ page.on('console', (m) => {
   if (m.type() === 'error' || m.type() === 'warning') console.log(`[page ${m.type()}]`, m.text());
 });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-await page.goto(`http://127.0.0.1:${port}/scene.html?w=${W}&h=${H}`);
+await page.goto(`http://127.0.0.1:${port}/scene.html?w=${W}&h=${H}&rs=${RS}&settle=${args.stills ? 60 : Number(args.settle || 4)}`);
 await page.waitForFunction(() => window.rpo?.ready, null, { timeout: 180000 });
 
 if (args.stills) {
@@ -127,9 +129,11 @@ if (args.stills) {
   for (let f = from; f < to; f++) {
     const path = join(frameDir, `${String(f).padStart(5, '0')}.jpg`);
     if (await exists(path)) continue;
+    const tf = Date.now();
     await page.evaluate((x) => window.rpo.frame(x), f / FPS);
     await page.screenshot({ path, type: 'jpeg', quality: 94 });
     done++;
+      if (args.profile) console.log(`frame ${f} ${(Date.now() - tf) / 1000}s`);
     if (done % 25 === 0) {
       const per = (Date.now() - t0) / done;
       console.log(`${format} frame ${f}/${to}  ${(per / 1000).toFixed(2)} s/frame  eta ${(((to - f) * per) / 60000).toFixed(1)} min`);
